@@ -1,0 +1,205 @@
+// Package config provides centralized logger configuration for the PWS application.
+package config
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"time"
+
+	"github.com/gofiber/fiber/v3"
+)
+
+// Logger wraps the standard library's structured logger with additional functionality
+// specific to HTTP request logging and application-specific log formatting.
+type Logger struct {
+	*slog.Logger
+}
+
+// SetupLogger creates and configures a new Logger instance based on the centralized configuration.
+// It sets up structured logging with appropriate log levels and custom formatting for timestamps.
+//
+// Returns a configured Logger instance ready for use throughout the application.
+func SetupLogger() *Logger {
+	cfg := Get()
+
+	var level slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "info":
+		level = slog.LevelInfo
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	opts := &slog.HandlerOptions{
+		Level: level,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// Format time as compact readable format
+			if a.Key == slog.TimeKey {
+				return slog.Attr{
+					Key:   a.Key,
+					Value: slog.StringValue(time.Now().Format("15:04:05")),
+				}
+			}
+			// Add app name to all log entries
+			return a
+		},
+		AddSource: false,
+	}
+
+	handler := slog.NewTextHandler(os.Stdout, opts)
+	logger := slog.New(handler).With("app", cfg.AppName)
+
+	return &Logger{logger}
+}
+
+// HTTPMiddleware returns a Fiber middleware handler for HTTP request logging.
+// This middleware logs each HTTP request with timing information, status codes,
+// and client details in a structured format.
+//
+// Returns a Fiber middleware handler function that can be added to the application middleware stack.
+func (l *Logger) HTTPMiddleware() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		start := time.Now()
+
+		// Process request
+		err := c.Next()
+
+		// Calculate duration
+		duration := time.Since(start)
+
+		// Get status code
+		status := c.Response().StatusCode()
+
+		// Get method and path
+		method := c.Method()
+		path := c.Path()
+
+		// Get IP
+		ip := c.IP()
+
+		// Log with different levels based on status code
+		logLevel := slog.LevelInfo
+		if status >= 400 && status < 500 {
+			logLevel = slog.LevelWarn
+		} else if status >= 500 {
+			logLevel = slog.LevelError
+		}
+
+		// Create log message
+		message := fmt.Sprintf("%s %s - %d %v %s",
+			method,
+			path,
+			status,
+			duration.Round(time.Microsecond),
+			ip,
+		)
+
+		// Log with structured attributes
+		attrs := []slog.Attr{
+			slog.String("method", method),
+			slog.String("path", path),
+			slog.Int("status", status),
+			slog.Duration("duration", duration),
+			slog.String("ip", ip),
+		}
+
+		l.LogAttrs(context.TODO(), logLevel, message, attrs...)
+
+		return err
+	}
+}
+
+// ServerStart logs a message indicating that the server is starting.
+// This should be called before the server begins listening for connections.
+func (l *Logger) ServerStart() {
+	cfg := Get()
+	l.Info("Server starting",
+		slog.String("port", cfg.Port),
+		slog.String("environment", cfg.Environment),
+		slog.String("address", cfg.GetServerAddress()),
+	)
+}
+
+// ServerReady logs a message indicating that the server is ready to accept connections.
+// This should be called after the server has successfully started and is listening.
+func (l *Logger) ServerReady() {
+	cfg := Get()
+	l.Info("Server ready",
+		slog.String("url", fmt.Sprintf("http://localhost:%s", cfg.Port)),
+		slog.String("environment", cfg.Environment),
+	)
+}
+
+// ServerError logs server-level errors with appropriate error-level logging.
+// This should be used for critical server errors that may affect application availability.
+//
+// Parameters:
+//   - err: The error that occurred
+func (l *Logger) ServerError(err error) {
+	l.Error("Server error", slog.String("error", err.Error()))
+}
+
+// DatabaseConnected logs successful database connection
+func (l *Logger) DatabaseConnected() {
+	cfg := Get()
+	l.Info("Database connected",
+		slog.String("host", cfg.Database.Host),
+		slog.Int("port", cfg.Database.Port),
+		slog.String("database", cfg.Database.Name),
+		slog.Int("max_conns", cfg.Database.MaxConns),
+	)
+}
+
+// DatabaseError logs database-related errors
+func (l *Logger) DatabaseError(operation string, err error) {
+	l.Error("Database error",
+		slog.String("operation", operation),
+		slog.String("error", err.Error()),
+	)
+}
+
+// RouteRegistered logs debug information about route registration.
+// This is useful during development and debugging to understand which routes are available.
+//
+// Parameters:
+//   - method: The HTTP method for the route (GET, POST, etc.)
+//   - path: The URL path pattern for the route
+func (l *Logger) RouteRegistered(method, path string) {
+	l.Debug("Route registered",
+		slog.String("method", method),
+		slog.String("path", path),
+	)
+}
+
+// ConfigLoaded logs that configuration has been successfully loaded
+func (l *Logger) ConfigLoaded() {
+	cfg := Get()
+	l.Info("Configuration loaded",
+		slog.String("app_name", cfg.AppName),
+		slog.String("environment", cfg.Environment),
+		slog.String("log_level", cfg.LogLevel),
+	)
+}
+
+// Shutdown logs application shutdown
+func (l *Logger) Shutdown(reason string) {
+	l.Info("Application shutting down",
+		slog.String("reason", reason),
+	)
+}
+
+// Performance logs performance metrics
+func (l *Logger) Performance(operation string, duration time.Duration) {
+	l.Debug("Performance metric",
+		slog.String("operation", operation),
+		slog.Duration("duration", duration),
+	)
+}
