@@ -13,7 +13,7 @@ Zodra taak is afgerond, update je taak in dit bestand met een ":)".
 - Valideer input (email adressen, namen etc etc)
 
 ### Sicco
-- Business logic voor per leeling vakken bekijken (nieuwe routes maken)
+- Business logic voor per leerling vakken bekijken (nieuwe routes maken)
 - Permissions voor leerlingen en docenten (user/admin)
 
 Vragen? Groepsapp!
