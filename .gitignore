@@ -1,0 +1,19 @@
+.DS_Store
+node_modules/
+
+# React Router
+.react-router/
+build/
+
+
+# Binaries
+*.exe
+*.dll
+*.so
+
+
+.env
+.env.local
+
+*.log
+go.sum
