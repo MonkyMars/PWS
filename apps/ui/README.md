@@ -1,23 +1,179 @@
-# PWS UI Application
+# PWS ELO Frontend
 
-The user interface for the PWS (Personal Web Space) application, built with React Router v7, TypeScript, and Tailwind CSS. This application provides a modern, responsive web interface for interacting with the PWS API.
+A modern, TypeScript-based frontend for the PWS Electronic Learning Environment (ELO) built with React Router v7, TanStack Query, and Tailwind CSS.
 
-## Overview
+## 🚀 Quick Start
 
-This React application features:
+```bash
+# Install dependencies
+bun install
 
-- Modern React with TypeScript for type safety
-- React Router v7 for routing and navigation
-- Tailwind CSS for styling and responsive design
-- Server-side rendering (SSR) capabilities
-- Dark mode support
-- Responsive design optimized for all device sizes
+# Start development server
+bun dev
 
-## Technology Stack
+# Build for production
+bun build
 
-- **React 19** - UI library with latest features
-- **React Router v7** - File-based routing with SSR support
-- **TypeScript** - Type safety and better developer experience
+# Type checking
+bun typecheck
+```
+
+## 📁 Project Structure
+
+```
+apps/ui/
+├── app/                    # Main application code
+│   ├── components/         # Reusable UI components
+│   │   ├── auth/          # Authentication forms
+│   │   ├── dashboard/     # Dashboard components
+│   │   ├── files/         # File viewer and management
+│   │   ├── subjects/      # Subject detail views
+│   │   └── ui/            # Basic UI primitives
+│   ├── hooks/             # Custom React hooks
+│   ├── lib/               # Utilities and configurations
+│   ├── routes/            # Page components
+│   ├── types/             # TypeScript type definitions
+│   ├── app.css            # Global styles and theme
+│   └── root.tsx           # App root with providers
+├── public/                # Static assets
+├── package.json           # Dependencies and scripts
+├── tsconfig.json          # TypeScript configuration
+└── vite.config.ts         # Vite build configuration
+```
+
+## 🛠 Technology Stack
+
+- **Framework**: React 19 with React Router v7
+- **Language**: TypeScript with strict type checking
+- **Styling**: Tailwind CSS with custom design system
+- **Data Fetching**: TanStack Query for caching and synchronization
+- **Validation**: Zod for runtime type validation
+- **Build Tool**: Vite for fast development and builds
+- **Package Manager**: Bun for fast dependency management
+
+## 🎨 Design System
+
+### Colors
+
+- **Primary**: Educational blue theme (`#3b82f6`)
+- **Secondary**: Warm accent orange (`#f27318`)
+- **Success**: Green (`#22c55e`)
+- **Warning**: Yellow (`#f59e0b`)
+- **Error**: Red (`#ef4444`)
+
+### Typography
+
+- **Font Family**: Inter (Google Fonts)
+- **Scale**: Tailwind's default type scale
+- **Weights**: 400 (normal), 500 (medium), 600 (semibold), 700 (bold)
+
+### Components
+
+All components follow accessibility guidelines and include:
+
+- Proper ARIA attributes
+- Keyboard navigation support
+- Focus management
+- Screen reader compatibility
+
+## 🔒 Authentication
+
+The app uses token-based authentication with:
+
+- JWT tokens stored in localStorage
+- Automatic token refresh
+- Protected route guards
+- Role-based access control (student, teacher, admin)
+
+## 📱 Features
+
+### For Students
+
+- **Dashboard**: Overview of all enrolled subjects
+- **Subject Details**: Announcements, files, and resources
+- **File Viewer**: In-app preview of documents and images
+- **Mobile-First**: Optimized for all device sizes
+
+### For Teachers (Future)
+
+- File upload and management
+- Announcement creation
+- Student progress tracking
+
+### For Admins (Future)
+
+- User management
+- System configuration
+- Analytics and reporting
+
+## 🌐 Internationalization
+
+The application is currently built for Dutch users with:
+
+- Dutch language interface
+- Dutch date/time formatting
+- Netherlands-specific form validation
+- Local cultural conventions
+
+## 🔧 Development
+
+### Code Quality
+
+- **ESLint**: Configured for React and TypeScript
+- **TypeScript**: Strict mode with no `any` types allowed
+- **Prettier**: Consistent code formatting
+- **Git Hooks**: Pre-commit linting and type checking
+
+### Testing Strategy
+
+- Unit tests for utility functions
+- Component testing with React Testing Library
+- Integration tests for critical user flows
+- E2E tests for complete user journeys
+
+### Performance
+
+- **Code Splitting**: Route-based lazy loading
+- **Image Optimization**: Automatic image optimization
+- **Bundle Analysis**: Regular bundle size monitoring
+- **Caching**: Intelligent data caching with TanStack Query
+
+## 🚀 Deployment
+
+### Environment Variables
+
+```bash
+API_URL=http://localhost:8080/api  # Backend API URL
+NODE_ENV=production                # Environment mode
+```
+
+### Build Output
+
+- Static files in `build/` directory
+- Optimized for CDN deployment
+- Service worker for offline support
+- Progressive Web App capabilities
+
+## 🤝 Contributing
+
+1. Follow the established TypeScript patterns
+2. Use the custom hooks for data fetching
+3. Implement proper error boundaries
+4. Include accessibility attributes
+5. Write meaningful commit messages
+6. Update documentation for new features
+
+## 📚 Learning Resources
+
+- [React Router v7 Documentation](https://reactrouter.com/dev)
+- [TanStack Query Guide](https://tanstack.com/query/latest)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs)
+
+---
+
+Built with ❤️ for PWS School students and teachers.
+
 - **Tailwind CSS v4** - Utility-first CSS framework
 - **Vite** - Fast build tool and development server
 - **Bun** - Package manager and runtime
