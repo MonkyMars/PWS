@@ -1,6 +1,6 @@
-# PWS (Personal Web Space)
+# PWS (Profiel werkstuk)
 
-A modern, full-stack web application built with Go backend and React frontend, designed to provide a high-performance platform for personal web spaces. The application features a robust API server with comprehensive response handling, configuration management, and a responsive user interface built with the latest web technologies.
+A modern, full-stack web application built with Go backend and React frontend. The application features a robust API server with comprehensive response handling, configuration management, and a responsive user interface.
 
 ## Architecture Overview
 
@@ -75,7 +75,7 @@ PWS/
 1. **Clone the repository**:
 
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:MonkyMars/PWS.git
    cd PWS
    ```
 
