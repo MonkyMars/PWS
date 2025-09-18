@@ -22,8 +22,11 @@ type Config struct {
 	Port        string
 	LogLevel    string
 
+	// Auth Settings
+	Auth AuthConfig
+
 	// API Settings
-	AnonKey string
+	Supabase SupabaseConfig
 
 	// Database Settings
 	Database DatabaseConfig
@@ -59,6 +62,19 @@ type ServerConfig struct {
 	MaxHeaderBytes int
 }
 
+type SupabaseConfig struct {
+	Url        string
+	AnonKey    string
+	ServiceKey string
+}
+
+type AuthConfig struct {
+	AccessTokenSecret  string
+	AccessTokenExpiry  time.Duration
+	RefreshTokenSecret string
+	RefreshTokenExpiry time.Duration
+}
+
 var (
 	configInstance *Config
 	configOnce     sync.Once
@@ -80,7 +96,18 @@ func Load() *Config {
 			LogLevel:    getEnv("LOG_LEVEL", "info"),
 
 			// API Settings
-			AnonKey: getEnv("ANON_KEY", ""),
+			Supabase: SupabaseConfig{
+				Url:        getEnv("SUPABASE_URL", ""),
+				AnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
+				ServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
+			},
+
+			Auth: AuthConfig{
+				AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", "default_secret"),
+				AccessTokenExpiry:  getEnvDuration("ACCESS_TOKEN_EXPIRY", 15*time.Minute),
+				RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", "default_refresh_secret"),
+				RefreshTokenExpiry: getEnvDuration("REFRESH_TOKEN_EXPIRY", 7*24*time.Hour),
+			},
 
 			// Database Settings
 			Database: DatabaseConfig{
