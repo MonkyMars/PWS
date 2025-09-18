@@ -17,7 +17,7 @@ import (
 //	result, err := services.DB[User](query.NewQuery().SetOperation("select").AddWhere("id", 1))
 //	result, err := services.DB[Product](query.NewQuery().SetRawSQL("SELECT * FROM products WHERE price > ?", 100))
 func DB[T any](query *types.QueryParams) (*types.QueryResult[T], error) {
-	return database.Database[T](query)
+	return database.ExecuteQuery[T](query)
 }
 
 // Quick helper functions for common database operations
@@ -40,7 +40,7 @@ func FindOne[T any](table string, where map[string]any) (*T, error) {
 		query.AddWhere(key, value)
 	}
 
-	result, err := database.Database[T](query)
+	result, err := database.ExecuteQuery[T](query)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func CreateAndReturn[T any](table string, data map[string]any, returning ...stri
 		SetData(data).
 		SetReturning(returning...)
 
-	result, err := database.Database[T](query)
+	result, err := database.ExecuteQuery[T](query)
 	if err != nil {
 		return nil, err
 	}
@@ -211,12 +211,12 @@ func (b *SelectQueryBuilder[T]) Context(ctx context.Context) *SelectQueryBuilder
 }
 
 func (b *SelectQueryBuilder[T]) Execute() (*types.QueryResult[T], error) {
-	return database.Database[T](b.query)
+	return database.ExecuteQuery[T](b.query)
 }
 
 func (b *SelectQueryBuilder[T]) First() (*T, error) {
 	b.query.SetLimit(1)
-	result, err := database.Database[T](b.query)
+	result, err := database.ExecuteQuery[T](b.query)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (b *InsertQueryBuilder[T]) OnConflict(strategy string) *InsertQueryBuilder[
 }
 
 func (b *InsertQueryBuilder[T]) Execute() (*types.QueryResult[T], error) {
-	return database.Database[T](b.query)
+	return database.ExecuteQuery[T](b.query)
 }
 
 type UpdateQueryBuilder[T any] struct {
@@ -281,7 +281,7 @@ func (b *UpdateQueryBuilder[T]) Returning(columns ...string) *UpdateQueryBuilder
 }
 
 func (b *UpdateQueryBuilder[T]) Execute() (*types.QueryResult[T], error) {
-	return database.Database[T](b.query)
+	return database.ExecuteQuery[T](b.query)
 }
 
 type DeleteQueryBuilder[T any] struct {
@@ -304,5 +304,5 @@ func (b *DeleteQueryBuilder[T]) Returning(columns ...string) *DeleteQueryBuilder
 }
 
 func (b *DeleteQueryBuilder[T]) Execute() (*types.QueryResult[T], error) {
-	return database.Database[T](b.query)
+	return database.ExecuteQuery[T](b.query)
 }

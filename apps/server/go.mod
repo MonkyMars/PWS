@@ -6,9 +6,10 @@ require (
 	github.com/go-pg/pg/v10 v10.15.0
 	github.com/goccy/go-json v0.10.5
 	github.com/gofiber/fiber/v3 v3.0.0-rc.1
+	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.42.0
-	resty.dev/v3 v3.0.0-beta.3
 )
 
 require (
@@ -16,9 +17,6 @@ require (
 	github.com/go-pg/zerochecker v0.2.0 // indirect
 	github.com/gofiber/schema v1.6.0 // indirect
 	github.com/gofiber/utils/v2 v2.0.0-rc.1 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

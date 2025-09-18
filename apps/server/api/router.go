@@ -54,4 +54,7 @@ func App() error {
 func SetupRoutes(app *fiber.App, logger *config.Logger) {
 	// Health check route
 	routes.SetupAppRoutes(app)
+
+	// Authentication routes
+	routes.SetupAuthRoutes(app)
 }

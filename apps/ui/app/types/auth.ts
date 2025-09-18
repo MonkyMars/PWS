@@ -22,7 +22,7 @@ export interface User {
  * Authentication credentials for login
  */
 export interface LoginCredentials {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -42,8 +42,22 @@ export interface RegisterData {
  */
 export interface AuthResponse {
   user: User;
-  token: string;
-  expiresAt: string;
+  access_token: string;
+  refresh_token: string;
+}
+
+/**
+ * Refresh token request
+ */
+export interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+/**
+ * Logout response
+ */
+export interface LogoutResponse {
+  message: string;
 }
 
 /**
@@ -51,7 +65,8 @@ export interface AuthResponse {
  */
 export interface AuthState {
   user: User | null;
-  token: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
