@@ -101,6 +101,9 @@ PWS/
    ```bash
    cd apps/ui
 
+   # Install bun
+   npm install -g bun
+
    # Install dependencies
    bun install
 
