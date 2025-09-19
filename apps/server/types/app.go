@@ -13,3 +13,9 @@ type HealthMetrics struct {
 	GoRoutines    int     `json:"go_routines"`
 	RequestCount  int64   `json:"request_count,omitempty"`
 }
+
+type DatabaseHealthResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+	Elapsed string `json:"elapsed_time"`
+}

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"runtime"
 	"time"
 
@@ -47,6 +48,18 @@ func GetSystemHealth(c fiber.Ctx) error {
 			GoRoutines:    runtime.NumGoroutine(),
 			RequestCount:  requestCount,
 		},
+	})
+}
+
+func GetDatabaseHealth(c fiber.Ctx) error {
+	now := time.Now()
+	if err := services.Ping(); err != nil {
+		return response.ServiceUnavailable(c, err.Error())
+	}
+	return response.Success(c, &types.DatabaseHealthResponse{
+		Status:  "ok",
+		Message: "Database connection successful",
+		Elapsed: fmt.Sprintf("%v", time.Since(now)),
 	})
 }
 
