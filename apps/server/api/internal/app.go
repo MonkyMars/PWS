@@ -50,6 +50,9 @@ func GetSystemHealth(c fiber.Ctx) error {
 	})
 }
 
+// TODO: Add authentication middleware to protect this endpoint in production
+// Thus making sure only authorized admins can access it
+// Currently it's only available in development mode because of this issue
 func GetDatabaseHealth(c fiber.Ctx) error {
 	now := time.Now()
 	if err := services.Ping(); err != nil {
