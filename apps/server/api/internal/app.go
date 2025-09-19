@@ -50,6 +50,19 @@ func GetSystemHealth(c fiber.Ctx) error {
 	})
 }
 
+func GetDatabaseHealth(c fiber.Ctx) error {
+	now := time.Now()
+	if err := services.Ping(); err != nil {
+		return response.ServiceUnavailable(c, "Database connection error: "+err.Error())
+	}
+
+	return response.Success(c, types.DatabaseHealthResponse{
+		Status:  "ok",
+		Message: "Database connection is healthy",
+		Elapsed: time.Since(now).String(),
+	})
+}
+
 func NotFoundHandler(c fiber.Ctx) error {
 	return response.NotFound(c, "The requested resource was not found.")
 }
