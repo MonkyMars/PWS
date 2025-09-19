@@ -228,16 +228,6 @@ Authorization: Bearer <access_token>
 - Basic input validation
 - CORS configured for localhost:5173
 
-### Production Recommendations
-1. **Environment Variables**: Set strong, random JWT secrets
-2. **HTTPS**: Use HTTPS in production
-3. **Token Blacklisting**: Implement token revocation for logout
-4. **Rate Limiting**: Add rate limiting to auth endpoints
-5. **Input Validation**: Add comprehensive email/username validation
-6. **Password Policy**: Strengthen password requirements
-7. **Audit Logging**: Log all authentication events
-8. **Token Storage**: Use HTTP-only cookies for refresh tokens
-
 ## Error Response Format
 
 All error responses follow this structure:
@@ -267,7 +257,7 @@ All error responses follow this structure:
 
 ## Example Usage
 
-### JavaScript/TypeScript
+### TypeScript
 ```typescript
 // Login
 const loginResponse = await fetch('/auth/login', {
