@@ -141,7 +141,7 @@ func (q *QueryParams) AddData(key string, value any) *QueryParams {
 }
 
 // SetSelect sets the columns to select
-func (q *QueryParams) SetSelect(columns ...string) *QueryParams {
+func (q *QueryParams) SetSelect(columns []string) *QueryParams {
 	q.Select = columns
 	return q
 }

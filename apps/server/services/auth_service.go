@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/MonkyMars/PWS/config"
@@ -12,28 +13,35 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// AuthService provides authentication-related services
 type AuthService struct{}
 
+// HashPassword hashes a plain-text password and returns a byte slice
 func (a *AuthService) HashPassword(password string) []byte {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return hash
 }
 
+// VerifyPassword compares a plain-text password with a hashed password
 func (a *AuthService) VerifyPassword(password string, hash []byte) bool {
 	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
 	return err == nil
 }
 
+// GetRefreshTokenExpiration returns the expiration time for refresh tokens using configuration settings
 func (a *AuthService) GetRefreshTokenExpiration() time.Time {
 	cfg := config.Get()
 	return time.Now().Add(cfg.Auth.RefreshTokenExpiry)
 }
 
+
+// GetAccessTokenExpiration returns the expiration time for access tokens using configuration settings
 func (a *AuthService) GetAccessTokenExpiration() time.Time {
 	cfg := config.Get()
 	return time.Now().Add(cfg.Auth.AccessTokenExpiry)
 }
 
+// GenerateAccessToken generates a JWT access token for the given user
 func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
 	secret := config.Get().Auth.AccessTokenSecret
 
@@ -58,6 +66,7 @@ func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
+// GenerateRefreshToken generates a JWT refresh token for the given user
 func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
 	secret := config.Get().Auth.RefreshTokenSecret
 
@@ -82,6 +91,7 @@ func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
+// ParseToken parses and validates a JWT token string and returns the claims
 func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.AuthClaims, error) {
 	secret := config.Get().Auth.AccessTokenSecret
 	if !isAccessToken {
@@ -141,9 +151,11 @@ func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.Au
 	return nil, jwt.ErrInvalidKey
 }
 
+// Login authenticates a user and returns the user object if successful
 func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error) {
-	query := Query().SetOperation("SELECT").SetTable("users").SetSelect("id, email, username, password_hash, role")
-	query.Where["email"] = authRequest.Email
+	log.Println("Attempting login for email:", authRequest.Email)
+	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect([]string{"public.users.id"}).SetLimit(1)
+	query.Where["public.users.email"] = authRequest.Email
 
 	// Execute the query and get the user
 	user, err := database.ExecuteQuery[types.User](query)
@@ -155,17 +167,20 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 		return nil, fmt.Errorf("user not found")
 	}
 
-	if !a.VerifyPassword(authRequest.Password, user.Single.PasswordHash) {
+	isValid := a.VerifyPassword(authRequest.Password, user.Single.PasswordHash)
+	fmt.Println("Password verification result for user", user.Single.Id, ":", isValid)
+	if !isValid {
 		return nil, bcrypt.ErrMismatchedHashAndPassword
 	}
 
 	return user.Single, nil
 }
 
+// Register creates a new user account and returns the user object if successful
 func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.User, error) {
 	// Check if user already exists
-	query := Query().SetOperation("SELECT").SetTable("users").SetSelect("id")
-	query.Where["email"] = registerRequest.Email
+	query := Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"public.users.id"}).SetLimit(1)
+	query.Where["public.users.email"] = registerRequest.Email
 
 	existingUser, err := database.ExecuteQuery[types.User](query)
 	if err == nil && existingUser.Single != nil {
@@ -173,8 +188,8 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 	}
 
 	// Also check username
-	query = Query().SetOperation("SELECT").SetTable("users").SetSelect("id")
-	query.Where["username"] = registerRequest.Username
+	query = Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"public.users.id"}).SetLimit(1)
+	query.Where["public.users.username"] = registerRequest.Username
 
 	existingUser, err = database.ExecuteQuery[types.User](query)
 	if err == nil && existingUser.Single != nil {
@@ -208,6 +223,7 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 	return result.Single, nil
 }
 
+// RefreshToken validates a refresh token and returns new JWT tokens if valid
 func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse, error) {
 	// Parse and validate refresh token
 	claims, err := a.ParseToken(refreshTokenStr, false)
@@ -221,7 +237,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	}
 
 	// Get user from database to ensure they still exist
-	query := Query().SetOperation("SELECT").SetTable("users").SetSelect("id, email, username, role")
+	query := Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"id", "email", "username", "role"})
 	query.Where["id"] = claims.Sub
 
 	user, err := database.ExecuteQuery[types.User](query)
@@ -247,6 +263,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	}, nil
 }
 
+// GetUserFromToken extracts the user information from a valid JWT access token
 func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 	// Parse and validate access token
 	claims, err := a.ParseToken(tokenStr, true)
@@ -260,7 +277,7 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 	}
 
 	// Get user from database
-	query := Query().SetOperation("SELECT").SetTable("users").SetSelect("id, email, username, role")
+	query := Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"id", "email", "username", "role"})
 	query.Where["id"] = claims.Sub
 
 	user, err := database.ExecuteQuery[types.User](query)

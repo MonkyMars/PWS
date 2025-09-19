@@ -165,8 +165,8 @@ type SelectQueryBuilder[T any] struct {
 	query *types.QueryParams
 }
 
-func (b *SelectQueryBuilder[T]) Select(columns ...string) *SelectQueryBuilder[T] {
-	b.query.SetSelect(columns...)
+func (b *SelectQueryBuilder[T]) Select(columns []string) *SelectQueryBuilder[T] {
+	b.query.SetSelect(columns)
 	return b
 }
 
