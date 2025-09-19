@@ -34,7 +34,6 @@ func (a *AuthService) GetRefreshTokenExpiration() time.Time {
 	return time.Now().Add(cfg.Auth.RefreshTokenExpiry)
 }
 
-
 // GetAccessTokenExpiration returns the expiration time for access tokens using configuration settings
 func (a *AuthService) GetAccessTokenExpiration() time.Time {
 	cfg := config.Get()
@@ -154,7 +153,8 @@ func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.Au
 // Login authenticates a user and returns the user object if successful
 func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error) {
 	log.Println("Attempting login for email:", authRequest.Email)
-	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect([]string{"public.users.id"}).SetLimit(1)
+	columns := []string{"id", "username", "email", "password_hash", "role"}
+	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
 	query.Where["public.users.email"] = authRequest.Email
 
 	// Execute the query and get the user
@@ -168,7 +168,6 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 	}
 
 	isValid := a.VerifyPassword(authRequest.Password, user.Single.PasswordHash)
-	fmt.Println("Password verification result for user", user.Single.Id, ":", isValid)
 	if !isValid {
 		return nil, bcrypt.ErrMismatchedHashAndPassword
 	}
@@ -277,8 +276,9 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 	}
 
 	// Get user from database
-	query := Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"id", "email", "username", "role"})
-	query.Where["id"] = claims.Sub
+	columns := []string{"id", "username", "email", "password_hash", "role"}
+	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query.Where["public.users.id"] = claims.Sub
 
 	user, err := database.ExecuteQuery[types.User](query)
 	if err != nil || user.Single == nil {
