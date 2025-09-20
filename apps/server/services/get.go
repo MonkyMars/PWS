@@ -9,19 +9,6 @@ import (
 	"github.com/go-pg/pg/v10"
 )
 
-// DB executes database operations using the new centralized DB function.
-// This is the main function you should use for all database operations.
-//
-// Usage examples:
-//
-//	result, err := services.DB[User](query.NewQuery().SetOperation("select").AddWhere("id", 1))
-//	result, err := services.DB[Product](query.NewQuery().SetRawSQL("SELECT * FROM products WHERE price > ?", 100))
-func DB[T any](query *types.QueryParams) (*types.QueryResult[T], error) {
-	return database.Database[T](query)
-}
-
-// Quick helper functions for common database operations
-
 // Find executes a SELECT query to find records
 // Usage: users, err := services.Find[User]("users", map[string]any{"active": true})
 func Find[T any](table string, where map[string]any) (*types.QueryResult[T], error) {
