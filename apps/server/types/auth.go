@@ -6,6 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type ArgonParams struct {
+	Memory  uint32
+	Time    uint32
+	Threads uint8
+	KeyLen  uint32
+	SaltLen uint32
+}
+
 type AuthClaims struct {
 	Sub   uuid.UUID `json:"sub"`
 	Email string    `json:"email"`
@@ -43,6 +51,6 @@ type User struct {
 	Id           uuid.UUID `json:"id" pg:"id,pk,type:uuid,default:gen_random_uuid()"`
 	Username     string    `json:"username" pg:"username,unique,notnull"`
 	Email        string    `json:"email" pg:"email,unique,notnull"`
-	PasswordHash []byte    `json:"-" pg:"password_hash,notnull"`
+	PasswordHash string    `json:"-" pg:"password_hash,notnull"`
 	Role         string    `json:"role" pg:"role,notnull,default:'student'"`
 }

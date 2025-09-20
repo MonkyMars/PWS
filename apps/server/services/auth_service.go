@@ -1,8 +1,12 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/MonkyMars/PWS/config"
@@ -10,22 +14,91 @@ import (
 	"github.com/MonkyMars/PWS/types"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var DefaultParams = &types.ArgonParams{
+	Memory:  64 * 1024, // 64 MB
+	Time:    1,
+	Threads: 4,
+	KeyLen:  32,
+	SaltLen: 16,
+}
+
+func generateSalt(n uint32) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	return b, err
+}
+
+func subtleCompare(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	var res byte = 0
+	for i := 0; i < len(a); i++ {
+		res |= a[i] ^ b[i]
+	}
+	return res == 0
+}
 
 // AuthService provides authentication-related services
 type AuthService struct{}
 
-// HashPassword hashes a plain-text password and returns a byte slice
-func (a *AuthService) HashPassword(password string) []byte {
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return hash
+// HashPassword hashes a plain-text password and returns a string and possible error
+func (a *AuthService) HashPassword(password string, p *types.ArgonParams) (string, error) {
+	salt, err := generateSalt(p.SaltLen)
+	if err != nil {
+		return "", err
+	}
+	hash := argon2.IDKey([]byte(password), salt, p.Time, p.Memory, p.Threads, p.KeyLen)
+	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
+	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
+	// format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
+	params := fmt.Sprintf("m=%d,t=%d,p=%d", p.Memory, p.Time, p.Threads)
+	encoded := fmt.Sprintf("$argon2id$v=19$%s$%s$%s", params, b64Salt, b64Hash)
+	return encoded, nil
 }
 
-// VerifyPassword compares a plain-text password with a hashed password
-func (a *AuthService) VerifyPassword(password string, hash []byte) bool {
-	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
-	return err == nil
+// ComparePasswordAndHash compares a plain-text password with a hashed password
+// Returns true if they match, false otherwise + possible error
+func (a *AuthService) ComparePasswordAndHash(password, encoded string) (bool, error) {
+	parts := strings.Split(encoded, "$")
+	if len(parts) != 6 {
+		return false, fmt.Errorf("bad hash format")
+	}
+	// parts: ["", "argon2id","v=19","m=...,t=...,p=...","salt","hash"]
+	params := parts[3]
+	saltB64 := parts[4]
+	hashB64 := parts[5]
+
+	var memory, time uint32
+	var threads uint8
+	for _, p := range strings.Split(params, ",") {
+		kv := strings.Split(p, "=")
+		switch kv[0] {
+		case "m":
+			v, _ := strconv.ParseUint(kv[1], 10, 32)
+			memory = uint32(v)
+		case "t":
+			v, _ := strconv.ParseUint(kv[1], 10, 32)
+			time = uint32(v)
+		case "p":
+			v, _ := strconv.ParseUint(kv[1], 10, 8)
+			threads = uint8(v)
+		}
+	}
+	salt, err := base64.RawStdEncoding.DecodeString(saltB64)
+	if err != nil {
+		return false, err
+	}
+	expected, err := base64.RawStdEncoding.DecodeString(hashB64)
+	if err != nil {
+		return false, err
+	}
+	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(expected)))
+	return subtleCompare(hash, expected), nil
 }
 
 // GetRefreshTokenExpiration returns the expiration time for refresh tokens using configuration settings
@@ -167,7 +240,10 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 		return nil, fmt.Errorf("user not found")
 	}
 
-	isValid := a.VerifyPassword(authRequest.Password, user.Single.PasswordHash)
+	isValid, err := a.ComparePasswordAndHash(authRequest.Password, user.Single.PasswordHash)
+	if err != nil {
+		return nil, err
+	}
 	if !isValid {
 		return nil, bcrypt.ErrMismatchedHashAndPassword
 	}
@@ -196,7 +272,10 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 	}
 
 	// Hash password
-	hashedPassword := a.HashPassword(registerRequest.Password)
+	hashedPassword, err := a.HashPassword(registerRequest.Password, DefaultParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
 
 	// Create user
 	newUserID := uuid.New()
