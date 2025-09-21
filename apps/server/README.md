@@ -1,6 +1,6 @@
 # PWS Server
 
-The backend API server for the PWS (Personal Web Space) application, built with Go and the Fiber web framework. This server provides a high-performance, scalable REST API with structured logging, comprehensive configuration management, and standardized response handling.
+The backend API server for the PWS application, built with Go and the Fiber web framework. This server provides a high-performance, scalable REST API with structured logging, comprehensive configuration management, and standardized response handling.
 
 ## Overview
 
