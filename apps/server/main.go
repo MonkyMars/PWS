@@ -33,9 +33,9 @@ func main() {
 	logger := config.SetupLogger()
 	logger.ConfigLoaded()
 
-	// Print configuration in development mode
+	// Minimal config info in development mode
 	if cfg.IsDevelopment() {
-		cfg.PrintConfig()
+		log.Printf("Development mode - %s:%s", cfg.AppName, cfg.Port)
 	}
 
 	logger.Info("Starting application",
@@ -68,7 +68,6 @@ func main() {
 		logger.Error("Redis connection error", "error", err)
 		log.Fatalf("Redis connection error: %v", err)
 	}
-	logger.Info("Redis connection established successfully")
 
 	// Setup graceful shutdown
 	setupGracefulShutdown(logger)
@@ -117,7 +116,6 @@ func setupGracefulShutdown(logger *config.Logger) {
 			logger.Error("Redis shutdown close error", "error", err)
 		}
 
-		logger.Info("Application shutdown complete")
 		os.Exit(0)
 	}()
 }

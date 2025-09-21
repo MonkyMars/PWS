@@ -66,7 +66,9 @@ export function RegisterForm() {
       navigate("/dashboard");
     } catch (error) {
       // Error is handled by the mutation
-      console.error("Registration failed:", error);
+      if (import.meta.env.DEV) {
+        console.error("Registration failed:", error);
+      }
     }
   };
 

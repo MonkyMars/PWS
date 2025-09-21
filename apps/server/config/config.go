@@ -108,7 +108,6 @@ var (
 // Returns a pointer to the loaded Config struct containing all application settings.
 func Load() *Config {
 	configOnce.Do(func() {
-		log.Println("Loading centralized configuration...")
 		configInstance = &Config{
 			// Application Settings
 			AppName:     getEnv("APP_NAME", "PWS"),
@@ -179,8 +178,6 @@ func Load() *Config {
 		if err := configInstance.Validate(); err != nil {
 			log.Fatalf("Configuration validation failed: %v", err)
 		}
-
-		log.Println("Centralized configuration loaded successfully")
 	})
 	return configInstance
 }
@@ -322,26 +319,8 @@ func (c *Config) GetServerAddress() string {
 
 // PrintConfig prints the current configuration (excluding sensitive data)
 func (c *Config) PrintConfig() {
-	log.Printf("=== Configuration ===")
-	log.Printf("App Name: %s", c.AppName)
-	log.Printf("Environment: %s", c.Environment)
-	log.Printf("Port: %s", c.Port)
-	log.Printf("Log Level: %s", c.LogLevel)
-	log.Printf("Database Host: %s:%d", c.Database.Host, c.Database.Port)
-	log.Printf("Database Name: %s", c.Database.Name)
-	log.Printf("Database User: %s", c.Database.User)
-	log.Printf("Database SSL Mode: %s", c.Database.SSLMode)
-	log.Printf("Database Max Connections: %d", c.Database.MaxConns)
-	log.Printf("Database Min Connections: %d", c.Database.MinConns)
-	log.Printf("Database Max Idle Time: %v", c.Database.MaxIdleTime)
-	log.Printf("Database Max Lifetime: %v", c.Database.MaxLifetime)
-	log.Printf("Server Read Timeout: %v", c.Server.ReadTimeout)
-	log.Printf("Server Write Timeout: %v", c.Server.WriteTimeout)
-	log.Printf("Cache Address: %s", c.Cache.Address)
-	log.Printf("Cache Pool Size: %d", c.Cache.PoolSize)
-	log.Printf("Cache Pool Timeout: %v", c.Cache.PoolTimeout)
-	log.Printf("Cache Idle Timeout: %v", c.Cache.IdleTimeout)
-	log.Printf("=====================")
+	// Config printing disabled to reduce log noise
+	// Enable specific log lines below if needed for debugging
 }
 
 // Helper functions for environment variables
@@ -381,6 +360,5 @@ func ValidateConfig() bool {
 		log.Printf("Configuration validation error: %v", err)
 		return false
 	}
-	log.Println("Configuration validation passed")
 	return true
 }

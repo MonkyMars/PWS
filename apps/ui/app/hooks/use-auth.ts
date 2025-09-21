@@ -3,6 +3,13 @@ import { apiClient } from "~/lib/api-client";
 import type { User, LoginCredentials, RegisterData } from "~/types";
 
 /**
+ * Track authentication state across app lifecycle
+ * This helps minimize unnecessary API calls for unauthenticated users
+ */
+let hasAttemptedAuth = false;
+let lastAuthResult: boolean | null = null;
+
+/**
  * Hook for user login
  */
 export function useLogin() {
@@ -19,13 +26,12 @@ export function useLogin() {
       return response.data;
     },
     onSuccess: (user: User) => {
+      // Reset auth tracking on successful login
+      hasAttemptedAuth = true;
+      lastAuthResult = true;
       // Cache user data - tokens are now handled via cookies
       queryClient.setQueryData(["auth", "user"], user);
       queryClient.invalidateQueries({ queryKey: ["auth"] });
-      // Clear logged out flag on successful login
-      if (typeof sessionStorage !== "undefined") {
-        sessionStorage.removeItem("auth_logged_out");
-      }
     },
     onError: () => {
       // Clear any existing auth data on login failure
@@ -51,6 +57,9 @@ export function useRegister() {
       return response.data;
     },
     onSuccess: (user: User) => {
+      // Reset auth tracking on successful registration
+      hasAttemptedAuth = true;
+      lastAuthResult = true;
       // Cache user data - tokens are now handled via cookies
       queryClient.setQueryData(["auth", "user"], user);
       queryClient.invalidateQueries({ queryKey: ["auth"] });
@@ -77,14 +86,16 @@ export function useLogout() {
       }
     },
     onSuccess: () => {
+      // Reset auth tracking on logout
+      hasAttemptedAuth = true;
+      lastAuthResult = false;
       // Clear all cached data
       queryClient.clear();
-      // Mark as logged out to prevent further auth requests
-      if (typeof sessionStorage !== "undefined") {
-        sessionStorage.setItem("auth_logged_out", "true");
-      }
     },
     onError: () => {
+      // Reset auth tracking even if logout fails
+      hasAttemptedAuth = true;
+      lastAuthResult = false;
       // Even if logout API fails, clear local data
       queryClient.clear();
     },
@@ -95,32 +106,47 @@ export function useLogout() {
  * Hook to get current user data
  */
 export function useCurrentUser() {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ["auth", "user"],
     queryFn: async (): Promise<User | null> => {
       const response = await apiClient.get<User>("/auth/me");
 
       if (!response.success || !response.data) {
+        // Track failed auth attempt
+        hasAttemptedAuth = true;
+        lastAuthResult = false;
         return null;
       }
 
+      // Track successful auth
+      hasAttemptedAuth = true;
+      lastAuthResult = true;
       return response.data;
     },
     enabled: () => {
       // SSR check - don't run on server
       if (typeof document === "undefined") return false;
 
-      // Check if we've explicitly logged out
-      const hasLoggedOut = sessionStorage.getItem("auth_logged_out") === "true";
-      if (hasLoggedOut) return false;
+      // Always allow first attempt since we can't read HttpOnly cookies
+      if (!hasAttemptedAuth) return true;
 
-      // Always attempt auth check since HttpOnly cookies can't be read by JS
-      // but only if we haven't explicitly logged out
-      return true;
+      // If last attempt was successful, allow refetch (user might still be authenticated)
+      if (lastAuthResult === true) return true;
+
+      // If we have cached user data, allow refetch to check if still valid
+      const cachedUser = queryClient.getQueryData(["auth", "user"]);
+      if (cachedUser) return true;
+
+      // If last attempt failed and no cached user, don't spam the API
+      return false;
     },
     retry: (failureCount: number, error: any) => {
       // Don't retry on 401 errors (handled by API client)
       if (error?.message?.includes("Authentication failed")) {
+        hasAttemptedAuth = true;
+        lastAuthResult = false;
         return false;
       }
       return failureCount < 3;
@@ -128,6 +154,10 @@ export function useCurrentUser() {
 
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    refetchOnMount: true, // Always refetch on mount to get fresh data
+    // Don't refetch on reconnect for auth queries to avoid spam
+    refetchOnReconnect: false,
   });
 }
 

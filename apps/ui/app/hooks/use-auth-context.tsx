@@ -45,41 +45,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     if (user) {
       setAuthError(undefined);
-      // Clear logged out flag when user is successfully authenticated
-      if (typeof sessionStorage !== "undefined") {
-        sessionStorage.removeItem("auth_logged_out");
-      }
     }
   }, [user]);
 
-  // Handle auth errors and mark as logged out
-  useEffect(() => {
-    if (error && !user) {
-      // If we get an auth error, mark as logged out to prevent further requests
-      if (typeof sessionStorage !== "undefined") {
-        sessionStorage.setItem("auth_logged_out", "true");
-      }
-    }
-  }, [error, user]);
-
   const login = () => {
     // This is called after successful login to trigger auth state update
-    queryClient.invalidateQueries({ queryKey: ["auth"] });
     setAuthError(undefined);
-    // Clear logged out flag on successful login
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.removeItem("auth_logged_out");
-    }
+    // Invalidate queries to refetch user data
+    queryClient.invalidateQueries({ queryKey: ["auth"] });
   };
 
   const logout = () => {
     // Clear all auth data
     queryClient.removeQueries({ queryKey: ["auth"] });
     setAuthError(undefined);
-    // Mark as logged out to prevent further auth requests
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.setItem("auth_logged_out", "true");
-    }
     navigate("/login", { replace: true });
   };
 

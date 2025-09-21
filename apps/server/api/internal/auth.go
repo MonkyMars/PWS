@@ -76,8 +76,6 @@ func Login(c fiber.Ctx) error {
 		return response.InternalServerError(c, "Failed to generate refresh token")
 	}
 
-	logger.Info("User logged in successfully", "user_id", user.Id, "email", authRequest.Email)
-
 	cookieService.SetAuthCookies(c, accessToken, refreshToken)
 
 	return response.Success(c, user)
@@ -172,8 +170,6 @@ func Register(c fiber.Ctx) error {
 		RefreshToken: refreshToken,
 	}
 
-	logger.Info("User registered successfully", "user_id", user.Id, "email", registerRequest.Email, "username", registerRequest.Username)
-
 	return response.Success(c, authResponse)
 }
 
@@ -224,10 +220,6 @@ func RefreshToken(c fiber.Ctx) error {
 	// Set new rotated tokens in secure cookies
 	cookieService.SetAuthCookies(c, authResponse.AccessToken, authResponse.RefreshToken)
 
-	logger.Info("Token refreshed and rotated successfully",
-		"user_id", authResponse.User.Id,
-		"user_email", authResponse.User.Email)
-
 	return response.Success(c, authResponse)
 }
 
@@ -235,14 +227,7 @@ func RefreshToken(c fiber.Ctx) error {
 func Me(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	logger.Info("Me endpoint called", "path", c.Path(), "method", c.Method())
-
-	// Check for access token cookie
-	accessToken := c.Cookies(lib.AccessTokenCookieName)
-	logger.Info("Access token cookie", "present", accessToken != "", "length", len(accessToken))
-
 	claimsInterface := c.Locals("claims")
-	logger.Info("Claims from context", "present", claimsInterface != nil)
 
 	if claimsInterface == nil {
 		logger.Error("No claims found in context")
@@ -254,8 +239,6 @@ func Me(c fiber.Ctx) error {
 		logger.Error("Invalid claims type in context", "type", fmt.Sprintf("%T", claimsInterface))
 		return response.Unauthorized(c, "Unauthorized")
 	}
-
-	logger.Info("Claims extracted successfully", "user_id", claims.Sub, "email", claims.Email)
 
 	// Initialize auth service
 	authService := &services.AuthService{}
@@ -272,8 +255,6 @@ func Me(c fiber.Ctx) error {
 		return response.NotFound(c, "User not found")
 	}
 
-	logger.Info("User info retrieved", "user_id", claims.Sub)
-
 	return response.Success(c, user)
 }
 
@@ -288,10 +269,7 @@ func Logout(c fiber.Ctx) error {
 	authService := &services.AuthService{}
 	cookieService := &services.CookieService{}
 
-	// Track if we successfully blacklisted any tokens
-	tokensProcessed := false
-
-	// Process access token if present
+	// Blacklist access token if present
 	if strings.TrimSpace(accessToken) != "" {
 		// Validate and blacklist access token
 		_, err := authService.GetUserFromToken(accessToken)
@@ -302,9 +280,6 @@ func Logout(c fiber.Ctx) error {
 			if err := authService.BlacklistToken(accessToken, true); err != nil {
 				logger.Error("Failed to blacklist access token", "error", err)
 				// Don't return error, continue with logout process
-			} else {
-				tokensProcessed = true
-				logger.Info("Access token blacklisted successfully")
 			}
 		}
 	}
@@ -315,20 +290,11 @@ func Logout(c fiber.Ctx) error {
 		if err := authService.BlacklistToken(refreshToken, false); err != nil {
 			logger.Warn("Failed to blacklist refresh token, may already be invalid", "error", err)
 			// Don't return error, continue with logout process
-		} else {
-			tokensProcessed = true
-			logger.Info("Refresh token blacklisted successfully")
 		}
 	}
 
 	// Always clear auth cookies regardless of token validity
 	cookieService.ClearAuthCookies(c)
-
-	if tokensProcessed {
-		logger.Info("User logged out successfully with token blacklisting")
-	} else {
-		logger.Info("User logged out successfully (no valid tokens to blacklist)")
-	}
 
 	return response.Success(c, types.LogoutResponse{
 		Message: "Logged out successfully",

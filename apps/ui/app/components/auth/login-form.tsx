@@ -65,7 +65,9 @@ export function LoginForm() {
       navigate("/dashboard");
     } catch (error) {
       // Error is handled by the mutation
-      console.error("Login failed:", error);
+      if (import.meta.env.DEV) {
+        console.error("Login failed:", error);
+      }
     }
   };
 

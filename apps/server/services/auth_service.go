@@ -403,10 +403,6 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 			"user_id", claims.Sub)
 		// Don't fail the request - better to have working auth than strict security here
 		// But log this as it could indicate Redis issues
-	} else {
-		logger.Info("Old refresh token successfully blacklisted during rotation",
-			"jti", claims.Jti.String(),
-			"user_id", claims.Sub)
 	}
 
 	// Generate new access token
@@ -420,11 +416,6 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
-
-	logger.Info("Token rotation completed successfully",
-		"user_id", user.Single.Id,
-		"user_email", user.Single.Email,
-		"old_jti", claims.Jti.String())
 
 	return &types.AuthResponse{
 		User:         user.Single,

@@ -37,7 +37,9 @@ export class ApiClient {
 
       return false;
     } catch (error) {
-      console.error("Token refresh failed:", error);
+      if (import.meta.env.DEV) {
+        console.error("Token refresh failed:", error);
+      }
       return false;
     }
   }
@@ -46,15 +48,6 @@ export class ApiClient {
    * Handle token refresh for 401 responses
    */
   private async handleTokenRefresh(): Promise<boolean> {
-    // Check if we have a refresh token before attempting refresh
-    if (typeof document !== "undefined") {
-      const hasRefreshToken = document.cookie.includes("refresh_token");
-      if (!hasRefreshToken) {
-        console.log("No refresh token found, skipping refresh attempt");
-        return false;
-      }
-    }
-
     if (this.isRefreshing) {
       // If already refreshing, wait for the existing refresh
       return this.refreshPromise || Promise.resolve(false);
@@ -97,17 +90,12 @@ export class ApiClient {
 
       // Handle 401 Unauthorized responses
       if (response.status === 401 && retryOnAuth) {
-        // Only try to refresh if we have tokens
-        if (
-          typeof document !== "undefined" &&
-          document.cookie.includes("refresh_token")
-        ) {
-          const refreshSuccess = await this.handleTokenRefresh();
+        // Try to refresh tokens since we can't check HttpOnly cookies
+        const refreshSuccess = await this.handleTokenRefresh();
 
-          if (refreshSuccess) {
-            // Retry the original request once
-            return this.request<T>(url, options, false);
-          }
+        if (refreshSuccess) {
+          // Retry the original request once
+          return this.request<T>(url, options, false);
         }
 
         // No refresh token or refresh failed, handle auth failure
@@ -133,7 +121,9 @@ export class ApiClient {
         message: data.message,
       };
     } catch (error) {
-      console.error("API request failed:", error);
+      if (import.meta.env.DEV) {
+        console.error("API request failed:", error);
+      }
       return {
         success: false,
         message:
@@ -258,9 +248,31 @@ export class ApiClient {
     try {
       const response = await this.get("/auth/me");
       return response.success;
-    } catch {
+    } catch (error) {
       return false;
     }
+  }
+
+  /**
+   * Debug function to log current authentication state
+   * Only available in development mode
+   */
+  debugAuthState(): void {
+    // Debug logging removed for production
+    // Use browser dev tools or monitoring tools for debugging
+  }
+
+  /**
+   * Check if authentication cookies are present (for HttpOnly cookies, this always returns false)
+   * This method is kept for compatibility but will always return false for HttpOnly cookies
+   */
+  hasAuthCookies(): boolean {
+    if (typeof document === "undefined") return false;
+
+    // Note: HttpOnly cookies cannot be read by JavaScript
+    // This method will always return false in production where cookies are HttpOnly
+    // We rely on server-side authentication validation instead
+    return false;
   }
 
   /**
