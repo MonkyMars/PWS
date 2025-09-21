@@ -61,14 +61,26 @@ func main() {
 		log.Fatalf("Database connection error: %v", err)
 	}
 
+	// Initialize and test Redis connection
+	cacheService := &services.CacheService{}
+	err = cacheService.Ping()
+	if err != nil {
+		logger.Error("Redis connection error", "error", err)
+		log.Fatalf("Redis connection error: %v", err)
+	}
+	logger.Info("Redis connection established successfully")
+
 	// Setup graceful shutdown
 	setupGracefulShutdown(logger)
 
-	// Ensure database connection is closed on exit
+	// Ensure database and Redis connections are closed on exit
 	defer func() {
 		logger.Shutdown("application_exit")
 		if err := services.CloseDatabase(); err != nil {
 			logger.DatabaseError("close", err)
+		}
+		if err := services.CloseRedisConnection(); err != nil {
+			logger.Error("Redis close error", "error", err)
 		}
 	}()
 
@@ -98,6 +110,11 @@ func setupGracefulShutdown(logger *config.Logger) {
 		// Close database connection
 		if err := services.CloseDatabase(); err != nil {
 			logger.DatabaseError("shutdown_close", err)
+		}
+
+		// Close Redis connection
+		if err := services.CloseRedisConnection(); err != nil {
+			logger.Error("Redis shutdown close error", "error", err)
 		}
 
 		logger.Info("Application shutdown complete")

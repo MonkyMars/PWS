@@ -6,10 +6,10 @@ import (
 
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // Login handles user authentication and returns JWT tokens
@@ -47,12 +47,15 @@ func Login(c fiber.Ctx) error {
 	// Initialize auth service
 	authService := &services.AuthService{}
 
+	// Initialize cookie service
+	cookieService := &services.CookieService{}
+
 	// Attempt login
 	user, err := authService.Login(&authRequest)
 	if err != nil {
 		logger.Error("Login failed", "email", authRequest.Email, "error", err)
 
-		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		if errors.Is(err, lib.ErrInvalidCredentials) {
 			return response.Unauthorized(c, "Invalid email or password")
 		}
 
@@ -72,16 +75,11 @@ func Login(c fiber.Ctx) error {
 		return response.InternalServerError(c, "Failed to generate refresh token")
 	}
 
-	// Create response
-	authResponse := types.AuthResponse{
-		User:         user,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}
-
 	logger.Info("User logged in successfully", "user_id", user.Id, "email", authRequest.Email)
 
-	return response.Success(c, authResponse)
+	cookieService.SetAuthCookies(c, accessToken, refreshToken)
+
+	return response.Success(c, user)
 }
 
 // Register handles user registration and returns JWT tokens
@@ -203,14 +201,31 @@ func RefreshToken(c fiber.Ctx) error {
 	// Initialize auth service
 	authService := &services.AuthService{}
 
-	// Refresh tokens
+	// Initialize cookie service for setting new cookies
+	cookieService := &services.CookieService{}
+
+	// Refresh tokens with rotation
 	authResponse, err := authService.RefreshToken(refreshRequest.RefreshToken)
 	if err != nil {
 		logger.Error("Token refresh failed", "error", err)
+
+		// Check if this might be a token reuse attack
+		if strings.Contains(err.Error(), "revoked") || strings.Contains(err.Error(), "blacklisted") {
+			logger.Warn("Possible token reuse attack detected during refresh",
+				"client_ip", c.IP(),
+				"user_agent", c.Get("User-Agent"),
+				"error", err.Error())
+		}
+
 		return response.Unauthorized(c, "Invalid or expired refresh token")
 	}
 
-	logger.Info("Token refreshed successfully", "user_id", authResponse.User.Id)
+	// Set new rotated tokens in secure cookies
+	cookieService.SetAuthCookies(c, authResponse.AccessToken, authResponse.RefreshToken)
+
+	logger.Info("Token refreshed and rotated successfully",
+		"user_id", authResponse.User.Id,
+		"user_email", authResponse.User.Email)
 
 	return response.Success(c, authResponse)
 }
@@ -219,75 +234,84 @@ func RefreshToken(c fiber.Ctx) error {
 func Me(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	// Get Authorization header
-	authHeader := c.Get("Authorization")
-	if authHeader == "" {
-		return response.Unauthorized(c, "Authorization header required")
-	}
-
-	// Check Bearer token format
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return response.Unauthorized(c, "Invalid authorization format")
-	}
-
-	// Extract token
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-	if strings.TrimSpace(token) == "" {
-		return response.Unauthorized(c, "Token is required")
+	claims := c.Locals("claims").(*types.AuthClaims)
+	if claims == nil {
+		logger.Error("No claims found in context")
+		return response.Unauthorized(c, "Unauthorized")
 	}
 
 	// Initialize auth service
 	authService := &services.AuthService{}
 
-	// Get user from token
-	user, err := authService.GetUserFromToken(token)
+	// Fetch user info
+	user, err := authService.GetUserByID(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to get user from token", "error", err)
-		return response.Unauthorized(c, "Invalid or expired token")
+		logger.Error("Failed to retrieve user info", "user_id", claims.Sub, "error", err)
+		return response.InternalServerError(c, "Failed to retrieve user info")
 	}
 
-	logger.Info("User info retrieved", "user_id", user.Id)
+	if user == nil {
+		logger.Error("User not found", "user_id", claims.Sub)
+		return response.NotFound(c, "User not found")
+	}
+
+	logger.Info("User info retrieved", "user_id", claims.Sub)
 
 	return response.Success(c, user)
 }
 
-// Logout handles user logout (token invalidation would be implemented here)
+// Logout handles user logout with graceful handling of missing/invalid tokens
 func Logout(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	// Get Authorization header
-	authHeader := c.Get("Authorization")
-	if authHeader == "" {
-		return response.Unauthorized(c, "Authorization header required")
-	}
+	accessToken := c.Cookies(lib.AccessTokenCookieName)
+	refreshToken := c.Cookies(lib.RefreshTokenCookieName)
 
-	// Check Bearer token format
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return response.Unauthorized(c, "Invalid authorization format")
-	}
-
-	// Extract token
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-	if strings.TrimSpace(token) == "" {
-		return response.Unauthorized(c, "Token is required")
-	}
-
-	// Initialize auth service
+	// Initialize services
 	authService := &services.AuthService{}
+	cookieService := &services.CookieService{}
 
-	// Validate token to ensure it's valid before logout
-	_, err := authService.GetUserFromToken(token)
-	if err != nil {
-		logger.Error("Invalid token during logout", "error", err)
-		return response.Unauthorized(c, "Invalid or expired token")
+	// Track if we successfully blacklisted any tokens
+	tokensProcessed := false
+
+	// Process access token if present
+	if strings.TrimSpace(accessToken) != "" {
+		// Validate and blacklist access token
+		_, err := authService.GetUserFromToken(accessToken)
+		if err != nil {
+			logger.Warn("Invalid access token during logout, clearing anyway", "error", err)
+		} else {
+			// Token is valid, blacklist it
+			if err := authService.BlacklistToken(accessToken, true); err != nil {
+				logger.Error("Failed to blacklist access token", "error", err)
+				// Don't return error, continue with logout process
+			} else {
+				tokensProcessed = true
+				logger.Info("Access token blacklisted successfully")
+			}
+		}
 	}
 
-	// TODO: In a production system, you would:
-	// 1. Add the token to a blacklist/revocation list
-	// 2. Store blacklisted tokens in Redis with expiration
-	// 3. Check blacklist in authentication middleware
+	// Process refresh token if present
+	if strings.TrimSpace(refreshToken) != "" {
+		// Try to blacklist refresh token (may be invalid, but that's okay)
+		if err := authService.BlacklistToken(refreshToken, false); err != nil {
+			logger.Warn("Failed to blacklist refresh token, may already be invalid", "error", err)
+			// Don't return error, continue with logout process
+		} else {
+			tokensProcessed = true
+			logger.Info("Refresh token blacklisted successfully")
+		}
+	}
 
-	logger.Info("User logged out successfully")
+	// Always clear auth cookies regardless of token validity
+	cookieService.ClearAuthCookies(c)
+
+	if tokensProcessed {
+		logger.Info("User logged out successfully with token blacklisting")
+	} else {
+		logger.Info("User logged out successfully (no valid tokens to blacklist)")
+	}
 
 	return response.Success(c, types.LogoutResponse{
 		Message: "Logged out successfully",

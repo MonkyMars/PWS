@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/MonkyMars/PWS/api/internal"
+	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -14,6 +15,8 @@ func SetupAuthRoutes(app *fiber.App) {
 	auth.Post("/login", internal.Login)
 	auth.Post("/register", internal.Register)
 	auth.Post("/refresh", internal.RefreshToken)
-	auth.Get("/me", internal.Me)
 	auth.Post("/logout", internal.Logout)
+
+	// Protected route to get current user info
+	auth.Get("/me", internal.Me, middleware.AuthMiddleware())
 }

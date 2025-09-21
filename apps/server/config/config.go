@@ -33,6 +33,9 @@ type Config struct {
 
 	// Server Settings
 	Server ServerConfig
+
+	// Cache Settings
+	Cache CacheConfig
 }
 
 // DatabaseConfig holds all database-related configuration
@@ -75,6 +78,24 @@ type AuthConfig struct {
 	RefreshTokenExpiry time.Duration
 }
 
+type CacheConfig struct {
+	Address         string
+	Username        string
+	Password        string
+	DB              int
+	PoolSize        int
+	MinIdleConns    int
+	MaxIdleConns    int
+	PoolTimeout     time.Duration
+	IdleTimeout     time.Duration
+	DialTimeout     time.Duration
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	MaxRetries      int
+	MinRetryBackoff time.Duration
+	MaxRetryBackoff time.Duration
+}
+
 var (
 	configInstance *Config
 	configOnce     sync.Once
@@ -103,9 +124,9 @@ func Load() *Config {
 			},
 
 			Auth: AuthConfig{
-				AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", "default_secret"),
+				AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", ""),
 				AccessTokenExpiry:  getEnvDuration("ACCESS_TOKEN_EXPIRY", 15*time.Minute),
-				RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", "default_refresh_secret"),
+				RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
 				RefreshTokenExpiry: getEnvDuration("REFRESH_TOKEN_EXPIRY", 7*24*time.Hour),
 			},
 
@@ -132,6 +153,25 @@ func Load() *Config {
 				WriteTimeout:   getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
 				IdleTimeout:    getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
 				MaxHeaderBytes: getEnvInt("SERVER_MAX_HEADER_BYTES", 1<<20), // 1MB
+			},
+
+			// Cache Settings
+			Cache: CacheConfig{
+				Address:         getEnv("CACHE_ADDRESS", "localhost:6379"),
+				Username:        getEnv("CACHE_USERNAME", ""),
+				Password:        getEnv("CACHE_PASSWORD", ""),
+				DB:              getEnvInt("CACHE_DB", 0),
+				PoolSize:        getEnvInt("CACHE_POOL_SIZE", 10),
+				MinIdleConns:    getEnvInt("CACHE_MIN_IDLE_CONNS", 2),
+				MaxIdleConns:    getEnvInt("CACHE_MAX_IDLE_CONNS", 5),
+				PoolTimeout:     getEnvDuration("CACHE_POOL_TIMEOUT", 30*time.Second),
+				IdleTimeout:     getEnvDuration("CACHE_IDLE_TIMEOUT", 5*time.Minute),
+				DialTimeout:     getEnvDuration("CACHE_DIAL_TIMEOUT", 5*time.Second),
+				ReadTimeout:     getEnvDuration("CACHE_READ_TIMEOUT", 3*time.Second),
+				WriteTimeout:    getEnvDuration("CACHE_WRITE_TIMEOUT", 3*time.Second),
+				MaxRetries:      getEnvInt("CACHE_MAX_RETRIES", 3),
+				MinRetryBackoff: getEnvDuration("CACHE_MIN_RETRY_BACKOFF", 8*time.Millisecond),
+				MaxRetryBackoff: getEnvDuration("CACHE_MAX_RETRY_BACKOFF", 512*time.Millisecond),
 			},
 		}
 
@@ -181,6 +221,43 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// Validate auth secrets - required in all environments
+	if c.Auth.AccessTokenSecret == "" {
+		return fmt.Errorf("ACCESS_TOKEN_SECRET is required")
+	}
+	if c.Auth.RefreshTokenSecret == "" {
+		return fmt.Errorf("REFRESH_TOKEN_SECRET is required")
+	}
+
+	// Additional validation in production
+	if c.IsProduction() {
+		if len(c.Auth.AccessTokenSecret) < 32 {
+			return fmt.Errorf("ACCESS_TOKEN_SECRET must be at least 32 characters in production")
+		}
+		if len(c.Auth.RefreshTokenSecret) < 32 {
+			return fmt.Errorf("REFRESH_TOKEN_SECRET must be at least 32 characters in production")
+		}
+	} else {
+		// Minimum length in non-production environments
+		if len(c.Auth.AccessTokenSecret) < 16 {
+			return fmt.Errorf("ACCESS_TOKEN_SECRET must be at least 16 characters")
+		}
+		if len(c.Auth.RefreshTokenSecret) < 16 {
+			return fmt.Errorf("REFRESH_TOKEN_SECRET must be at least 16 characters")
+		}
+	}
+
+	// Validate cache configuration
+	if c.Cache.PoolSize < 1 {
+		return fmt.Errorf("CACHE_POOL_SIZE must be at least 1")
+	}
+	if c.Cache.MinIdleConns < 0 {
+		return fmt.Errorf("CACHE_MIN_IDLE_CONNS cannot be negative")
+	}
+	if c.Cache.MaxIdleConns < c.Cache.MinIdleConns {
+		return fmt.Errorf("CACHE_MAX_IDLE_CONNS cannot be less than CACHE_MIN_IDLE_CONNS")
+	}
+
 	// Validate pool settings
 	if c.Database.MaxConns < 1 {
 		return fmt.Errorf("DB_MAX_CONNS must be at least 1")
@@ -192,6 +269,24 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("DB_MIN_CONNS cannot be greater than DB_MAX_CONNS")
 	}
 
+	// Validate auth settings
+	if c.Auth.AccessTokenSecret == "" {
+		return fmt.Errorf("ACCESS_TOKEN_SECRET is required")
+	}
+	if c.Auth.RefreshTokenSecret == "" {
+		return fmt.Errorf("REFRESH_TOKEN_SECRET is required")
+	}
+
+	// Validate cache settings
+	if c.Cache.Address == "" {
+		log.Println("Warning: CACHE_ADDRESS is not set, caching will be disabled")
+	}
+
+	if c.Environment != "development" && c.Environment != "production" && c.Environment != "staging" {
+		return fmt.Errorf("ENVIRONMENT must be one of: development, production, staging")
+	}
+
+	// All validations passed
 	return nil
 }
 
@@ -248,6 +343,10 @@ func (c *Config) PrintConfig() {
 	log.Printf("Database Max Lifetime: %v", c.Database.MaxLifetime)
 	log.Printf("Server Read Timeout: %v", c.Server.ReadTimeout)
 	log.Printf("Server Write Timeout: %v", c.Server.WriteTimeout)
+	log.Printf("Cache Address: %s", c.Cache.Address)
+	log.Printf("Cache Pool Size: %d", c.Cache.PoolSize)
+	log.Printf("Cache Pool Timeout: %v", c.Cache.PoolTimeout)
+	log.Printf("Cache Idle Timeout: %v", c.Cache.IdleTimeout)
 	log.Printf("=====================")
 }
 
@@ -280,4 +379,14 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 		log.Printf("Invalid duration value for %s: %s, using default: %v", key, value, defaultValue)
 	}
 	return defaultValue
+}
+
+func ValidateConfig() bool {
+	cfg := Load()
+	if err := cfg.Validate(); err != nil {
+		log.Printf("Configuration validation error: %v", err)
+		return false
+	}
+	log.Println("Configuration validation passed")
+	return true
 }

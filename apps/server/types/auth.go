@@ -20,6 +20,7 @@ type AuthClaims struct {
 	Role  string    `json:"role"`
 	Iat   time.Time `json:"iat"`
 	Exp   time.Time `json:"exp"`
+	Jti   uuid.UUID `json:"jti"`
 }
 
 type AuthRequest struct {
@@ -45,6 +46,20 @@ type AuthResponse struct {
 
 type LogoutResponse struct {
 	Message string `json:"message"`
+}
+
+type SecurityBreachResponse struct {
+	Message   string    `json:"message"`
+	Status    string    `json:"status"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type TokenFamilyBreach struct {
+	UserID          uuid.UUID `json:"user_id"`
+	SuspiciousJTI   string    `json:"suspicious_jti"`
+	DetectedAt      time.Time `json:"detected_at"`
+	ActionTaken     string    `json:"action_taken"`
+	RecommendedStep string    `json:"recommended_step"`
 }
 
 type User struct {

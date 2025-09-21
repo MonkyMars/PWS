@@ -11,6 +11,7 @@ import (
 
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/types"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -37,8 +38,8 @@ func subtleCompare(a, b []byte) bool {
 		return false
 	}
 	var res byte = 0
-	for i := 0; i < len(a); i++ {
-		res |= a[i] ^ b[i]
+	for i := range a {
+		res |= a[i] ^ b[i] // Use i as index, not value
 	}
 	return res == 0
 }
@@ -68,27 +69,40 @@ func (a *AuthService) ComparePasswordAndHash(password, encoded string) (bool, er
 	if len(parts) != 6 {
 		return false, fmt.Errorf("bad hash format")
 	}
-	// parts: ["", "argon2id","v=19","m=...,t=...,p=...","salt","hash"]
 	params := parts[3]
 	saltB64 := parts[4]
 	hashB64 := parts[5]
-
 	var memory, time uint32
 	var threads uint8
-	for _, p := range strings.Split(params, ",") {
+
+	for p := range strings.SplitSeq(params, ",") { // Fix SplitSeq
 		kv := strings.Split(p, "=")
+		if len(kv) != 2 {
+			continue
+		}
+
 		switch kv[0] {
 		case "m":
-			v, _ := strconv.ParseUint(kv[1], 10, 32)
+			v, err := strconv.ParseUint(kv[1], 10, 32)
+			if err != nil {
+				return false, fmt.Errorf("invalid memory parameter: %w", err)
+			}
 			memory = uint32(v)
 		case "t":
-			v, _ := strconv.ParseUint(kv[1], 10, 32)
+			v, err := strconv.ParseUint(kv[1], 10, 32)
+			if err != nil {
+				return false, fmt.Errorf("invalid time parameter: %w", err)
+			}
 			time = uint32(v)
 		case "p":
-			v, _ := strconv.ParseUint(kv[1], 10, 8)
+			v, err := strconv.ParseUint(kv[1], 10, 8)
+			if err != nil {
+				return false, fmt.Errorf("invalid threads parameter: %w", err)
+			}
 			threads = uint8(v)
 		}
 	}
+
 	salt, err := base64.RawStdEncoding.DecodeString(saltB64)
 	if err != nil {
 		return false, err
@@ -126,6 +140,7 @@ func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
 		Role:  user.Role,
 		Iat:   now,
 		Exp:   exp,
+		Jti:   uuid.New(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -134,6 +149,7 @@ func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
 		"role":  claims.Role,
 		"iat":   claims.Iat.Unix(),
 		"exp":   claims.Exp.Unix(),
+		"jti":   claims.Jti.String(),
 	})
 	return token.SignedString([]byte(secret))
 }
@@ -151,6 +167,7 @@ func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
 		Role:  user.Role,
 		Iat:   now,
 		Exp:   exp,
+		Jti:   uuid.New(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -159,6 +176,7 @@ func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
 		"role":  claims.Role,
 		"iat":   claims.Iat.Unix(),
 		"exp":   claims.Exp.Unix(),
+		"jti":   claims.Jti.String(),
 	})
 	return token.SignedString([]byte(secret))
 }
@@ -212,12 +230,23 @@ func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.Au
 			return nil, fmt.Errorf("invalid exp claim")
 		}
 
+		jtiStr, ok := claims["jti"].(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid jti claim")
+		}
+
+		jti, err := uuid.Parse(jtiStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid UUID in jti claim: %w", err)
+		}
+
 		return &types.AuthClaims{
 			Sub:   sub,
 			Email: email,
 			Role:  role,
 			Iat:   time.Unix(int64(iat), 0),
 			Exp:   time.Unix(int64(exp), 0),
+			Jti:   jti,
 		}, nil
 	}
 	return nil, jwt.ErrInvalidKey
@@ -237,7 +266,7 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 	}
 
 	if user.Single == nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, lib.ErrUserNotFound
 	}
 
 	isValid, err := a.ComparePasswordAndHash(authRequest.Password, user.Single.PasswordHash)
@@ -246,7 +275,7 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 	}
 
 	if !isValid {
-		return nil, fmt.Errorf("invalid password")
+		return nil, lib.ErrInvalidCredentials
 	}
 
 	// Remove password hash before returning user object
@@ -305,8 +334,10 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 	return result.Single, nil
 }
 
-// RefreshToken validates a refresh token and returns new JWT tokens if valid
+// RefreshToken validates a refresh token and returns new JWT tokens with rotation for security
 func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse, error) {
+	logger := config.SetupLogger()
+
 	// Parse and validate refresh token
 	claims, err := a.ParseToken(refreshTokenStr, false)
 	if err != nil {
@@ -318,6 +349,22 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 		return nil, fmt.Errorf("refresh token expired")
 	}
 
+	// Check if token is already blacklisted (detects token reuse/replay attacks)
+	cacheService := CacheService{}
+	blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
+	if err != nil {
+		logger.Error("Failed to check token blacklist during refresh", "error", err, "jti", claims.Jti.String())
+		return nil, fmt.Errorf("token validation failed")
+	}
+
+	if blacklisted {
+		logger.Warn("Attempted reuse of blacklisted refresh token - possible replay attack",
+			"jti", claims.Jti.String(),
+			"user_id", claims.Sub,
+			"user_email", claims.Email)
+		return nil, fmt.Errorf("token has been revoked - possible security breach detected")
+	}
+
 	// Get user from database to ensure they still exist
 	query := Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"id", "email", "username", "role"})
 	query.Where["id"] = claims.Sub
@@ -327,16 +374,37 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 		return nil, fmt.Errorf("user not found")
 	}
 
-	// Generate new tokens
+	// SECURITY: Immediately blacklist the old refresh token to prevent reuse
+	err = a.BlacklistToken(refreshTokenStr, false)
+	if err != nil {
+		logger.Error("Failed to blacklist old refresh token during rotation",
+			"error", err,
+			"jti", claims.Jti.String(),
+			"user_id", claims.Sub)
+		// Don't fail the request - better to have working auth than strict security here
+		// But log this as it could indicate Redis issues
+	} else {
+		logger.Info("Old refresh token successfully blacklisted during rotation",
+			"jti", claims.Jti.String(),
+			"user_id", claims.Sub)
+	}
+
+	// Generate new access token
 	accessToken, err := a.GenerateAccessToken(user.Single)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
+	// Generate new refresh token (token rotation)
 	newRefreshToken, err := a.GenerateRefreshToken(user.Single)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
+
+	logger.Info("Token rotation completed successfully",
+		"user_id", user.Single.Id,
+		"user_email", user.Single.Email,
+		"old_jti", claims.Jti.String())
 
 	return &types.AuthResponse{
 		User:         user.Single,
@@ -369,4 +437,30 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 	}
 
 	return user.Single, nil
+}
+
+func (a *AuthService) GetUserByID(userID uuid.UUID) (*types.User, error) {
+	// Get user from database
+	columns := []string{"id", "username", "email", "role"}
+	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query.Where["public.users.id"] = userID
+
+	user, err := database.ExecuteQuery[types.User](query)
+	if err != nil || user.Single == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return user.Single, nil
+}
+
+// BlacklistToken adds a token to the blacklist to prevent reuse
+func (a *AuthService) BlacklistToken(tokenStr string, isAccessToken bool) error {
+	claims, err := a.ParseToken(tokenStr, isAccessToken)
+	if err != nil {
+		return err
+	}
+
+	cacheService := CacheService{}
+
+	// Store the token's JTI in Redis until it expires
+	return cacheService.BlacklistToken(claims.Jti.String(), claims.Exp)
 }
