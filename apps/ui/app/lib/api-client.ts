@@ -3,43 +3,139 @@ import type { ApiResponse } from "~/types";
 /**
  * API configuration and base URL
  */
-const API_URL = process.env.API_URL || "http://localhost:8080/api";
+const API_URL = process.env.API_URL || "http://localhost:8082";
 
 /**
- * API client class for making HTTP requests to the ELO backend
+ * API client class for making HTTP requests to the ELO backend with cookie-based auth
  */
 export class ApiClient {
   private baseUrl: string;
-  private token: string | null = null;
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string = API_URL) {
     this.baseUrl = baseUrl;
-
-    // Try to get token from localStorage on client side
-    if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("auth-token");
-    }
   }
 
   /**
-   * Set authentication token for subsequent requests
+   * Refresh the access token using the refresh token from cookies
    */
-  setToken(token: string | null): void {
-    this.token = token;
-    if (typeof window !== "undefined") {
-      if (token) {
-        localStorage.setItem("auth-token", token);
-      } else {
-        localStorage.removeItem("auth-token");
+  private async refreshToken(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: "POST",
+        credentials: "include", // Include cookies
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        // New tokens are automatically set as cookies by the server
+        return true;
       }
+
+      return false;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      return false;
     }
   }
 
   /**
-   * Get current authentication token
+   * Handle token refresh for 401 responses
    */
-  getToken(): string | null {
-    return this.token;
+  private async handleTokenRefresh(): Promise<boolean> {
+    if (this.isRefreshing) {
+      // If already refreshing, wait for the existing refresh
+      return this.refreshPromise || Promise.resolve(false);
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.refreshToken();
+
+    try {
+      const success = await this.refreshPromise;
+      return success;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
+  }
+
+  /**
+   * Internal method for making HTTP requests with automatic token refresh
+   */
+  private async request<T>(
+    url: string,
+    options: RequestInit,
+    retryOnAuth = true,
+  ): Promise<ApiResponse<T>> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...((options.headers as Record<string, string>) || {}),
+    };
+
+    const requestOptions: RequestInit = {
+      ...options,
+      headers,
+      credentials: "include", // Always include cookies
+    };
+
+    try {
+      const response = await fetch(url, requestOptions);
+      const data = await response.json();
+
+      // Handle 401 Unauthorized responses
+      if (response.status === 401 && retryOnAuth) {
+        const refreshSuccess = await this.handleTokenRefresh();
+
+        if (refreshSuccess) {
+          // Retry the original request once
+          return this.request<T>(url, options, false);
+        } else {
+          // Refresh failed, redirect to login or handle appropriately
+          this.handleAuthFailure();
+          return {
+            success: false,
+            message: "Authentication failed",
+          };
+        }
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message:
+            data.message || `HTTP ${response.status}: ${response.statusText}`,
+          errors: data.errors,
+        };
+      }
+
+      return {
+        success: true,
+        data: data.data || data,
+        message: data.message,
+      };
+    } catch (error) {
+      console.error("API request failed:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Onbekende fout opgetreden",
+      };
+    }
+  }
+
+  /**
+   * Handle authentication failure (redirect to login or emit event)
+   */
+  private handleAuthFailure(): void {
+    // Emit custom event for auth failure
+    window.dispatchEvent(new CustomEvent("auth:failure"));
+
+    // You could also redirect directly here if preferred
+    // window.location.href = "/login";
   }
 
   /**
@@ -47,7 +143,7 @@ export class ApiClient {
    */
   async get<T>(
     endpoint: string,
-    params?: Record<string, any>
+    params?: Record<string, any>,
   ): Promise<ApiResponse<T>> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
 
@@ -100,7 +196,7 @@ export class ApiClient {
     endpoint: string,
     file: File,
     additionalData?: Record<string, any>,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<ApiResponse<T>> {
     const formData = new FormData();
     formData.append("file", file);
@@ -135,60 +231,32 @@ export class ApiClient {
       xhr.onerror = () => reject(new Error("Upload failed"));
 
       xhr.open("POST", `${this.baseUrl}${endpoint}`);
-
-      if (this.token) {
-        xhr.setRequestHeader("Authorization", `Bearer ${this.token}`);
-      }
-
+      xhr.withCredentials = true; // Include cookies for uploads
       xhr.send(formData);
     });
   }
 
   /**
-   * Internal method for making HTTP requests
+   * Check if user is authenticated by making a request to /auth/me
    */
-  private async request<T>(
-    url: string,
-    options: RequestInit
-  ): Promise<ApiResponse<T>> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...((options.headers as Record<string, string>) || {}),
-    };
-
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
-    }
-
+  async checkAuth(): Promise<boolean> {
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
+      const response = await this.get("/auth/me");
+      return response.success;
+    } catch {
+      return false;
+    }
+  }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          message:
-            data.message || `HTTP ${response.status}: ${response.statusText}`,
-          errors: data.errors,
-        };
-      }
-
-      return {
-        success: true,
-        data: data.data || data,
-        message: data.message,
-      };
-    } catch (error) {
-      console.error("API request failed:", error);
-      return {
-        success: false,
-        message:
-          error instanceof Error ? error.message : "Onbekende fout opgetreden",
-      };
+  /**
+   * Logout user by calling the logout endpoint
+   */
+  async logout(): Promise<boolean> {
+    try {
+      const response = await this.post("/auth/logout");
+      return response.success;
+    } catch {
+      return false;
     }
   }
 }

@@ -11,11 +11,6 @@ export interface User {
   username: string;
   email: string;
   role: UserRole;
-  firstName: string;
-  lastName: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /**
@@ -30,11 +25,9 @@ export interface LoginCredentials {
  * Registration data with validation requirements
  */
 export interface RegisterData {
-  username: string; // 6 digits
+  username: string;
   password: string;
   email: string;
-  firstName: string;
-  lastName: string;
 }
 
 /**
@@ -65,8 +58,7 @@ export interface LogoutResponse {
  */
 export interface AuthState {
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  error?: string;
 }

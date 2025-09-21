@@ -5,6 +5,7 @@ export { Footer } from "./footer";
 // Auth components
 export { LoginForm } from "./auth/login-form";
 export { RegisterForm } from "./auth/register-form";
+export { ProtectedRoute } from "./auth/protected-route";
 
 // Dashboard components
 export { Dashboard } from "./dashboard/dashboard";
