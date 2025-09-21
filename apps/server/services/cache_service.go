@@ -85,7 +85,6 @@ func (cs *CacheService) withRetry(operation func() error, maxRetries int) error 
 
 		maxBackoff := 2000 // max 2000ms = 2s
 		base := 100        // 100ms base
-		attempt := 3       // example attempt number
 
 		backoff := base * (1 << attempt) // exponential
 		if backoff > maxBackoff {
