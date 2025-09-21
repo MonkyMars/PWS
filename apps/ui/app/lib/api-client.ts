@@ -254,15 +254,6 @@ export class ApiClient {
   }
 
   /**
-   * Debug function to log current authentication state
-   * Only available in development mode
-   */
-  debugAuthState(): void {
-    // Debug logging removed for production
-    // Use browser dev tools or monitoring tools for debugging
-  }
-
-  /**
    * Check if authentication cookies are present (for HttpOnly cookies, this always returns false)
    * This method is kept for compatibility but will always return false for HttpOnly cookies
    */
