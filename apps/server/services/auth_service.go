@@ -386,8 +386,9 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	}
 
 	// Get user from database to ensure they still exist
-	query := Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"id", "email", "username", "role"})
-	query.Where["id"] = claims.Sub
+	columns := []string{"id", "username", "email", "role"}
+	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query.Where["public.users.id"] = claims.Sub.String()
 
 	user, err := database.ExecuteQuery[types.User](query)
 	if err != nil || user.Single == nil {

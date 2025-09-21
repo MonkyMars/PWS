@@ -177,23 +177,7 @@ func Register(c fiber.Ctx) error {
 func RefreshToken(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	var refreshRequest types.RefreshTokenRequest
-
-	if err := c.Bind().Body(&refreshRequest); err != nil {
-		logger.Error("Failed to parse refresh request", "error", err)
-		return response.BadRequest(c, "Invalid request body")
-	}
-
-	// Validate refresh token
-	if strings.TrimSpace(refreshRequest.RefreshToken) == "" {
-		return response.SendValidationError(c, []types.ValidationError{
-			{
-				Field:   "refresh_token",
-				Message: "Refresh token is required",
-				Value:   refreshRequest.RefreshToken,
-			},
-		})
-	}
+	token := c.Cookies(lib.RefreshTokenCookieName)
 
 	// Initialize auth service
 	authService := &services.AuthService{}
@@ -202,7 +186,7 @@ func RefreshToken(c fiber.Ctx) error {
 	cookieService := &services.CookieService{}
 
 	// Refresh tokens with rotation
-	authResponse, err := authService.RefreshToken(refreshRequest.RefreshToken)
+	authResponse, err := authService.RefreshToken(token)
 	if err != nil {
 		logger.Error("Token refresh failed", "error", err)
 
