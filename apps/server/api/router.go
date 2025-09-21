@@ -9,6 +9,7 @@
 package api
 
 import (
+	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/MonkyMars/PWS/api/routes"
 	"github.com/MonkyMars/PWS/config"
 	"github.com/gofiber/fiber/v3"
@@ -27,6 +28,9 @@ func App() error {
 
 	// Create Fiber app with centralized config
 	app := fiber.New(config.SetupFiber())
+
+	// Add CORS middleware
+	app.Use(middleware.SetupCORS())
 
 	// Add logging middleware
 	app.Use(logger.HTTPMiddleware())

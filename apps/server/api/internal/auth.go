@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/MonkyMars/PWS/api/response"
@@ -234,11 +235,27 @@ func RefreshToken(c fiber.Ctx) error {
 func Me(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	claims := c.Locals("claims").(*types.AuthClaims)
-	if claims == nil {
+	logger.Info("Me endpoint called", "path", c.Path(), "method", c.Method())
+
+	// Check for access token cookie
+	accessToken := c.Cookies(lib.AccessTokenCookieName)
+	logger.Info("Access token cookie", "present", accessToken != "", "length", len(accessToken))
+
+	claimsInterface := c.Locals("claims")
+	logger.Info("Claims from context", "present", claimsInterface != nil)
+
+	if claimsInterface == nil {
 		logger.Error("No claims found in context")
 		return response.Unauthorized(c, "Unauthorized")
 	}
+
+	claims, ok := claimsInterface.(*types.AuthClaims)
+	if !ok {
+		logger.Error("Invalid claims type in context", "type", fmt.Sprintf("%T", claimsInterface))
+		return response.Unauthorized(c, "Unauthorized")
+	}
+
+	logger.Info("Claims extracted successfully", "user_id", claims.Sub, "email", claims.Email)
 
 	// Initialize auth service
 	authService := &services.AuthService{}

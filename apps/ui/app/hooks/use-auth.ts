@@ -22,6 +22,10 @@ export function useLogin() {
       // Cache user data - tokens are now handled via cookies
       queryClient.setQueryData(["auth", "user"], user);
       queryClient.invalidateQueries({ queryKey: ["auth"] });
+      // Clear logged out flag on successful login
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem("auth_logged_out");
+      }
     },
     onError: () => {
       // Clear any existing auth data on login failure
@@ -75,6 +79,10 @@ export function useLogout() {
     onSuccess: () => {
       // Clear all cached data
       queryClient.clear();
+      // Mark as logged out to prevent further auth requests
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("auth_logged_out", "true");
+      }
     },
     onError: () => {
       // Even if logout API fails, clear local data
@@ -98,6 +106,18 @@ export function useCurrentUser() {
 
       return response.data;
     },
+    enabled: () => {
+      // SSR check - don't run on server
+      if (typeof document === "undefined") return false;
+
+      // Check if we've explicitly logged out
+      const hasLoggedOut = sessionStorage.getItem("auth_logged_out") === "true";
+      if (hasLoggedOut) return false;
+
+      // Always attempt auth check since HttpOnly cookies can't be read by JS
+      // but only if we haven't explicitly logged out
+      return true;
+    },
     retry: (failureCount: number, error: any) => {
       // Don't retry on 401 errors (handled by API client)
       if (error?.message?.includes("Authentication failed")) {
@@ -105,6 +125,7 @@ export function useCurrentUser() {
       }
       return failureCount < 3;
     },
+
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
   });

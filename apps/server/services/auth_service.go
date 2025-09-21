@@ -64,10 +64,22 @@ func (a *AuthService) HashPassword(password string, p *types.ArgonParams) (strin
 
 // ComparePasswordAndHash compares a plain-text password with a hashed password
 // Returns true if they match, false otherwise + possible error
+// Supports both bcrypt (legacy) and argon2 (new) password hashes
 func (a *AuthService) ComparePasswordAndHash(password, encoded string) (bool, error) {
+	// Check if it's an argon2 hash
+	if strings.HasPrefix(encoded, "$argon2id$") {
+		return a.compareArgon2Hash(password, encoded)
+	}
+
+	// Unknown hash format
+	return false, fmt.Errorf("unsupported hash format: %s", encoded[:min(20, len(encoded))])
+}
+
+// compareArgon2Hash handles argon2 password comparison
+func (a *AuthService) compareArgon2Hash(password, encoded string) (bool, error) {
 	parts := strings.Split(encoded, "$")
 	if len(parts) != 6 {
-		return false, fmt.Errorf("bad hash format")
+		return false, fmt.Errorf("bad argon2 hash format: expected 6 parts, got %d", len(parts))
 	}
 	params := parts[3]
 	saltB64 := parts[4]
@@ -75,7 +87,7 @@ func (a *AuthService) ComparePasswordAndHash(password, encoded string) (bool, er
 	var memory, time uint32
 	var threads uint8
 
-	for p := range strings.SplitSeq(params, ",") { // Fix SplitSeq
+	for _, p := range strings.Split(params, ",") {
 		kv := strings.Split(p, "=")
 		if len(kv) != 2 {
 			continue
@@ -113,6 +125,14 @@ func (a *AuthService) ComparePasswordAndHash(password, encoded string) (bool, er
 	}
 	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(expected)))
 	return subtleCompare(hash, expected), nil
+}
+
+// min helper function for Go versions that don't have it built-in
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // GetRefreshTokenExpiration returns the expiration time for refresh tokens using configuration settings

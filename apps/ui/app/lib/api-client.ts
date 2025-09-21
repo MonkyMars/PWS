@@ -3,7 +3,7 @@ import type { ApiResponse } from "~/types";
 /**
  * API configuration and base URL
  */
-const API_URL = process.env.API_URL || "http://localhost:8082";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
 
 /**
  * API client class for making HTTP requests to the ELO backend with cookie-based auth
@@ -46,6 +46,15 @@ export class ApiClient {
    * Handle token refresh for 401 responses
    */
   private async handleTokenRefresh(): Promise<boolean> {
+    // Check if we have a refresh token before attempting refresh
+    if (typeof document !== "undefined") {
+      const hasRefreshToken = document.cookie.includes("refresh_token");
+      if (!hasRefreshToken) {
+        console.log("No refresh token found, skipping refresh attempt");
+        return false;
+      }
+    }
+
     if (this.isRefreshing) {
       // If already refreshing, wait for the existing refresh
       return this.refreshPromise || Promise.resolve(false);
@@ -88,19 +97,25 @@ export class ApiClient {
 
       // Handle 401 Unauthorized responses
       if (response.status === 401 && retryOnAuth) {
-        const refreshSuccess = await this.handleTokenRefresh();
+        // Only try to refresh if we have tokens
+        if (
+          typeof document !== "undefined" &&
+          document.cookie.includes("refresh_token")
+        ) {
+          const refreshSuccess = await this.handleTokenRefresh();
 
-        if (refreshSuccess) {
-          // Retry the original request once
-          return this.request<T>(url, options, false);
-        } else {
-          // Refresh failed, redirect to login or handle appropriately
-          this.handleAuthFailure();
-          return {
-            success: false,
-            message: "Authentication failed",
-          };
+          if (refreshSuccess) {
+            // Retry the original request once
+            return this.request<T>(url, options, false);
+          }
         }
+
+        // No refresh token or refresh failed, handle auth failure
+        this.handleAuthFailure();
+        return {
+          success: false,
+          message: "Authentication failed",
+        };
       }
 
       if (!response.ok) {

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -82,10 +83,20 @@ func (cs *CacheService) withRetry(operation func() error, maxRetries int) error 
 			return err
 		}
 
-		// Exponential backoff with jitter
-		backoff := min(time.Duration(100*(1<<attempt))*time.Millisecond, 2*time.Second)
+		maxBackoff := 2000 // max 2000ms = 2s
+		base := 100        // 100ms base
+		attempt := 3       // example attempt number
 
-		time.Sleep(backoff)
+		backoff := base * (1 << attempt) // exponential
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+
+		// add jitter ±50%
+		jitter := rand.Intn(backoff/2 + 1)
+		backoffWithJitter := backoff/2 + jitter
+
+		time.Sleep(time.Duration(backoffWithJitter) * time.Millisecond)
 	}
 
 	return fmt.Errorf("redis operation failed after %d retries: %w", maxRetries, lastErr)

@@ -23,20 +23,30 @@ func (co *CookieService) GetCookieOptions() *CookieService {
 
 func (co *CookieService) SetAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {
 	co = co.GetCookieOptions()
+	cfg := config.Get()
+
+	// Only use Secure cookies in production
+	isSecure := cfg.IsProduction()
+	// Use Lax SameSite in development for better compatibility
+	sameSite := "Lax"
+	if cfg.IsProduction() {
+		sameSite = "Strict"
+	}
+
 	accessCookie := fiber.Cookie{
 		Name:     lib.AccessTokenCookieName,
 		Value:    accessToken,
 		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
+		Secure:   isSecure,
+		SameSite: sameSite,
 		Expires:  time.Now().Add(co.AccessTokenExpiry),
 	}
 	refreshCookie := fiber.Cookie{
 		Name:     lib.RefreshTokenCookieName,
 		Value:    refreshToken,
 		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
+		Secure:   isSecure,
+		SameSite: sameSite,
 		Expires:  time.Now().Add(co.RefreshTokenExpiry),
 	}
 	c.Cookie(&accessCookie)
@@ -44,20 +54,30 @@ func (co *CookieService) SetAuthCookies(c fiber.Ctx, accessToken, refreshToken s
 }
 
 func (co *CookieService) ClearAuthCookies(c fiber.Ctx) {
+	cfg := config.Get()
+
+	// Only use Secure cookies in production
+	isSecure := cfg.IsProduction()
+	// Use Lax SameSite in development for better compatibility
+	sameSite := "Lax"
+	if cfg.IsProduction() {
+		sameSite = "Strict"
+	}
+
 	accessCookie := fiber.Cookie{
 		Name:     lib.AccessTokenCookieName,
 		Value:    "",
 		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
+		Secure:   isSecure,
+		SameSite: sameSite,
 		Expires:  time.Now().Add(-time.Hour),
 	}
 	refreshCookie := fiber.Cookie{
 		Name:     lib.RefreshTokenCookieName,
 		Value:    "",
 		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
+		Secure:   isSecure,
+		SameSite: sameSite,
 		Expires:  time.Now().Add(-time.Hour),
 	}
 	c.Cookie(&accessCookie)

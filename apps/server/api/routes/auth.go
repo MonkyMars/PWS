@@ -18,5 +18,5 @@ func SetupAuthRoutes(app *fiber.App) {
 	auth.Post("/logout", internal.Logout)
 
 	// Protected route to get current user info
-	auth.Get("/me", internal.Me, middleware.AuthMiddleware())
+	auth.Get("/me", middleware.AuthMiddleware(), internal.Me)
 }
