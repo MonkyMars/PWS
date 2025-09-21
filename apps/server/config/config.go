@@ -270,12 +270,6 @@ func (c *Config) Validate() error {
 	}
 
 	// Validate auth settings
-	if c.Auth.AccessTokenSecret == "" {
-		return fmt.Errorf("ACCESS_TOKEN_SECRET is required")
-	}
-	if c.Auth.RefreshTokenSecret == "" {
-		return fmt.Errorf("REFRESH_TOKEN_SECRET is required")
-	}
 
 	// Validate cache settings
 	if c.Cache.Address == "" {
