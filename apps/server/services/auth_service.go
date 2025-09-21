@@ -12,10 +12,10 @@ import (
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
 	"github.com/MonkyMars/PWS/types"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var DefaultParams = &types.ArgonParams{
@@ -244,9 +244,13 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 	if err != nil {
 		return nil, err
 	}
+
 	if !isValid {
-		return nil, bcrypt.ErrMismatchedHashAndPassword
+		return nil, fmt.Errorf("invalid password")
 	}
+
+	// Remove password hash before returning user object
+	user.Single.PasswordHash = ""
 
 	return user.Single, nil
 }
