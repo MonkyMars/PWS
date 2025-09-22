@@ -1,298 +1,309 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, Bell, FileText, Pin, Calendar, User, Download, ExternalLink } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bell,
+  FileText,
+  Pin,
+  Calendar,
+  User,
+  Download,
+  ExternalLink,
+} from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { FileViewer } from '~/components/files/file-viewer';
 import { useSubject, useAnnouncements, useSubjectFiles } from '~/hooks';
 import type { SubjectFile } from '~/types';
 
 interface SubjectDetailProps {
-	subjectId: string;
+  subjectId: string;
 }
 
 export function SubjectDetail({ subjectId }: SubjectDetailProps) {
-	const [activeTab, setActiveTab] = useState<'announcements' | 'files'>('announcements');
-	const [selectedFile, setSelectedFile] = useState<SubjectFile | null>(null);
+  const [activeTab, setActiveTab] = useState<'announcements' | 'files'>('announcements');
+  const [selectedFile, setSelectedFile] = useState<SubjectFile | null>(null);
 
-	const { data: subject, isLoading: subjectLoading } = useSubject(subjectId);
-	const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
-		subjectId
-	});
-	const { data: filesData, isLoading: filesLoading } = useSubjectFiles({
-		subjectId
-	});
+  const { data: subject, isLoading: subjectLoading } = useSubject(subjectId);
+  const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
+    subjectId,
+  });
+  const { data: filesData, isLoading: filesLoading } = useSubjectFiles({
+    subjectId,
+  });
 
-	if (subjectLoading) {
-		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-			</div>
-		);
-	}
+  if (subjectLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
-	if (!subject) {
-		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div className="text-center">
-					<h2 className="text-2xl font-bold text-neutral-900 mb-2">Vak niet gevonden</h2>
-					<p className="text-neutral-600 mb-4">Het opgegeven vak bestaat niet of je hebt geen toegang.</p>
-					<Link to="/dashboard">
-						<Button>Terug naar Dashboard</Button>
-					</Link>
-				</div>
-			</div>
-		);
-	}
+  if (!subject) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-neutral-900 mb-2">Vak niet gevonden</h2>
+          <p className="text-neutral-600 mb-4">
+            Het opgegeven vak bestaat niet of je hebt geen toegang.
+          </p>
+          <Link to="/dashboard">
+            <Button>Terug naar Dashboard</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-	const getSubjectColor = (code: string) => {
-		const colorMap: Record<string, string> = {
-			'WISK': 'var(--color-subject-math)',
-			'NATK': 'var(--color-subject-science)',
-			'NEDD': 'var(--color-subject-language)',
-			'GESCH': 'var(--color-subject-history)',
-			'KUNST': 'var(--color-subject-arts)',
-			'SPORT': 'var(--color-subject-sports)',
-		};
+  const getSubjectColor = (code: string) => {
+    const colorMap: Record<string, string> = {
+      WISK: 'var(--color-subject-math)',
+      NATK: 'var(--color-subject-science)',
+      NEDD: 'var(--color-subject-language)',
+      GESCH: 'var(--color-subject-history)',
+      KUNST: 'var(--color-subject-arts)',
+      SPORT: 'var(--color-subject-sports)',
+    };
 
-		return colorMap[code] || 'var(--color-subject-default)';
-	};
+    return colorMap[code] || 'var(--color-subject-default)';
+  };
 
-	const formatDate = (dateString: string) => {
-		const date = new Date(dateString);
-		return date.toLocaleDateString('nl-NL', {
-			day: 'numeric',
-			month: 'long',
-			year: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
-	};
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('nl-NL', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
-	const formatFileSize = (bytes: number) => {
-		if (bytes === 0) return '0 Bytes';
-		const k = 1024;
-		const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-	};
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
-	const getPriorityColor = (priority: string) => {
-		switch (priority) {
-			case 'urgent': return 'bg-error-100 text-error-800';
-			case 'high': return 'bg-warning-100 text-warning-800';
-			case 'normal': return 'bg-primary-100 text-primary-800';
-			default: return 'bg-neutral-100 text-neutral-800';
-		}
-	};
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'bg-error-100 text-error-800';
+      case 'high':
+        return 'bg-warning-100 text-warning-800';
+      case 'normal':
+        return 'bg-primary-100 text-primary-800';
+      default:
+        return 'bg-neutral-100 text-neutral-800';
+    }
+  };
 
-	const handleFileClick = (file: SubjectFile) => {
-		setSelectedFile(file);
-	};
+  const handleFileClick = (file: SubjectFile) => {
+    setSelectedFile(file);
+  };
 
-	const announcements = announcementsData?.items || [];
-	const files = filesData?.items || [];
+  const announcements = announcementsData?.items || [];
+  const files = filesData?.items || [];
 
-	return (
-		<div className="min-h-screen bg-neutral-50">
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-				{/* Header */}
-				<div className="mb-8">
-					<Link
-						to="/dashboard"
-						className="inline-flex items-center text-neutral-600 hover:text-neutral-900 mb-4 transition-colors"
-					>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						Terug naar Dashboard
-					</Link>
+  return (
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center text-neutral-600 hover:text-neutral-900 mb-4 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Terug naar Dashboard
+          </Link>
 
-					<div className="flex items-center space-x-4 mb-4">
-						<div
-							className="w-6 h-6 rounded-full"
-							style={{ backgroundColor: getSubjectColor(subject.code) }}
-						/>
-						<div>
-							<h1 className="text-3xl font-bold text-neutral-900">{subject.name}</h1>
-							<p className="text-neutral-600">{subject.code} • {subject.teacherName}</p>
-						</div>
-					</div>
+          <div className="flex items-center space-x-4 mb-4">
+            <div
+              className="w-6 h-6 rounded-full"
+              style={{ backgroundColor: getSubjectColor(subject.code) }}
+            />
+            <div>
+              <h1 className="text-3xl font-bold text-neutral-900">{subject.name}</h1>
+              <p className="text-neutral-600">
+                {subject.code} • {subject.teacherName}
+              </p>
+            </div>
+          </div>
 
-					{subject.description && (
-						<p className="text-neutral-700 max-w-3xl">{subject.description}</p>
-					)}
-				</div>
+          {subject.description && (
+            <p className="text-neutral-700 max-w-3xl">{subject.description}</p>
+          )}
+        </div>
 
-				{/* Tabs */}
-				<div className="mb-8">
-					<div className="border-b border-neutral-200">
-						<nav className="-mb-px flex space-x-8">
-							<button
-								onClick={() => setActiveTab('announcements')}
-								className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'announcements'
-										? 'border-primary-500 text-primary-600'
-										: 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-									}`}
-							>
-								<Bell className="h-4 w-4 inline mr-2" />
-								Mededelingen ({announcements.length})
-							</button>
-							<button
-								onClick={() => setActiveTab('files')}
-								className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'files'
-										? 'border-primary-500 text-primary-600'
-										: 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-									}`}
-							>
-								<FileText className="h-4 w-4 inline mr-2" />
-								Bestanden ({files.length})
-							</button>
-						</nav>
-					</div>
-				</div>
+        {/* Tabs */}
+        <div className="mb-8">
+          <div className="border-b border-neutral-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('announcements')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'announcements'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                }`}
+              >
+                <Bell className="h-4 w-4 inline mr-2" />
+                Mededelingen ({announcements.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'files'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                }`}
+              >
+                <FileText className="h-4 w-4 inline mr-2" />
+                Bestanden ({files.length})
+              </button>
+            </nav>
+          </div>
+        </div>
 
-				{/* Content */}
-				{activeTab === 'announcements' && (
-					<div className="space-y-6">
-						{announcementsLoading ? (
-							<div className="flex justify-center py-12">
-								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-							</div>
-						) : announcements.length > 0 ? (
-							announcements.map((announcement) => (
-								<div
-									key={announcement.id}
-									className="bg-white rounded-lg border border-neutral-200 p-6"
-								>
-									<div className="flex items-start justify-between mb-4">
-										<div className="flex items-center space-x-3">
-											{announcement.isSticky && (
-												<Pin className="h-5 w-5 text-warning-500" />
-											)}
-											<h3 className="text-lg font-semibold text-neutral-900">
-												{announcement.title}
-											</h3>
-											<span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(announcement.priority)}`}>
-												{announcement.priority === 'urgent' && 'Urgent'}
-												{announcement.priority === 'high' && 'Hoog'}
-												{announcement.priority === 'normal' && 'Normaal'}
-												{announcement.priority === 'low' && 'Laag'}
-											</span>
-										</div>
-									</div>
+        {/* Content */}
+        {activeTab === 'announcements' && (
+          <div className="space-y-6">
+            {announcementsLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : announcements.length > 0 ? (
+              announcements.map((announcement) => (
+                <div
+                  key={announcement.id}
+                  className="bg-white rounded-lg border border-neutral-200 p-6"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      {announcement.isSticky && <Pin className="h-5 w-5 text-warning-500" />}
+                      <h3 className="text-lg font-semibold text-neutral-900">
+                        {announcement.title}
+                      </h3>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(announcement.priority)}`}
+                      >
+                        {announcement.priority === 'urgent' && 'Urgent'}
+                        {announcement.priority === 'high' && 'Hoog'}
+                        {announcement.priority === 'normal' && 'Normaal'}
+                        {announcement.priority === 'low' && 'Laag'}
+                      </span>
+                    </div>
+                  </div>
 
-									<div className="prose prose-sm max-w-none text-neutral-700 mb-4">
-										{announcement.content}
-									</div>
+                  <div className="prose prose-sm max-w-none text-neutral-700 mb-4">
+                    {announcement.content}
+                  </div>
 
-									<div className="flex items-center justify-between text-sm text-neutral-500">
-										<div className="flex items-center space-x-1">
-											<User className="h-4 w-4" />
-											<span>{announcement.authorName}</span>
-										</div>
-										<div className="flex items-center space-x-1">
-											<Calendar className="h-4 w-4" />
-											<span>{formatDate(announcement.createdAt)}</span>
-										</div>
-									</div>
-								</div>
-							))
-						) : (
-							<div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
-								<Bell className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
-								<h3 className="text-lg font-medium text-neutral-900 mb-2">
-									Geen mededelingen
-								</h3>
-								<p className="text-neutral-600">
-									Er zijn nog geen mededelingen geplaatst voor dit vak.
-								</p>
-							</div>
-						)}
-					</div>
-				)}
+                  <div className="flex items-center justify-between text-sm text-neutral-500">
+                    <div className="flex items-center space-x-1">
+                      <User className="h-4 w-4" />
+                      <span>{announcement.authorName}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{formatDate(announcement.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
+                <Bell className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-neutral-900 mb-2">Geen mededelingen</h3>
+                <p className="text-neutral-600">
+                  Er zijn nog geen mededelingen geplaatst voor dit vak.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
-				{activeTab === 'files' && (
-					<div className="space-y-6">
-						{filesLoading ? (
-							<div className="flex justify-center py-12">
-								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-							</div>
-						) : files.length > 0 ? (
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-								{files.map((file) => (
-									<div
-										key={file.id}
-										className="bg-white rounded-lg border border-neutral-200 p-6 hover:border-neutral-300 transition-colors"
-									>
-										<div className="flex items-center justify-between mb-3">
-											<div className="flex items-center space-x-2">
-												<FileText className="h-5 w-5 text-neutral-400" />
-												<span className="text-sm font-medium text-neutral-500 uppercase">
-													{file.category}
-												</span>
-											</div>
-											<span className="text-xs text-neutral-500">
-												{formatFileSize(file.size)}
-											</span>
-										</div>
+        {activeTab === 'files' && (
+          <div className="space-y-6">
+            {filesLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : files.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="bg-white rounded-lg border border-neutral-200 p-6 hover:border-neutral-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-5 w-5 text-neutral-400" />
+                        <span className="text-sm font-medium text-neutral-500 uppercase">
+                          {file.category}
+                        </span>
+                      </div>
+                      <span className="text-xs text-neutral-500">{formatFileSize(file.size)}</span>
+                    </div>
 
-										<h4 className="font-medium text-neutral-900 mb-2 truncate">
-											{file.name}
-										</h4>
+                    <h4 className="font-medium text-neutral-900 mb-2 truncate">{file.name}</h4>
 
-										{file.description && (
-											<p className="text-sm text-neutral-600 mb-4 line-clamp-2">
-												{file.description}
-											</p>
-										)}
+                    {file.description && (
+                      <p className="text-sm text-neutral-600 mb-4 line-clamp-2">
+                        {file.description}
+                      </p>
+                    )}
 
-										<div className="flex items-center justify-between text-xs text-neutral-500 mb-4">
-											<span>Door {file.uploaderName}</span>
-											<span>{formatDate(file.createdAt)}</span>
-										</div>
+                    <div className="flex items-center justify-between text-xs text-neutral-500 mb-4">
+                      <span>Door {file.uploaderName}</span>
+                      <span>{formatDate(file.createdAt)}</span>
+                    </div>
 
-										<div className="flex items-center space-x-2">
-											<Button
-												size="sm"
-												variant="outline"
-												onClick={() => handleFileClick(file)}
-												className="flex-1"
-											>
-												<ExternalLink className="h-4 w-4 mr-1" />
-												Bekijken
-											</Button>
-											<Button
-												size="sm"
-												variant="ghost"
-												onClick={() => window.open(file.url, '_blank')}
-											>
-												<Download className="h-4 w-4" />
-											</Button>
-										</div>
-									</div>
-								))}
-							</div>
-						) : (
-							<div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
-								<FileText className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
-								<h3 className="text-lg font-medium text-neutral-900 mb-2">
-									Geen bestanden
-								</h3>
-								<p className="text-neutral-600">
-									Er zijn nog geen bestanden geüpload voor dit vak.
-								</p>
-							</div>
-						)}
-					</div>
-				)}
-			</div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleFileClick(file)}
+                        className="flex-1"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        Bekijken
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => window.open(file.url, '_blank')}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
+                <FileText className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-neutral-900 mb-2">Geen bestanden</h3>
+                <p className="text-neutral-600">
+                  Er zijn nog geen bestanden geüpload voor dit vak.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-			{/* File Viewer Modal */}
-			{selectedFile && (
-				<FileViewer
-					file={selectedFile}
-					isOpen={!!selectedFile}
-					onClose={() => setSelectedFile(null)}
-				/>
-			)}
-		</div>
-	);
+      {/* File Viewer Modal */}
+      {selectedFile && (
+        <FileViewer
+          file={selectedFile}
+          isOpen={!!selectedFile}
+          onClose={() => setSelectedFile(null)}
+        />
+      )}
+    </div>
+  );
 }

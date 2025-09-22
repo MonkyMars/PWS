@@ -1,0 +1,19 @@
+# dependencies
+node_modules
+bun.lock
+
+# build outputs
+dist
+build
+out
+.next
+coverage
+
+# misc
+*.log
+
+# Markdown files
+*.md
+
+# Environment files
+.env*

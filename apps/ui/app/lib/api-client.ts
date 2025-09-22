@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/types";
+import type { ApiResponse } from '~/types';
 
 /**
  * API configuration and base URL
@@ -16,8 +16,8 @@ export class ApiClient {
     this.baseUrl = baseUrl;
 
     // Try to get token from localStorage on client side
-    if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("auth-token");
+    if (typeof window !== 'undefined') {
+      this.token = localStorage.getItem('auth-token');
     }
   }
 
@@ -26,11 +26,11 @@ export class ApiClient {
    */
   setToken(token: string | null): void {
     this.token = token;
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       if (token) {
-        localStorage.setItem("auth-token", token);
+        localStorage.setItem('auth-token', token);
       } else {
-        localStorage.removeItem("auth-token");
+        localStorage.removeItem('auth-token');
       }
     }
   }
@@ -60,7 +60,7 @@ export class ApiClient {
     }
 
     return this.request<T>(url.toString(), {
-      method: "GET",
+      method: 'GET',
     });
   }
 
@@ -69,7 +69,7 @@ export class ApiClient {
    */
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(`${this.baseUrl}${endpoint}`, {
-      method: "POST",
+      method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -79,7 +79,7 @@ export class ApiClient {
    */
   async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(`${this.baseUrl}${endpoint}`, {
-      method: "PUT",
+      method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -89,7 +89,7 @@ export class ApiClient {
    */
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(`${this.baseUrl}${endpoint}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   }
 
@@ -103,7 +103,7 @@ export class ApiClient {
     onProgress?: (progress: number) => void,
   ): Promise<ApiResponse<T>> {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append('file', file);
 
     if (additionalData) {
       Object.entries(additionalData).forEach(([key, value]) => {
@@ -128,16 +128,16 @@ export class ApiClient {
           const response = JSON.parse(xhr.responseText);
           resolve(response);
         } catch (error) {
-          reject(new Error("Invalid JSON response"));
+          reject(new Error('Invalid JSON response'));
         }
       };
 
-      xhr.onerror = () => reject(new Error("Upload failed"));
+      xhr.onerror = () => reject(new Error('Upload failed'));
 
-      xhr.open("POST", `${this.baseUrl}${endpoint}`);
+      xhr.open('POST', `${this.baseUrl}${endpoint}`);
 
       if (this.token) {
-        xhr.setRequestHeader("Authorization", `Bearer ${this.token}`);
+        xhr.setRequestHeader('Authorization', `Bearer ${this.token}`);
       }
 
       xhr.send(formData);
@@ -152,12 +152,12 @@ export class ApiClient {
     options: RequestInit,
   ): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
     };
 
     if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
+      headers['Authorization'] = `Bearer ${this.token}`;
     }
 
     try {
@@ -171,8 +171,7 @@ export class ApiClient {
       if (!response.ok) {
         return {
           success: false,
-          message:
-            data.message || `HTTP ${response.status}: ${response.statusText}`,
+          message: data.message || `HTTP ${response.status}: ${response.statusText}`,
           errors: data.errors,
         };
       }
@@ -183,11 +182,10 @@ export class ApiClient {
         message: data.message,
       };
     } catch (error) {
-      console.error("API request failed:", error);
+      console.error('API request failed:', error);
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Onbekende fout opgetreden",
+        message: error instanceof Error ? error.message : 'Onbekende fout opgetreden',
       };
     }
   }
