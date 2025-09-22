@@ -3,7 +3,7 @@ import type { ApiResponse } from "~/types";
 /**
  * API configuration and base URL
  */
-const API_URL = process.env.API_URL || "http://localhost:8080/api";
+const API_URL = process.env.API_URL || "http://localhost:8082";
 
 /**
  * API client class for making HTTP requests to the ELO backend
@@ -47,7 +47,7 @@ export class ApiClient {
    */
   async get<T>(
     endpoint: string,
-    params?: Record<string, any>
+    params?: Record<string, any>,
   ): Promise<ApiResponse<T>> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
 
@@ -100,7 +100,7 @@ export class ApiClient {
     endpoint: string,
     file: File,
     additionalData?: Record<string, any>,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<ApiResponse<T>> {
     const formData = new FormData();
     formData.append("file", file);
@@ -149,7 +149,7 @@ export class ApiClient {
    */
   private async request<T>(
     url: string,
-    options: RequestInit
+    options: RequestInit,
   ): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
