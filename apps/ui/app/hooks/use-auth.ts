@@ -1,11 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "~/lib/api-client";
-import type {
-  User,
-  LoginCredentials,
-  RegisterData,
-  AuthResponse,
-} from "~/types";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '~/lib/api-client';
+import type { User, LoginCredentials, RegisterData, AuthResponse } from '~/types';
 
 /**
  * Hook for user login
@@ -14,16 +9,11 @@ export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      credentials: LoginCredentials
-    ): Promise<AuthResponse> => {
-      const response = await apiClient.post<AuthResponse>(
-        "/auth/login",
-        credentials
-      );
+    mutationFn: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+      const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Login mislukt");
+        throw new Error(response.message || 'Login mislukt');
       }
 
       // Set token in API client
@@ -33,12 +23,12 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       // Cache user data
-      queryClient.setQueryData(["auth", "user"], data.user);
-      queryClient.setQueryData(["auth", "token"], data.token);
+      queryClient.setQueryData(['auth', 'user'], data.user);
+      queryClient.setQueryData(['auth', 'token'], data.token);
     },
     onError: () => {
       // Clear any existing auth data on login failure
-      queryClient.removeQueries({ queryKey: ["auth"] });
+      queryClient.removeQueries({ queryKey: ['auth'] });
       apiClient.setToken(null);
     },
   });
@@ -52,13 +42,10 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: async (userData: RegisterData): Promise<AuthResponse> => {
-      const response = await apiClient.post<AuthResponse>(
-        "/auth/register",
-        userData
-      );
+      const response = await apiClient.post<AuthResponse>('/auth/register', userData);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Registratie mislukt");
+        throw new Error(response.message || 'Registratie mislukt');
       }
 
       // Set token in API client
@@ -68,8 +55,8 @@ export function useRegister() {
     },
     onSuccess: (data) => {
       // Cache user data
-      queryClient.setQueryData(["auth", "user"], data.user);
-      queryClient.setQueryData(["auth", "token"], data.token);
+      queryClient.setQueryData(['auth', 'user'], data.user);
+      queryClient.setQueryData(['auth', 'token'], data.token);
     },
   });
 }
@@ -82,10 +69,10 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async (): Promise<void> => {
-      const response = await apiClient.post("/auth/logout");
+      const response = await apiClient.post('/auth/logout');
 
       if (!response.success) {
-        throw new Error(response.message || "Uitloggen mislukt");
+        throw new Error(response.message || 'Uitloggen mislukt');
       }
     },
     onSuccess: () => {
@@ -106,7 +93,7 @@ export function useLogout() {
  */
 export function useCurrentUser() {
   return useQuery({
-    queryKey: ["auth", "user"],
+    queryKey: ['auth', 'user'],
     queryFn: async (): Promise<User | null> => {
       const token = apiClient.getToken();
 
@@ -114,7 +101,7 @@ export function useCurrentUser() {
         return null;
       }
 
-      const response = await apiClient.get<User>("/auth/me");
+      const response = await apiClient.get<User>('/auth/me');
 
       if (!response.success || !response.data) {
         // Invalid token, clear auth data

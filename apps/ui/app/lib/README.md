@@ -19,20 +19,17 @@ HTTP client for API communication with the backend server.
 **Usage:**
 
 ```typescript
-import { apiClient } from "~/lib/api-client";
+import { apiClient } from '~/lib/api-client';
 
 // GET request
-const response = await apiClient.get<User[]>("/users");
+const response = await apiClient.get<User[]>('/users');
 
 // POST request
-const response = await apiClient.post<User>("/users", userData);
+const response = await apiClient.post<User>('/users', userData);
 
 // File upload
-const response = await apiClient.uploadFile(
-  "/files/upload",
-  file,
-  { subjectId },
-  (progress) => console.log(`${progress}%`)
+const response = await apiClient.uploadFile('/files/upload', file, { subjectId }, (progress) =>
+  console.log(`${progress}%`)
 );
 ```
 

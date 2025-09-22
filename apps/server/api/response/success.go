@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/MonkyMars/PWS/types"
 )
+
 // Success sends a successful response with data using a default success message.
 // This is a convenience function for common success responses.
 //

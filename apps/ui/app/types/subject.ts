@@ -22,7 +22,7 @@ export interface Announcement {
   subjectId: string;
   title: string;
   content: string;
-  priority: "low" | "normal" | "high" | "urgent";
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   isSticky: boolean; // Pinned announcements
   authorId: string;
   authorName: string;
@@ -42,7 +42,7 @@ export interface SubjectFile {
   mimeType: string;
   size: number; // in bytes
   url: string;
-  category: "presentation" | "document" | "assignment" | "resource" | "other";
+  category: 'presentation' | 'document' | 'assignment' | 'resource' | 'other';
   uploaderId: string;
   uploaderName: string;
   isPublic: boolean;
@@ -67,6 +67,6 @@ export interface SubjectEnrollment {
   id: string;
   subjectId: string;
   userId: string;
-  role: "student" | "teacher";
+  role: 'student' | 'teacher';
   enrolledAt: string;
 }

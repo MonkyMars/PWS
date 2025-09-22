@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "~/lib/api-client";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '~/lib/api-client';
 import type {
   Subject,
   SubjectWithDetails,
@@ -9,22 +9,19 @@ import type {
   SubjectFilters,
   AnnouncementFilters,
   FileFilters,
-} from "~/types";
+} from '~/types';
 
 /**
  * Hook to get user's subjects
  */
 export function useSubjects(filters?: SubjectFilters) {
   return useQuery({
-    queryKey: ["subjects", filters],
+    queryKey: ['subjects', filters],
     queryFn: async (): Promise<SubjectWithDetails[]> => {
-      const response = await apiClient.get<SubjectWithDetails[]>(
-        "/subjects",
-        filters
-      );
+      const response = await apiClient.get<SubjectWithDetails[]>('/subjects', filters);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Fout bij ophalen vakken");
+        throw new Error(response.message || 'Fout bij ophalen vakken');
       }
 
       return response.data;
@@ -37,12 +34,12 @@ export function useSubjects(filters?: SubjectFilters) {
  */
 export function useSubject(subjectId: string) {
   return useQuery({
-    queryKey: ["subjects", subjectId],
+    queryKey: ['subjects', subjectId],
     queryFn: async (): Promise<Subject> => {
       const response = await apiClient.get<Subject>(`/subjects/${subjectId}`);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Fout bij ophalen vak");
+        throw new Error(response.message || 'Fout bij ophalen vak');
       }
 
       return response.data;
@@ -56,15 +53,15 @@ export function useSubject(subjectId: string) {
  */
 export function useAnnouncements(filters?: AnnouncementFilters) {
   return useQuery({
-    queryKey: ["announcements", filters],
+    queryKey: ['announcements', filters],
     queryFn: async (): Promise<PaginatedResponse<Announcement>> => {
       const response = await apiClient.get<PaginatedResponse<Announcement>>(
-        "/announcements",
+        '/announcements',
         filters
       );
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Fout bij ophalen mededelingen");
+        throw new Error(response.message || 'Fout bij ophalen mededelingen');
       }
 
       return response.data;
@@ -77,15 +74,12 @@ export function useAnnouncements(filters?: AnnouncementFilters) {
  */
 export function useSubjectFiles(filters?: FileFilters) {
   return useQuery({
-    queryKey: ["files", filters],
+    queryKey: ['files', filters],
     queryFn: async (): Promise<PaginatedResponse<SubjectFile>> => {
-      const response = await apiClient.get<PaginatedResponse<SubjectFile>>(
-        "/files",
-        filters
-      );
+      const response = await apiClient.get<PaginatedResponse<SubjectFile>>('/files', filters);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Fout bij ophalen bestanden");
+        throw new Error(response.message || 'Fout bij ophalen bestanden');
       }
 
       return response.data;
@@ -114,24 +108,24 @@ export function useUploadFile() {
       onProgress?: (progress: number) => void;
     }): Promise<SubjectFile> => {
       const response = await apiClient.uploadFile<SubjectFile>(
-        "/files/upload",
+        '/files/upload',
         file,
         { subjectId, description, category },
         onProgress
       );
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Fout bij uploaden bestand");
+        throw new Error(response.message || 'Fout bij uploaden bestand');
       }
 
       return response.data;
     },
     onSuccess: (data) => {
       // Invalidate file queries to refresh the list
-      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ['files'] });
 
       // Update subject data if applicable
-      queryClient.invalidateQueries({ queryKey: ["subjects", data.subjectId] });
+      queryClient.invalidateQueries({ queryKey: ['subjects', data.subjectId] });
     },
   });
 }
@@ -147,13 +141,13 @@ export function useDeleteFile() {
       const response = await apiClient.delete(`/files/${fileId}`);
 
       if (!response.success) {
-        throw new Error(response.message || "Fout bij verwijderen bestand");
+        throw new Error(response.message || 'Fout bij verwijderen bestand');
       }
     },
     onSuccess: () => {
       // Invalidate file queries to refresh the list
-      queryClient.invalidateQueries({ queryKey: ["files"] });
-      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
     },
   });
 }
