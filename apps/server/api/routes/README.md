@@ -1,523 +1,204 @@
 # Routes Package
 
-The `routes` package contains HTTP route handlers and endpoint definitions for the PWS API. This package organizes route handlers by feature or resource type, providing a clean separation of concerns for different API endpoints.
+This package defines all HTTP route endpoints for the API. It organizes routes into logical groups and connects them to their corresponding handler functions.
 
-## Overview
+## What It Does
 
-This package follows RESTful API design principles and implements route handlers that:
+- Defines all API endpoints and their HTTP methods
+- Groups related routes together (auth, app, etc.)
+- Connects routes to handler functions
+- Sets up middleware for specific routes
+- Provides a central place to see all available endpoints
 
-- Handle HTTP requests and responses
-- Validate request data
-- Interact with service layers for business logic
-- Return standardized API responses
-- Implement proper error handling
+## Main Files
 
-## Structure (Example)
+### `auth.go`
+Contains all authentication-related routes.
 
-Route handlers are organized by resource or feature:
+**Routes:**
+- `POST /auth/login` - User login
+- `POST /auth/register` - User registration  
+- `POST /auth/refresh` - Refresh access token
+- `POST /auth/logout` - User logout
+- `GET /auth/me` - Get current user info (protected)
 
-```
-routes/
-├── README.md          # This documentation
-├── auth.go            # Authentication endpoints
-└── app.go             # General app routes
-```
-
-## Route Handler Pattern
-
-All route handlers in this package follow a consistent pattern:
-
+**How it's structured:**
 ```go
-package routes
-
-import (
-    "github.com/MonkyMars/PWS/api/response"
-    "github.com/gofiber/fiber/v3"
-)
-
-// ResourceHandler handles HTTP requests for a specific resource.
-// It validates input, processes the request through service layers,
-// and returns a standardized API response.
-//
-// Parameters:
-//   - c: Fiber context containing request and response objects
-//
-// Returns an error if the response cannot be sent.
-func ResourceHandler(c fiber.Ctx) error {
-    // 1. Extract and validate request parameters
-    id := c.Params("id")
-    if id == "" {
-        return response.BadRequest(c, "Resource ID is required")
-    }
-
-    // 2. Parse and validate request body (if needed)
-    var req ResourceRequest
-    if err := response.ValidateJSON(c, &req); err != nil {
-        return response.BadRequest(c, "Invalid request format")
-    }
-
-    // 3. Call service layer for business logic
-    result, err := resourceService.Process(id, req)
-    if err != nil {
-        return response.InternalServerError(c, "Failed to process request")
-    }
-
-    // 4. Return standardized response
-    return response.Success(c, result)
+func SetupAuthRoutes(app *fiber.App) {
+    // Create auth route group
+    auth := app.Group("/auth")
+    
+    // Public routes
+    auth.Post("/login", internal.Login)
+    auth.Post("/register", internal.Register)
+    auth.Post("/refresh", internal.RefreshToken)
+    auth.Post("/logout", internal.Logout)
+    
+    // Protected routes (requires authentication)
+    auth.Get("/me", middleware.AuthMiddleware(), internal.Me)
 }
 ```
 
-## Route Registration
+### `app.go`
+Contains general application routes like health checks.
 
-Routes are registered through setup functions that are called from the main router:
+**Routes (development only):**
+- `GET /health` - Server health check
+- `GET /health/database` - Database health check
+- `/*` - Catch-all for 404 errors
 
+**How it's structured:**
 ```go
-package routes
-
-import (
-    "github.com/gofiber/fiber/v3"
-)
-
-// SetupResourceRoutes registers all routes for a specific resource.
-// This function should be called from the main router setup.
-//
-// Parameters:
-//   - app: Fiber application instance to register routes on
-func SetupResourceRoutes(app *fiber.App) {
-    // Create route group
-    api := app.Group("/api/v1")
-    resource := api.Group("/resource")
-
-    // Register CRUD endpoints
-    resource.Get("/", ListResources)
-    resource.Get("/:id", GetResource)
-    resource.Post("/", CreateResource)
-    resource.Put("/:id", UpdateResource)
-    resource.Delete("/:id", DeleteResource)
+func SetupAppRoutes(app *fiber.App) {
+    cfg := config.Get()
+    if cfg.Environment == "development" {
+        app.Get("/health", internal.GetSystemHealth)
+        app.Get("/health/database", internal.GetDatabaseHealth)
+    }
+    app.Use(internal.NotFoundHandler)
 }
 ```
 
-## Request/Response Types
+## How Routes Work
 
-Each route handler should define clear request and response types:
-
-```go
-// Request types for input validation
-type CreateResourceRequest struct {
-    Name        string `json:"name" validate:"required,min=1,max=100"`
-    Description string `json:"description" validate:"max=500"`
-    Category    string `json:"category" validate:"required"`
-}
-
-type UpdateResourceRequest struct {
-    Name        *string `json:"name,omitempty" validate:"omitempty,min=1,max=100"`
-    Description *string `json:"description,omitempty" validate:"omitempty,max=500"`
-    Category    *string `json:"category,omitempty"`
-}
-
-// Response types for output formatting
-type ResourceResponse struct {
-    ID          string    `json:"id"`
-    Name        string    `json:"name"`
-    Description string    `json:"description"`
-    Category    string    `json:"category"`
-    CreatedAt   time.Time `json:"created_at"`
-    UpdatedAt   time.Time `json:"updated_at"`
-}
-```
-
-## Example Implementation
-
-### Basic CRUD Operations
-
-```go
-package routes
-
-import (
-    "github.com/MonkyMars/PWS/api/response"
-    "github.com/MonkyMars/PWS/services"
-    "github.com/gofiber/fiber/v3"
-)
-
-// ListResources handles GET /api/v1/resources
-func ListResources(c fiber.Ctx) error {
-    // Parse pagination parameters
-    page, limit, err := response.ParsePaginationParams(c)
-    if err != nil {
-        return response.BadRequest(c, err.Error())
-    }
-
-    // Get resources from service
-    resources, total, err := services.ResourceService.List(page, limit)
-    if err != nil {
-        return response.InternalServerError(c, "Failed to fetch resources")
-    }
-
-    // Convert to interface slice for pagination
-    items := response.ConvertToInterfaceSlice(resources)
-
-    // Return paginated response
-    return response.Paginated(c, items, page, limit, total)
-}
-
-// GetResource handles GET /api/v1/resources/:id
-func GetResource(c fiber.Ctx) error {
-    id := c.Params("id")
-    if id == "" {
-        return response.BadRequest(c, "Resource ID is required")
-    }
-
-    resource, err := services.ResourceService.GetByID(id)
-    if err != nil {
-        if errors.Is(err, services.ErrResourceNotFound) {
-            return response.NotFound(c, "Resource not found")
-        }
-        return response.InternalServerError(c, "Failed to fetch resource")
-    }
-
-    return response.Success(c, resource)
-}
-
-// CreateResource handles POST /api/v1/resources
-func CreateResource(c fiber.Ctx) error {
-    var req CreateResourceRequest
-    if err := response.ValidateJSON(c, &req); err != nil {
-        return response.BadRequest(c, "Invalid request format")
-    }
-
-    // Validate request
-    if errors := validateCreateResource(req); len(errors) > 0 {
-        return response.SendValidationErrors(c, errors)
-    }
-
-    // Create resource
-    resource, err := services.ResourceService.Create(req)
-    if err != nil {
-        return response.InternalServerError(c, "Failed to create resource")
-    }
-
-    return response.Created(c, resource)
-}
-
-// UpdateResource handles PUT /api/v1/resources/:id
-func UpdateResource(c fiber.Ctx) error {
-    id := c.Params("id")
-    if id == "" {
-        return response.BadRequest(c, "Resource ID is required")
-    }
-
-    var req UpdateResourceRequest
-    if err := response.ValidateJSON(c, &req); err != nil {
-        return response.BadRequest(c, "Invalid request format")
-    }
-
-    resource, err := services.ResourceService.Update(id, req)
-    if err != nil {
-        if errors.Is(err, services.ErrResourceNotFound) {
-            return response.NotFound(c, "Resource not found")
-        }
-        return response.InternalServerError(c, "Failed to update resource")
-    }
-
-    return response.Success(c, resource)
-}
-
-// DeleteResource handles DELETE /api/v1/resources/:id
-func DeleteResource(c fiber.Ctx) error {
-    id := c.Params("id")
-    if id == "" {
-        return response.BadRequest(c, "Resource ID is required")
-    }
-
-    err := services.ResourceService.Delete(id)
-    if err != nil {
-        if errors.Is(err, services.ErrResourceNotFound) {
-            return response.NotFound(c, "Resource not found")
-        }
-        return response.InternalServerError(c, "Failed to delete resource")
-    }
-
-    return response.NoContent(c)
-}
-```
-
-### Authentication-Protected Routes
-
-```go
-// ProtectedResource handles authenticated requests
-func ProtectedResource(c fiber.Ctx) error {
-    // Extract user from context (set by auth middleware)
-    userID, err := response.GetUserID(c)
-    if err != nil {
-        return response.Unauthorized(c, "Authentication required")
-    }
-
-    role, err := response.GetUserRole(c)
-    if err != nil {
-        return response.Forbidden(c, "Invalid user role")
-    }
-
-    // Check permissions
-    if !hasPermission(role, "read:resources") {
-        return response.Forbidden(c, "Insufficient permissions")
-    }
-
-    // Process request...
-    return response.Success(c, data)
-}
-```
-
-## Validation
-
-Request validation should be handled consistently:
-
-```go
-func validateCreateResource(req CreateResourceRequest) map[string]string {
-    errors := make(map[string]string)
-
-    if req.Name == "" {
-        errors["name"] = "Name is required"
-    } else if len(req.Name) > 100 {
-        errors["name"] = "Name must be less than 100 characters"
-    }
-
-    if req.Category == "" {
-        errors["category"] = "Category is required"
-    }
-
-    return errors
-}
-```
-
-## Error Handling
-
-Use the response package for consistent error handling:
-
-```go
-// Bad request for client errors
-return response.BadRequest(c, "Invalid input")
-
-// Not found for missing resources
-return response.NotFound(c, "Resource not found")
-
-// Internal server error for unexpected errors
-return response.InternalServerError(c, "Something went wrong")
-
-// Validation errors for form validation
-return response.SendValidationErrors(c, validationErrors)
-```
-
-## Best Practices
-
-1. **Validation**: Always validate input parameters and request bodies
-2. **Error Handling**: Use appropriate HTTP status codes and error messages
-3. **Pagination**: Implement pagination for list endpoints
-4. **Authentication**: Check authentication and authorization where required
-5. **Logging**: Log important events and errors for debugging
-6. **Testing**: Write unit tests for route handlers
-7. **Documentation**: Document API endpoints with clear examples
-
-## Testing
-
-```go
-package routes_test
-
-import (
-    "testing"
-    "github.com/MonkyMars/PWS/api/routes"
-    "github.com/gofiber/fiber/v3"
-)
-
-func TestGetResource(t *testing.T) {
-    app := fiber.New()
-    routes.SetupResourceRoutes(app)
-
-    // Test successful get
-    // Test not found case
-    // Test invalid ID format
-}
-```
-
-## Dependencies
-
-- `github.com/gofiber/fiber/v3` - Web framework for HTTP handling
-- `github.com/MonkyMars/PWS/api/response` - Standardized response utilities
-- `github.com/MonkyMars/PWS/services` - Business logic layer
-- Validation libraries as needed
-
-The routes package contains HTTP route handlers for the PWS server. Route handlers are functions that process incoming HTTP requests and generate appropriate responses using the response package.
-
-## Structure
-
-- Add a new file for each resource or feature of the system
-
-## Handler Pattern
-
-All route handlers follow a consistent pattern:
-
-1. Accept a Fiber context parameter
-2. Extract and validate request data
-3. Perform business logic operations
-4. Return standardized responses using the response package
-
-```go
-func HandlerName(c fiber.Ctx) error {
-    // Extract request parameters
-    id := c.Params("id")
-
-    // Validate input
-    if id == "" {
-        return response.BadRequest(c, "ID is required")
-    }
-
-    // Perform business logic
-    data, err := businessLogic(id)
-    if err != nil {
-        return response.InternalServerError(c, err.Error())
-    }
-
-    // Return success response
-    return response.Success(c, data)
-}
-```
-
-## Common Handler Patterns
-
-### GET Handlers
-
-- Extract query parameters for filtering and pagination
-- Retrieve data from storage layer
-- Return data with appropriate metadata
-
-### POST Handlers
-
-- Validate JSON request body
-- Create new resources
-- Return created resource with 201 status
-
-### PUT/PATCH Handlers
-
-- Validate request body and parameters
-- Update existing resources
-- Return updated resource or 204 No Content
-
-### DELETE Handlers
-
-- Validate resource exists
-- Perform deletion
-- Return 204 No Content or confirmation message
-
-## Request Validation
-
-Use the response package utilities for common validation tasks:
-
-```go
-// Validate JSON body
-var req CreateNoteRequest
-if err := response.ValidateJSON(c, &req); err != nil {
-    return response.BadRequest(c, "Invalid JSON")
-}
-
-// Validate pagination parameters
-page, limit, err := response.ParsePaginationParams(c)
-if err != nil {
-    return response.BadRequest(c, err.Error())
-}
-```
-
-## Error Handling
-
-Use appropriate response functions for different error scenarios:
-
-```go
-// Resource not found
-if note == nil {
-    return response.NotFound(c, "Note not found")
-}
-
-// Validation errors
-if errors := validateNote(req); len(errors) > 0 {
-    return response.SendValidationErrors(c, errors)
-}
-
-// Server errors
-if err != nil {
-    return response.InternalServerError(c, "Failed to process request")
-}
-```
-
-## Authentication Context
-
-When authentication middleware is implemented, extract user information:
-
-```go
-// Get authenticated user ID
-userID, err := response.GetUserID(c)
-if err != nil {
-    return response.Unauthorized(c, "Authentication required")
-}
-
-// Use user ID in business logic
-data := getDataForUser(userID)
-```
-
-## Response Patterns
-
-### Single Resource
-
-```go
-return response.OK(c, resource)
-```
-
-### List of Resources
-
-```go
-return response.OKWithMessage(c, "Resources retrieved successfully", resources)
-```
-
-### Paginated Results
-
-```go
-return response.Paginated(c, resources, page, limit, total)
-```
-
-### Created Resource
-
-```go
-return response.Created(c, newResource)
-```
-
-### No Content
-
-```go
-return response.NoContent(c)
-```
-
-## Route Registration
-
-Handlers are registered in the main router:
+Routes are set up in the main API router (`api/router.go`):
 
 ```go
 func SetupRoutes(app *fiber.App, logger *config.Logger) {
-    api := app.Group("/api")
-
-    // API routes
-    api.Get("/health", routes.GetHealth)
-    api.Get("/resources", routes.GetResources)
-    api.Post("/resources", routes.CreateResource)
-    api.Get("/resources/:id", routes.GetResource)
-    api.Put("/resources/:id", routes.UpdateResource)
-    api.Delete("/resources/:id", routes.DeleteResource)
+    // Authentication routes
+    routes.SetupAuthRoutes(app)
+    
+    // Health check and fallback routes (must be last)
+    routes.SetupAppRoutes(app)
 }
 ```
 
-## Best Practices
+## Route Groups
 
-- Keep handlers focused on HTTP concerns (parsing, validation, response formatting)
-- Move business logic to separate service layers
-- Use consistent naming conventions for handlers
-- Validate all input data before processing
-- Return appropriate HTTP status codes
-- Log important events and errors
-- Use the response package for all responses to maintain consistency
-- Handle edge cases and error conditions gracefully
+**Auth Group (`/auth`):**
+All authentication endpoints start with `/auth/`. This makes it easy to apply auth-specific middleware or rate limiting.
+
+**Health Routes:**
+Only available in development mode for security. In production, use external monitoring instead.
+
+## Middleware
+
+Routes can have middleware applied:
+
+```go
+// Apply middleware to specific route
+auth.Get("/me", middleware.AuthMiddleware(), internal.Me)
+
+// Apply middleware to entire group
+auth.Use(middleware.AuthMiddleware())
+```
+
+## Adding New Routes
+
+1. **Create route function in appropriate file:**
+```go
+func SetupUserRoutes(app *fiber.App) {
+    users := app.Group("/users")
+    
+    users.Get("/", internal.GetUsers)
+    users.Get("/:id", internal.GetUser)
+    users.Post("/", middleware.AuthMiddleware(), internal.CreateUser)
+    users.Put("/:id", middleware.AuthMiddleware(), internal.UpdateUser)
+    users.Delete("/:id", middleware.AuthMiddleware(), internal.DeleteUser)
+}
+```
+
+2. **Add to main router:**
+```go
+func SetupRoutes(app *fiber.App, logger *config.Logger) {
+    routes.SetupAuthRoutes(app)
+    routes.SetupUserRoutes(app)  // Add new routes
+    routes.SetupAppRoutes(app)   // Keep this last
+}
+```
+
+3. **Create handlers in `api/internal/`:**
+```go
+func GetUsers(c fiber.Ctx) error {
+    // Handle GET /users
+}
+
+func CreateUser(c fiber.Ctx) error {
+    // Handle POST /users
+}
+```
+
+## Route Parameters
+
+**Path parameters:**
+```go
+app.Get("/users/:id", handler)  // /users/123
+userID := c.Params("id")
+```
+
+**Query parameters:**
+```go
+app.Get("/users", handler)      // /users?page=1&limit=10
+page := c.Query("page")
+```
+
+**Request body:**
+```go
+var req types.CreateUserRequest
+if err := c.Bind().Body(&req); err != nil {
+    return response.BadRequest(c, "Invalid request body")
+}
+```
+
+## Protected Routes
+
+Routes that require authentication use the `AuthMiddleware`:
+
+```go
+auth.Get("/me", middleware.AuthMiddleware(), internal.Me)
+```
+
+The middleware:
+- Checks for valid access token in cookies
+- Validates the JWT token
+- Sets user information in the request context
+- Returns 401 if authentication fails
+
+## Error Handling
+
+Route handlers should return appropriate responses:
+
+```go
+func GetUser(c fiber.Ctx) error {
+    userID := c.Params("id")
+    if userID == "" {
+        return response.BadRequest(c, "User ID is required")
+    }
+    
+    user, err := userService.GetByID(userID)
+    if err != nil {
+        return response.NotFound(c, "User not found")
+    }
+    
+    return response.Success(c, user)
+}
+```
+
+## Security Considerations
+
+1. **Auth routes:** Public endpoints are limited to prevent abuse
+2. **Health routes:** Only enabled in development
+3. **Protected routes:** Always use `AuthMiddleware()` for sensitive operations
+4. **Input validation:** Validate all parameters and request bodies
+5. **Rate limiting:** Consider adding rate limiting middleware for public endpoints
+
+## Route Order
+
+Route order matters in Fiber. More specific routes should come before general ones:
+
+```go
+app.Get("/auth/me", handler)     // Specific route first
+app.Get("/auth/*", handler)      // Wildcard route after
+```
+
+The 404 handler (`app.Use(internal.NotFoundHandler)`) must be last to catch all unmatched routes.

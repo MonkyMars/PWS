@@ -1,282 +1,235 @@
 # Response Package
 
-The `response` package provides standardized HTTP response structures and utilities for the PWS API. This package implements a consistent response format across all API endpoints, including success responses, error handling, pagination support, and response building utilities.
+This package provides standardized API response formatting for all HTTP endpoints. It ensures consistent response structure across the entire application.
 
-## Overview
+## What It Does
 
-This package follows REST API best practices by providing:
+- Creates consistent JSON responses for success and error cases
+- Handles pagination for list endpoints
+- Provides validation error formatting
+- Manages HTTP status codes automatically
+- Includes timestamps and metadata
 
-- Consistent response structure across all endpoints
-- Detailed error information with error codes and context
-- Pagination metadata for list endpoints
-- Fluent response builder pattern for easy response construction
-- Standardized error codes for common scenarios
+## Response Structure
 
-## Files
-
-- `types.go` - Core response structures and builder pattern implementation
-- `success.go` - Success response helper functions
-- `error.go` - Error response helper functions
-- `lib.go` - Utility functions for pagination, validation, and request handling
-
-## Core Types
-
-### Response Structure
-
-The standard response structure used across all API endpoints:
-
-```go
-type Response struct {
-    Success   bool       `json:"success"`               // Whether the request was successful
-    Message   string     `json:"message"`               // Human-readable description
-    Data      any        `json:"data,omitempty"`        // Response payload
-    Error     *ErrorInfo `json:"error,omitempty"`       // Error details
-    Meta      *Meta      `json:"meta,omitempty"`        // Additional metadata
-    Timestamp time.Time  `json:"timestamp"`             // Response timestamp
-}
-```
-
-### Error Information
-
-```go
-type ErrorInfo struct {
-    Code    string         `json:"code"`               // Machine-readable error code
-    Message string         `json:"message"`            // Human-readable description
-    Details map[string]any `json:"details,omitempty"`  // Additional error context
-    Field   string         `json:"field,omitempty"`    // Field causing error
-}
-```
-
-### Pagination Metadata
-
-```go
-type Meta struct {
-    Page       int  `json:"page,omitempty"`        // Current page (1-based)
-    Limit      int  `json:"limit,omitempty"`       // Items per page
-    Total      int  `json:"total,omitempty"`       // Total items
-    TotalPages int  `json:"total_pages,omitempty"` // Total pages
-    HasNext    bool `json:"has_next,omitempty"`    // More pages available
-    HasPrev    bool `json:"has_prev,omitempty"`    // Previous pages available
-}
-```
-
-## Builder Pattern
-
-The package uses a fluent builder pattern for constructing responses:
-
-```go
-return NewResponse().
-    Success("Request successful").
-    WithData(userData).
-    Send(c, fiber.StatusOK)
-```
-
-## Success Responses (`success.go`)
-
-Functions for successful HTTP responses:
-
-- `OK(c, data)` - 200 response with data
-- `OKWithMessage(c, message, data)` - 200 response with custom message
-- `Created(c, data)` - 201 response for resource creation
-- `Accepted(c, message)` - 202 response for accepted requests
-- `NoContent(c)` - 204 response with no content
-- `Paginated(c, items, page, limit, total)` - Paginated response with metadata
-- `Message(c, message)` - Simple success message without data
-
-## Error Responses (`error.go`)
-
-Functions for error HTTP responses:
-
-- `BadRequest(c, message)` - 400 Bad Request
-- `Unauthorized(c, message)` - 401 Unauthorized
-- `Forbidden(c, message)` - 403 Forbidden
-- `NotFound(c, message)` - 404 Not Found
-- `Conflict(c, message)` - 409 Conflict
-- `ValidationError(c, errors)` - 422 Validation Error
-- `TooManyRequests(c, message)` - 429 Too Many Requests
-- `InternalServerError(c, message)` - 500 Internal Server Error
-- `ServiceUnavailable(c, message)` - 503 Service Unavailable
-
-## Utility Functions (`lib.go`)
-
-Helper functions for common operations:
-
-### Pagination
-
-- `ParsePaginationParams(c)` - Extract page and limit from query parameters
-- `CalculateOffset(page, limit)` - Calculate database offset
-- `QuickPaginate(c, items, totalCount)` - Simple pagination helper
-
-### Validation
-
-- `ValidateJSON(c, v)` - Validate and bind JSON request body
-- `BuildValidationErrors(errors)` - Convert error map to validation error slice
-- `SendValidationErrors(c, errors)` - Quick validation error response
-
-### Context Utilities
-
-- `GetUserID(c)` - Extract user ID from request context
-- `GetUserRole(c)` - Extract user role from request context
-
-### Response Helpers
-
-- `ErrorWithContext(c, statusCode, message, context)` - Error response with request context
-- `ConvertToInterfaceSlice(slice)` - Convert typed slices to interface slice
-
-## Error Codes
-
-Predefined error codes for consistent error handling:
-
-- `VALIDATION_ERROR` - Input validation failures
-- `NOT_FOUND` - Resource not found
-- `UNAUTHORIZED` - Authentication required
-- `FORBIDDEN` - Access denied
-- `CONFLICT` - Resource conflict
-- `INTERNAL_ERROR` - Server errors
-- `BAD_REQUEST` - Invalid request format
-- `TOO_MANY_REQUESTS` - Rate limiting
-- `SERVICE_UNAVAILABLE` - Service temporarily down
-
-## Usage Examples
-
-### Simple Success Response
-
-```go
-func GetUser(c fiber.Ctx) error {
-    user := getUserData()
-    return response.OK(c, user)
-}
-```
-
-### Error Response
-
-```go
-func CreateUser(c fiber.Ctx) error {
-    if userExists {
-        return response.Conflict(c, "User already exists")
-    }
-    // ... create user
-}
-```
-
-### Paginated Response
-
-```go
-func ListUsers(c fiber.Ctx) error {
-    page, limit, err := response.ParsePaginationParams(c)
-    if err != nil {
-        return response.BadRequest(c, err.Error())
-    }
-    
-    users, total := getUserList(page, limit)
-    return response.Paginated(c, users, page, limit, total)
-}
-```
-
-### Validation Error
-
-```go
-func UpdateUser(c fiber.Ctx) error {
-    var req UserRequest
-    if err := response.ValidateJSON(c, &req); err != nil {
-        return response.BadRequest(c, "Invalid JSON")
-    }
-    
-    if errors := validateUser(req); len(errors) > 0 {
-        return response.SendValidationErrors(c, errors)
-    }
-    // ... update user
-}
-```
-
-### Builder Pattern Example
-
-```go
-func ComplexResponse(c fiber.Ctx) error {
-    return response.NewResponse().
-        Success("Operation completed successfully").
-        WithData(data).
-        WithMeta(&response.Meta{
-            Page:  1,
-            Limit: 10,
-            Total: 100,
-        }).
-        Send(c, fiber.StatusOK)
-}
-```
-
-## Response Examples
-
-### Success Response
+All API responses follow this format:
 
 ```json
 {
   "success": true,
   "message": "Request successful",
-  "data": {"id": 1, "name": "John"},
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-### Error Response
-
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "The given data was invalid",
-    "details": {
-      "validation_errors": [
-        {"field": "email", "message": "Invalid email format"}
-      ]
-    }
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-### Paginated Response
-
-```json
-{
-  "success": true,
-  "message": "Data retrieved successfully",
-  "data": {
-    "items": [{"id": 1}, {"id": 2}],
-    "meta": {
-      "page": 1,
-      "limit": 10,
-      "total": 25,
-      "total_pages": 3,
-      "has_next": true,
-      "has_prev": false
-    }
-  },
-  "meta": {
+  "data": { },
+  "pagination": {
     "page": 1,
     "limit": 10,
-    "total": 25,
-    "total_pages": 3,
-    "has_next": true,
-    "has_prev": false
+    "total": 100,
+    "pages": 10
   },
   "timestamp": "2024-01-15T10:30:00Z"
 }
+```
+
+## Main Functions
+
+### Success Responses
+
+**`Success(c, data)`** - Basic success response
+```go
+return response.Success(c, user)
+```
+
+**`SuccessWithMessage(c, message, data)`** - Success with custom message
+```go
+return response.SuccessWithMessage(c, "User updated successfully", user)
+```
+
+**`Created(c, data)`** - For newly created resources (201 status)
+```go
+return response.Created(c, newUser)
+```
+
+**`Paginated(c, items, page, limit, total)`** - For paginated lists
+```go
+return response.Paginated(c, users, 1, 10, 100)
+```
+
+### Error Responses
+
+**`BadRequest(c, message)`** - 400 Bad Request
+```go
+return response.BadRequest(c, "Invalid input data")
+```
+
+**`Unauthorized(c, message)`** - 401 Unauthorized
+```go
+return response.Unauthorized(c, "Invalid credentials")
+```
+
+**`Forbidden(c, message)`** - 403 Forbidden
+```go
+return response.Forbidden(c, "Access denied")
+```
+
+**`NotFound(c, message)`** - 404 Not Found
+```go
+return response.NotFound(c, "User not found")
+```
+
+**`Conflict(c, message)`** - 409 Conflict
+```go
+return response.Conflict(c, "Email already exists")
+```
+
+**`InternalServerError(c, message)`** - 500 Internal Server Error
+```go
+return response.InternalServerError(c, "Something went wrong")
+```
+
+**`ServiceUnavailable(c, message)`** - 503 Service Unavailable
+```go
+return response.ServiceUnavailable(c, "Database temporarily unavailable")
+```
+
+### Validation Errors
+
+**`SendValidationError(c, errors)`** - 422 Unprocessable Entity
+```go
+validationErrors := []types.ValidationError{
+    {
+        Field:   "email",
+        Message: "Email is required",
+        Value:   "",
+    },
+}
+return response.SendValidationError(c, validationErrors)
+```
+
+## How to Use
+
+### In a Route Handler
+
+```go
+func GetUser(c fiber.Ctx) error {
+    userID := c.Params("id")
+    
+    // Validate input
+    if userID == "" {
+        return response.BadRequest(c, "User ID is required")
+    }
+    
+    // Get user from database
+    user, err := userService.GetByID(userID)
+    if err != nil {
+        if errors.Is(err, lib.ErrNotFound) {
+            return response.NotFound(c, "User not found")
+        }
+        return response.InternalServerError(c, "Failed to retrieve user")
+    }
+    
+    // Return success response
+    return response.Success(c, user)
+}
+```
+
+### With Pagination
+
+```go
+func GetUsers(c fiber.Ctx) error {
+    // Parse pagination parameters
+    page, limit, err := response.ParsePaginationParams(c)
+    if err != nil {
+        return response.BadRequest(c, err.Error())
+    }
+    
+    // Get users from database
+    users, total, err := userService.GetPaginated(page, limit)
+    if err != nil {
+        return response.InternalServerError(c, "Failed to retrieve users")
+    }
+    
+    // Return paginated response
+    return response.Paginated(c, users, page, limit, total)
+}
+```
+
+### With Validation
+
+```go
+func CreateUser(c fiber.Ctx) error {
+    var req types.CreateUserRequest
+    if err := c.Bind().Body(&req); err != nil {
+        return response.BadRequest(c, "Invalid request body")
+    }
+    
+    // Validate fields
+    var validationErrors []types.ValidationError
+    if req.Email == "" {
+        validationErrors = append(validationErrors, types.ValidationError{
+            Field:   "email",
+            Message: "Email is required",
+            Value:   req.Email,
+        })
+    }
+    if req.Username == "" {
+        validationErrors = append(validationErrors, types.ValidationError{
+            Field:   "username",
+            Message: "Username is required",
+            Value:   req.Username,
+        })
+    }
+    
+    if len(validationErrors) > 0 {
+        return response.SendValidationError(c, validationErrors)
+    }
+    
+    // Create user
+    user, err := userService.Create(&req)
+    if err != nil {
+        return response.InternalServerError(c, "Failed to create user")
+    }
+    
+    return response.Created(c, user)
+}
+```
+
+## Helper Functions
+
+**`ParsePaginationParams(c)`** - Extract page and limit from query params
+```go
+page, limit, err := response.ParsePaginationParams(c)
+// Default: page=1, limit=10, max limit=100
+```
+
+**`CalculateOffset(page, limit)`** - Convert page number to database offset
+```go
+offset := response.CalculateOffset(page, limit)
+```
+
+**`GetUserID(c)`** - Extract authenticated user ID from context
+```go
+userID, err := response.GetUserID(c)
+```
+
+## Builder Pattern
+
+For complex responses, use the response builder:
+
+```go
+return NewResponse().
+    Success("User retrieved successfully").
+    WithData(user).
+    WithMeta(&types.Meta{
+        RequestID: "req-123",
+        Version:   "v1",
+    }).
+    Send(c, fiber.StatusOK)
 ```
 
 ## Best Practices
 
-1. **Consistent Error Handling**: Always use the package functions for error responses
-2. **Meaningful Messages**: Provide clear, user-friendly error messages
-3. **Validation Errors**: Use structured validation errors for form validation
-4. **Pagination**: Use the pagination utilities for consistent list responses
-5. **Builder Pattern**: Use the response builder for complex responses
-6. **Error Codes**: Use the predefined error codes for machine-readable error handling
-
-## Dependencies
-
-- `github.com/gofiber/fiber/v3` - Web framework for HTTP handling
-- `github.com/MonkyMars/PWS/types` - Shared type definitions
-- Standard library packages for JSON and time handling
+1. Always use the response functions instead of raw JSON
+2. Provide clear, user-friendly error messages
+3. Use appropriate HTTP status codes
+4. Include validation details for client debugging
+5. Keep response data structure consistent
+6. Use pagination for lists that could grow large

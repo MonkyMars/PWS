@@ -28,6 +28,7 @@ func GetDatabaseConfig() config.DatabaseConfig {
 	return database.GetConfig()
 }
 
+// Query returns a new QueryParams instance for building database queries
 func Query() *types.QueryParams {
 	return types.NewQuery()
 }

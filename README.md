@@ -12,6 +12,9 @@ PWS/
 │   ├── server/          # Go backend API server
 │   │   ├── main.go      # Application entry point
 │   │   ├── api/         # API layer (routes, middleware, responses)
+│   │   ├── config/      # Configuration management
+│   │   ├── database/    # Database connection and models
+│   │   ├── lib/         # Helper functions
 │   │   ├── services/    # Business logic services
 │   │   └── types/       # Shared type definitions
 │   └── ui/              # React frontend application

@@ -1,235 +1,320 @@
 # Database Package
 
-This package provides a modular and centralized way to interact with your PostgreSQL database using go-pg. It includes connection pooling, configuration management, and proper error handling for reliable and performant database operations.
+This package handles all database connections and operations. It provides a centralized way to connect to PostgreSQL and perform database queries throughout the application.
 
-## Features
+## What It Does
 
-- **Connection Pooling**: Configurable connection pool with sensible defaults
-- **Environment-based Configuration**: Load settings from environment variables or connection string
-- **Health Monitoring**: Built-in connection health checks and pool statistics
-- **Singleton Pattern**: Global database instance for consistent access across your application
-- **Transaction Support**: Easy transaction management
-- **Context Support**: Proper context handling for timeouts and cancellations
+- Establishes and manages PostgreSQL database connections
+- Provides connection pooling for better performance
+- Offers utility functions for common database operations
+- Handles database initialization and cleanup
+- Uses go-pg as the PostgreSQL driver
 
-## Configuration
+## Main Files
 
-### Option 1: Environment Variables
+### `database.go`
+Contains the core database connection logic.
 
-Create a `.env` file or set environment variables:
+**Functions:**
+
+**`Connect()`** - Establishes database connection
+```go
+// Creates a new database connection using config settings
+// Returns a DB instance that wraps go-pg
+func Connect() (*DB, error)
+```
+
+**`Initialize()`** - Sets up the database singleton
+```go
+// Initializes the global database instance
+// Call this once at application startup
+func Initialize() error
+```
+
+**`GetInstance()`** - Gets the database connection
+```go
+// Returns the global database instance
+// Use this throughout your application
+func GetInstance() *DB
+```
+
+**`Close()`** - Closes database connection
+```go
+// Closes the database connection
+// Call this during application shutdown
+func Close() error
+```
+
+### `query.go`
+Contains common query utilities and helpers.
+
+### `actions.go`
+Contains specific database operations and queries.
+
+## How to Use
+
+### Setting Up Database Connection
+
+1. **In main.go:**
+```go
+// Initialize database connection
+err := database.Initialize()
+if err != nil {
+    log.Fatalf("Database initialization failed: %v", err)
+}
+
+// Close connection on shutdown
+defer database.Close()
+```
+
+2. **In your services:**
+```go
+// Get database instance
+db := database.GetInstance()
+
+// Use for queries
+var users []types.User
+err := db.Model(&users).Select()
+```
+
+### Database Configuration
+
+The database package uses configuration from the config package:
 
 ```bash
+# Environment variables
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=your_password
-DB_NAME=your_database
+DB_PASSWORD=your-password
+DB_NAME=pws_db
 DB_SSLMODE=disable
 
-# Optional pool settings (with defaults shown)
-DB_MAX_CONNS=25
-DB_MIN_CONNS=5
-DB_MAX_IDLE_TIME=15m
-DB_MAX_LIFETIME=1h
-DB_READ_TIMEOUT=30s
-DB_WRITE_TIMEOUT=30s
+# Or use a connection string
+DB_CONNECTION_STRING=postgres://user:pass@localhost:5432/dbname?sslmode=disable
 ```
 
-### Option 2: Connection String
+### Connection Pooling
 
-Set a single environment variable:
+The database connection includes pooling settings:
 
-```bash
-DB_CONNECTION_STRING=postgres://username:password@localhost:5432/database_name?sslmode=disable
-```
+- **MaxConns**: Maximum number of connections in pool
+- **MinConns**: Minimum idle connections to maintain
+- **MaxLifetime**: Maximum time a connection can be reused
+- **ReadTimeout**: Timeout for read operations
+- **WriteTimeout**: Timeout for write operations
 
-## Basic Usage
+## go-pg Usage Examples
 
-### 1. Initialize Database Connection
+### Basic Queries
 
-In your `main.go`:
-
+**Select records:**
 ```go
-import (
-    "github.com/MonkyMars/PWS/database"
-    "github.com/MonkyMars/PWS/services"
-)
+db := database.GetInstance()
 
-func main() {
-    // Initialize database
-    err := services.InitializeDatabase()
+// Select all users
+var users []types.User
+err := db.Model(&users).Select()
+
+// Select user by ID
+var user types.User
+err := db.Model(&user).Where("id = ?", userID).Select()
+
+// Select with conditions
+var users []types.User
+err := db.Model(&users).Where("role = ?", "admin").Select()
+```
+
+**Insert records:**
+```go
+user := &types.User{
+    Id:       uuid.New(),
+    Username: "newuser",
+    Email:    "user@example.com",
+    Role:     "user",
+    CreatedAt: time.Now(),
+    UpdatedAt: time.Now(),
+}
+
+_, err := db.Model(user).Insert()
+```
+
+**Update records:**
+```go
+// Update specific fields
+_, err := db.Model(&user).
+    Set("username = ?", newUsername).
+    Set("updated_at = ?", time.Now()).
+    Where("id = ?", userID).
+    Update()
+
+// Update entire model
+user.Username = "updated"
+user.UpdatedAt = time.Now()
+_, err := db.Model(&user).Where("id = ?", user.Id).Update()
+```
+
+**Delete records:**
+```go
+_, err := db.Model(&types.User{}).Where("id = ?", userID).Delete()
+```
+
+### Advanced Queries
+
+**Pagination:**
+```go
+var users []types.User
+count, err := db.Model(&users).
+    Limit(limit).
+    Offset(offset).
+    SelectAndCount()
+```
+
+**Joins:**
+```go
+var users []types.User
+err := db.Model(&users).
+    Relation("Posts").
+    Select()
+```
+
+**Transactions:**
+```go
+err := db.RunInTransaction(context.Background(), func(tx *pg.Tx) error {
+    // Multiple operations in transaction
+    _, err := tx.Model(&user).Insert()
     if err != nil {
-        log.Fatalf("Database initialization failed: %v", err)
-    }
-    
-    // Ensure cleanup on exit
-    defer services.CloseDatabase()
-    
-    // Your application code...
-}
-```
-
-### 2. Use Database in Your Code
-
-```go
-import "github.com/MonkyMars/PWS/database"
-
-func someFunction() {
-    db := database.GetInstance()
-    
-    // Use the database connection
-    // db.Model(&user).Select()
-}
-```
-
-## Repository Pattern Example
-
-Create repository structs to organize your database operations:
-
-```go
-type UserRepository struct {
-    db *database.DB
-}
-
-func NewUserRepository() *UserRepository {
-    return &UserRepository{
-        db: database.GetInstance(),
-    }
-}
-
-func (r *UserRepository) Create(ctx context.Context, user *User) error {
-    _, err := r.db.ModelContext(ctx, user).Insert()
-    return err
-}
-
-func (r *UserRepository) GetByID(ctx context.Context, id int64) (*User, error) {
-    user := &User{}
-    err := r.db.ModelContext(ctx, user).Where("id = ?", id).Select()
-    return user, err
-}
-```
-
-## Transactions
-
-Use transactions for operations that need to be atomic:
-
-```go
-func (r *UserRepository) TransferOperation(ctx context.Context) error {
-    return r.db.RunInTransaction(ctx, func(tx *pg.Tx) error {
-        // Multiple operations that should succeed or fail together
-        _, err := tx.ModelContext(ctx, &user1).Update()
-        if err != nil {
-            return err
-        }
-        
-        _, err = tx.ModelContext(ctx, &user2).Update()
         return err
-    })
-}
-```
-
-## Raw SQL Queries
-
-For complex queries, you can use raw SQL:
-
-```go
-func (r *UserRepository) CustomQuery(ctx context.Context) ([]*User, error) {
-    var users []*User
+    }
     
-    query := `
-        SELECT id, email, name 
-        FROM users 
-        WHERE created_at > ?
-        ORDER BY name
-    `
-    
-    _, err := r.db.QueryContext(ctx, &users, query, time.Now().AddDate(0, -1, 0))
-    return users, err
-}
+    _, err = tx.Model(&profile).Insert()
+    return err
+})
 ```
 
-## Health Monitoring
+## Database Schema
 
-Check database health and connection pool statistics:
+The application expects these database tables:
 
-```go
-// Check if database is healthy
-err := database.GetInstance().Health()
-if err != nil {
-    log.Printf("Database health check failed: %v", err)
-}
-
-// Get connection pool stats
-stats := database.GetInstance().GetStats()
-log.Printf("Pool stats - Total: %d, Idle: %d, Hits: %d", 
-    stats.TotalConns, stats.IdleConns, stats.Hits)
+**users table:**
+```sql
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role VARCHAR(20) DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
-## Best Practices
-
-1. **Always use context**: Pass context to all database operations for proper timeout handling
-2. **Use repositories**: Organize your database logic using the repository pattern
-3. **Handle errors properly**: Always check and handle database errors
-4. **Use transactions for consistency**: Group related operations in transactions
-5. **Monitor connection pool**: Keep an eye on pool statistics in production
-6. **Close connections**: The package handles this automatically, but ensure proper cleanup in your main function
-
-## Connection Pool Configuration
-
-The connection pool is configured with sensible defaults, but you can tune it based on your needs:
-
-- **MaxConns**: Maximum number of connections (default: 25)
-- **MinConns**: Minimum idle connections (default: 5)
-- **MaxIdleTime**: How long connections can be idle (default: 15 minutes)
-- **MaxLifetime**: Maximum connection lifetime (default: 1 hour)
-- **ReadTimeout**: Read operation timeout (default: 30 seconds)
-- **WriteTimeout**: Write operation timeout (default: 30 seconds)
+**Example migration:**
+```sql
+-- Add indexes for better performance
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_username ON users(username);
+```
 
 ## Error Handling
 
-The package wraps database errors with context. Common patterns:
+Database operations return go-pg specific errors:
 
 ```go
-user, err := userRepo.GetByID(ctx, id)
+import "github.com/go-pg/pg/v10"
+
+user := &types.User{}
+err := db.Model(user).Where("email = ?", email).Select()
 if err != nil {
     if err == pg.ErrNoRows {
-        return nil, fmt.Errorf("user not found")
+        // No user found
+        return nil, errors.New("user not found")
     }
-    return nil, fmt.Errorf("database error: %w", err)
+    // Other database error
+    return nil, err
 }
 ```
 
-## Migration Support
+## Health Checks
 
-For database migrations, you can create tables programmatically:
+Test database connectivity:
 
 ```go
-func (r *UserRepository) CreateTable(ctx context.Context) error {
-    return r.db.ModelContext(ctx, (*User)(nil)).CreateTable(&orm.CreateTableOptions{
-        IfNotExists: true,
-    })
+// Simple ping
+err := db.Ping(context.Background())
+if err != nil {
+    log.Printf("Database ping failed: %v", err)
 }
+
+// Query-based health check
+var result int
+_, err := db.QueryOne(pg.Scan(&result), "SELECT 1")
 ```
 
-## Testing
+## Connection Management
 
-For testing, you can create a separate database instance or use a test database:
+**Singleton Pattern:**
+The database package uses a singleton pattern to ensure only one database connection pool exists:
 
 ```go
-func setupTestDB() *database.DB {
-    config := &database.Config{
-        Host:     "localhost",
-        Port:     5432,
-        User:     "test_user",
-        Password: "test_password",
-        Database: "test_db",
-        SSLMode:  "disable",
+var instance *DB
+
+func Initialize() error {
+    if instance != nil {
+        return errors.New("database already initialized")
     }
     
-    db, err := database.Connect(config)
+    db, err := Connect()
     if err != nil {
-        panic(err)
+        return err
     }
     
-    return db
+    instance = db
+    return nil
 }
 ```
+
+**Graceful Shutdown:**
+```go
+func Close() error {
+    if instance != nil {
+        return instance.Close()
+    }
+    return nil
+}
+```
+
+## Performance Tips
+
+1. **Use connection pooling** - Set appropriate pool sizes
+2. **Add database indexes** - On frequently queried columns
+3. **Use transactions** - For multiple related operations
+4. **Avoid N+1 queries** - Use joins or eager loading
+5. **Monitor slow queries** - Enable query logging in development
+
+## Best Practices
+
+1. **Always handle errors** from database operations
+2. **Use parameterized queries** to prevent SQL injection
+3. **Close connections** properly during shutdown
+4. **Use transactions** for data consistency
+5. **Add appropriate indexes** for query performance
+6. **Validate data** before database operations
+7. **Use context** for query timeouts
+8. **Log database errors** for debugging
+
+## Development vs Production
+
+**Development:**
+- Enable query logging for debugging
+- Use local PostgreSQL instance
+- Smaller connection pools
+
+**Production:**
+- Disable verbose logging
+- Use managed database services
+- Larger connection pools
+- Enable SSL connections
+- Set appropriate timeouts
+
+The database package provides a robust foundation for all data operations in the PWS application.
