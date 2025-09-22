@@ -1,0 +1,9 @@
+services:
+  fiber-app:
+    build: .
+    container_name: fiber_app
+    env_file:
+      - .env
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
