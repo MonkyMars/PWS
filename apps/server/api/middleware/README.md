@@ -1,86 +1,242 @@
 # Middleware Package
 
-The `middleware` package provides HTTP middleware functions for the PWS application. This package contains reusable middleware components for cross-cutting concerns such as CORS handling, authentication, logging, rate limiting, and request validation.
+This package contains HTTP middleware functions that process requests before they reach the route handlers. Middleware can modify requests, add data to the context, or block requests entirely.
 
-## Overview
+## What It Does
 
-Middleware functions in this package follow the Fiber v3 middleware pattern and can be easily integrated into the application's HTTP request processing pipeline. Each middleware function is designed to be modular, testable, and configurable.
+- Handles cross-origin resource sharing (CORS)
+- Validates authentication tokens
+- Sets user information in request context
+- Blocks unauthorized access to protected routes
+- Provides security and request processing layers
 
-## Current Implementation
+## Main Files
 
-### CORS Middleware (`cors.go`)
+### `cors.go`
+Sets up CORS (Cross-Origin Resource Sharing) to allow web browsers to make requests from different domains.
 
-Handles Cross-Origin Resource Sharing configuration to allow or restrict web browsers from making requests to the server from different origins.
+**Functions:**
 
-#### Features
-
-- **Configurable Origins**: Set allowed origins for cross-origin requests
-- **HTTP Methods**: Configure which HTTP methods are allowed
-- **Headers Support**: Specify which headers can be used in requests
-- **Credentials Handling**: Support for cookies and authorization headers
-- **Preflight Requests**: Automatic handling of OPTIONS preflight requests
-
-#### Configuration
-
-The CORS middleware is configured with development-friendly defaults:
-
+**`SetupCORS()`** - Returns CORS middleware
 ```go
-func SetupCORS() fiber.Handler {
-    return cors.New(cors.Config{
-        AllowOrigins:     []string{"http://localhost:5173"},
-        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-        AllowCredentials: true,
-    })
-}
+// Sets up CORS headers for browser requests
+// Allows the frontend to make API calls from a different port/domain
+func SetupCORS() fiber.Handler
 ```
 
-#### Usage
-
+**How to use:**
 ```go
-app := fiber.New()
 app.Use(middleware.SetupCORS())
 ```
 
-## Middleware Pattern
+**What it does:**
+- Allows requests from frontend domains
+- Sets proper CORS headers
+- Handles preflight OPTIONS requests
+- Enables credential sharing (cookies)
 
-All middleware functions in this package follow a consistent pattern:
+### `auth.go`
+Handles authentication for protected routes.
+
+**Functions:**
+
+**`AuthMiddleware()`** - Returns authentication middleware
+```go
+// Validates access tokens and sets user info in context
+// Blocks requests with missing or invalid tokens
+func AuthMiddleware() fiber.Handler
+```
+
+**How to use:**
+```go
+// Apply to specific route
+app.Get("/protected", middleware.AuthMiddleware(), handler)
+
+// Apply to route group
+protected := app.Group("/api", middleware.AuthMiddleware())
+```
+
+## How Middleware Works
+
+Middleware functions run **before** your route handlers. They can:
+
+1. **Modify the request** (add headers, parse data)
+2. **Add data to context** (user info, request ID)
+3. **Block the request** (authentication failure)
+4. **Continue to next middleware** (everything is OK)
+
+### Middleware Flow
+
+```
+Request -> CORS Middleware -> Auth Middleware -> Route Handler -> Response
+```
+
+## Authentication Middleware Details
+
+The auth middleware performs these steps:
+
+1. **Extract token** from HTTP-only cookie
+2. **Validate token** (signature, expiration)
+3. **Check blacklist** (logout, security)
+4. **Set user info** in request context
+5. **Continue** to route handler or **block** request
+
+### Token Validation Process
 
 ```go
-func MiddlewareName(config ...Config) fiber.Handler {
-    // Set default configuration
-    cfg := configDefault(config...)
+// 1. Get token from cookie
+token := c.Cookies("access_token")
+
+// 2. Parse and validate token
+claims, err := authService.ParseToken(token, true)
+
+// 3. Check if token is blacklisted
+blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
+
+// 4. Set user info in context
+c.Locals("claims", claims)
+
+// 5. Continue to handler
+return c.Next()
+```
+
+## Using Protected Routes
+
+When a route uses `AuthMiddleware()`, the handler can access user information:
+
+```go
+func ProtectedHandler(c fiber.Ctx) error {
+    // Get user claims from middleware
+    claimsInterface := c.Locals("claims")
+    claims, ok := claimsInterface.(*types.AuthClaims)
+    if !ok {
+        return response.Unauthorized(c, "Unauthorized")
+    }
     
+    // Use user information
+    userID := claims.Sub
+    userEmail := claims.Email
+    
+    // Process request for this user
+    return response.Success(c, data)
+}
+```
+
+## CORS Configuration
+
+CORS allows the frontend (running on a different port) to make requests to the API:
+
+```go
+// Frontend (localhost:5173) can call API (localhost:8080)
+// Without CORS, browsers would block these requests
+app.Use(middleware.SetupCORS())
+```
+
+**CORS headers set:**
+- `Access-Control-Allow-Origin` - Which domains can make requests
+- `Access-Control-Allow-Methods` - Which HTTP methods are allowed
+- `Access-Control-Allow-Headers` - Which headers are allowed
+- `Access-Control-Allow-Credentials` - Whether cookies are allowed
+
+## Security Features
+
+### Token Blacklisting
+- Tokens are checked against a blacklist in Redis
+- Logged out tokens are immediately blocked
+- Protects against token reuse attacks
+
+### Graceful Degradation
+- If Redis is down, requests are blocked for security
+- Logs security events for monitoring
+- Fails closed rather than open
+
+### Attack Detection
+- Logs attempts to use blacklisted tokens
+- Includes client IP and user agent
+- Helps detect token reuse attacks
+
+## Error Handling
+
+The auth middleware returns appropriate HTTP status codes:
+
+```go
+// Missing token
+return response.Unauthorized(c, "Missing access token")
+
+// Invalid token
+return response.Unauthorized(c, "Invalid or expired access token")
+
+// Blacklisted token
+return response.Unauthorized(c, "Token has been revoked")
+
+// Redis error
+return response.InternalServerError(c, "Authentication service temporarily unavailable")
+```
+
+## Middleware Order
+
+Middleware order matters. Apply them in this sequence:
+
+```go
+// 1. CORS first (for browser compatibility)
+app.Use(middleware.SetupCORS())
+
+// 2. Logging middleware
+app.Use(logger.HTTPMiddleware())
+
+// 3. Auth middleware on protected routes only
+protected := app.Group("/api", middleware.AuthMiddleware())
+```
+
+## Creating Custom Middleware
+
+Follow this pattern to create new middleware:
+
+```go
+func CustomMiddleware() fiber.Handler {
     return func(c fiber.Ctx) error {
-        // Middleware logic here
+        // Do something before the handler
         
-        // Continue to next handler
-        return c.Next()
+        // Optionally modify request
+        c.Set("X-Custom-Header", "value")
+        
+        // Continue to next middleware/handler
+        if err := c.Next(); err != nil {
+            return err
+        }
+        
+        // Do something after the handler
+        return nil
     }
 }
 ```
 
-## Planned Middleware
-
-Future middleware components may include:
-
-- **Authentication**: JWT token validation
-- **Rate Limiting**: Request rate limiting per IP or user
-- **Logging**: Request/response logging with structured data
-- **Compression**: Response compression (gzip, deflate)
-- **Security Headers**: Security-related HTTP headers
-- **Request ID**: Unique request identifier for tracing
-
 ## Best Practices
 
-1. **Stateless**: Middleware should be stateless when possible
-2. **Configuration**: Provide configurable options with sensible defaults
-3. **Error Handling**: Handle errors gracefully and continue or abort appropriately
-4. **Performance**: Minimize overhead in middleware execution
-5. **Testing**: Write unit tests for middleware logic
-6. **Documentation**: Document configuration options and behavior
+1. **Order matters** - Apply middleware in logical order
+2. **Fail securely** - Block requests when security checks fail
+3. **Log security events** - Track authentication failures
+4. **Handle errors gracefully** - Don't crash on middleware errors
+5. **Keep middleware focused** - Each middleware should have one responsibility
+6. **Use context** - Pass data between middleware and handlers via `c.Locals()`
 
-## Dependencies
+## Common Use Cases
 
-- `github.com/gofiber/fiber/v3` - Web framework
-- `github.com/gofiber/fiber/v3/middleware/cors` - CORS middleware implementation
+**Public routes** (no auth required):
+```go
+app.Post("/auth/login", internal.Login)
+app.Post("/auth/register", internal.Register)
+```
+
+**Protected routes** (auth required):
+```go
+app.Get("/auth/me", middleware.AuthMiddleware(), internal.Me)
+app.Post("/users", middleware.AuthMiddleware(), internal.CreateUser)
+```
+
+**Route groups** (apply middleware to multiple routes):
+```go
+api := app.Group("/api", middleware.AuthMiddleware())
+api.Get("/users", internal.GetUsers)
+api.Post("/users", internal.CreateUser)
+```
