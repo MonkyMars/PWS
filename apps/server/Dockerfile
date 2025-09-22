@@ -24,7 +24,7 @@ WORKDIR /app
 # Copy binary
 COPY --from=builder /app/server .
 
-# Copy env file (optional, or mount with docker-compose)
+# Copy env file (or mount with docker-compose)
 COPY .env .env
 
 # Fiber runs on port 8082
