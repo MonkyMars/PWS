@@ -1,4 +1,4 @@
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
+import { type RouteConfig, index, route } from '@react-router/dev/routes';
 
 /**
  * Application route configuration for React Router.
@@ -16,9 +16,9 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
  * @see {@link https://reactrouter.com/en/main/start/framework/routing} React Router routing documentation
  */
 export default [
-  index("routes/home.tsx"),
-  route("login", "routes/login.tsx"),
-  route("register", "routes/register.tsx"),
-  route("dashboard", "routes/dashboard.tsx"),
-  route("subjects/:subjectId", "routes/subjects.$subjectId.tsx"),
+  index('routes/home.tsx'),
+  route('login', 'routes/login.tsx'),
+  route('register', 'routes/register.tsx'),
+  route('dashboard', 'routes/dashboard.tsx'),
+  route('subjects/:subjectId', 'routes/subjects.$subjectId.tsx'),
 ] satisfies RouteConfig;

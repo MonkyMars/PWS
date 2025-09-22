@@ -64,10 +64,10 @@ Types are designed for future growth:
 
 ```typescript
 // Import specific types
-import type { User, Subject } from "~/types";
+import type { User, Subject } from '~/types';
 
 // Import all types (avoid in large files)
-import type * as Types from "~/types";
+import type * as Types from '~/types';
 ```
 
 ### Extending Types
@@ -79,18 +79,17 @@ interface ExtendedUser extends User {
 }
 
 // Create type unions
-type UserOrGuest = User | { type: "guest" };
+type UserOrGuest = User | { type: 'guest' };
 ```
 
 ### Generic Usage
 
 ```typescript
 // Use with API responses
-const response: ApiResponse<User[]> = await apiClient.get("/users");
+const response: ApiResponse<User[]> = await apiClient.get('/users');
 
 // Use with pagination
-const paginatedUsers: PaginatedResponse<User> =
-  await apiClient.get("/users/paginated");
+const paginatedUsers: PaginatedResponse<User> = await apiClient.get('/users/paginated');
 ```
 
 ## Validation
