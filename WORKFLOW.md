@@ -16,7 +16,7 @@ git pull
 git checkout -b feature/<feature_naam>
 # Of gebruik een bestaande branch
 git checkout <branch_naam>
-git pull
+git pull origin <branch_naam>
 # Voeg je veranderingen toe (Doe dit niet in /apps/server maar gewoon in de root van het project)
 git add .
 # Commit je veranderingen
