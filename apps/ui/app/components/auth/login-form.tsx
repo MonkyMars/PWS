@@ -9,7 +9,7 @@ import { loginSchema, type LoginFormData } from './validation';
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
-    username: '',
+    email: '',
     password: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
@@ -62,7 +62,9 @@ export function LoginForm() {
       navigate('/dashboard');
     } catch (error) {
       // Error is handled by the mutation
-      console.error('Login failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('Login failed:', error);
+      }
     }
   };
 
@@ -70,14 +72,13 @@ export function LoginForm() {
     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-4">
         <Input
-          label="Gebruikersnaam"
-          type="text"
-          value={formData.username}
-          onChange={handleInputChange('username')}
-          error={errors.username}
-          placeholder="123456"
-          maxLength={6}
-          autoComplete="username"
+          label="E-mailadres"
+          type="email"
+          value={formData.email}
+          onChange={handleInputChange('email')}
+          error={errors.email}
+          placeholder="student@example.com"
+          autoComplete="email"
         />
 
         <div className="relative">

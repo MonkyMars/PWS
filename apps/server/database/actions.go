@@ -15,10 +15,10 @@ import (
 //
 // Usage examples:
 //
-//	result, err := Database[User](query.NewQuery().SetOperation("select").AddWhere("id", 1))
-//	result, err := Database[User](query.NewQuery().SetOperation("insert").AddData("name", "John"))
-//	result, err := Database[Product](query.NewQuery().SetRawSQL("SELECT * FROM products WHERE price > ?", 100))
-func Database[T any](query *types.QueryParams) (*types.QueryResult[T], error) {
+//	result, err := ExecuteQuery[User](query.NewQuery().SetOperation("select").AddWhere("id", 1))
+//	result, err := ExecuteQuery[User](query.NewQuery().SetOperation("insert").AddData("name", "John"))
+//	result, err := ExecuteQuery[Product](query.NewQuery().SetRawSQL("SELECT * FROM products WHERE price > ?", 100))
+func ExecuteQuery[T any](query *types.QueryParams) (*types.QueryResult[T], error) {
 	start := time.Now()
 	result := &types.QueryResult[T]{
 		Success: false,
@@ -370,7 +370,7 @@ func Select[T any](table string, where map[string]any) (*types.QueryResult[T], e
 		query.AddWhere(key, value)
 	}
 
-	return Database[T](query)
+	return ExecuteQuery[T](query)
 }
 
 // Insert executes an INSERT query
@@ -380,7 +380,7 @@ func Insert[T any](table string, data map[string]any) (*types.QueryResult[T], er
 		SetTable(table).
 		SetData(data)
 
-	return Database[T](query)
+	return ExecuteQuery[T](query)
 }
 
 // Update executes an UPDATE query
@@ -394,7 +394,7 @@ func Update[T any](table string, data map[string]any, where map[string]any) (*ty
 		query.AddWhere(key, value)
 	}
 
-	return Database[T](query)
+	return ExecuteQuery[T](query)
 }
 
 // Delete executes a DELETE query
@@ -407,13 +407,13 @@ func Delete[T any](table string, where map[string]any) (*types.QueryResult[T], e
 		query.AddWhere(key, value)
 	}
 
-	return Database[T](query)
+	return ExecuteQuery[T](query)
 }
 
 // Raw executes a raw SQL query
 func Raw[T any](sql string, args ...any) (*types.QueryResult[T], error) {
 	query := types.NewQuery().SetRawSQL(sql, args...)
-	return Database[T](query)
+	return ExecuteQuery[T](query)
 }
 
 // Helper functions

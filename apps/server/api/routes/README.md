@@ -19,10 +19,8 @@ Route handlers are organized by resource or feature:
 ```
 routes/
 ├── README.md          # This documentation
-├── health.go          # Health check endpoints (if implemented)
-├── users.go           # User management endpoints (if implemented)
-├── auth.go            # Authentication endpoints (if implemented)
-└── api.go             # General API routes (if implemented)
+├── auth.go            # Authentication endpoints
+└── app.go             # General app routes
 ```
 
 ## Route Handler Pattern

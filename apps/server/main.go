@@ -34,9 +34,9 @@ func main() {
 	logger := config.SetupLogger()
 	logger.ConfigLoaded()
 
-	// Print configuration in development mode
+	// Minimal config info in development mode
 	if cfg.IsDevelopment() {
-		cfg.PrintConfig()
+		log.Printf("Development mode - %s:%s", cfg.AppName, cfg.Port)
 	}
 
 	logger.Info("Starting application",
@@ -62,14 +62,25 @@ func main() {
 		log.Fatalf("Database connection error: %v", err)
 	}
 
+	// Initialize and test Redis connection
+	cacheService := &services.CacheService{}
+	err = cacheService.Ping()
+	if err != nil {
+		logger.Error("Redis connection error", "error", err)
+		log.Fatalf("Redis connection error: %v", err)
+	}
+
 	// Setup graceful shutdown
 	setupGracefulShutdown(logger)
 
-	// Ensure database connection is closed on exit
+	// Ensure database and Redis connections are closed on exit
 	defer func() {
 		logger.Shutdown("application_exit")
 		if err := services.CloseDatabase(); err != nil {
 			logger.DatabaseError("close", err)
+		}
+		if err := services.CloseRedisConnection(); err != nil {
+			logger.Error("Redis close error", "error", err)
 		}
 	}()
 
@@ -101,7 +112,11 @@ func setupGracefulShutdown(logger *config.Logger) {
 			logger.DatabaseError("shutdown_close", err)
 		}
 
-		logger.Info("Application shutdown complete")
+		// Close Redis connection
+		if err := services.CloseRedisConnection(); err != nil {
+			logger.Error("Redis shutdown close error", "error", err)
+		}
+
 		os.Exit(0)
 	}()
 }

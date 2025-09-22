@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Menu, X, BookOpen, Home, LogIn, User, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
-import { useCurrentUser, useLogout } from '~/hooks';
+import { useAuth } from '~/hooks/use-auth-context';
+import { useLogout } from '~/hooks';
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const { data: user } = useCurrentUser();
+  const { user, isAuthenticated } = useAuth();
   const logoutMutation = useLogout();
 
   const handleLogout = () => {
@@ -29,7 +30,7 @@ export function Navigation() {
     },
   ];
 
-  const visibleNavItems = navItems.filter((item) => !item.requiresAuth || user);
+  const visibleNavItems = navItems.filter((item) => !item.requiresAuth || isAuthenticated);
 
   return (
     <nav className="bg-white border-b border-neutral-200 sticky top-0 z-50">
@@ -70,9 +71,7 @@ export function Navigation() {
                       <User className="h-4 w-4 text-primary-600" />
                     </div>
                     <div className="hidden lg:block">
-                      <p className="text-sm font-medium text-neutral-900">
-                        {user.firstName} {user.lastName}
-                      </p>
+                      <p className="text-sm font-medium text-neutral-900">{user.username}</p>
                       <p className="text-xs text-neutral-500 capitalize">{user.role}</p>
                     </div>
                   </div>
@@ -143,9 +142,7 @@ export function Navigation() {
                       <User className="h-5 w-5 text-primary-600" />
                     </div>
                     <div>
-                      <p className="text-base font-medium text-neutral-900">
-                        {user.firstName} {user.lastName}
-                      </p>
+                      <p className="text-base font-medium text-neutral-900">{user.username}</p>
                       <p className="text-sm text-neutral-500 capitalize">{user.role}</p>
                     </div>
                   </div>

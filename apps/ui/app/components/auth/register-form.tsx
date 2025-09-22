@@ -12,8 +12,6 @@ export function RegisterForm() {
     username: '',
     email: '',
     password: '',
-    firstName: '',
-    lastName: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>({});
 
@@ -65,44 +63,23 @@ export function RegisterForm() {
       navigate('/dashboard');
     } catch (error) {
       // Error is handled by the mutation
-      console.error('Registration failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('Registration failed:', error);
+      }
     }
   };
 
   return (
     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Voornaam"
-            type="text"
-            value={formData.firstName}
-            onChange={handleInputChange('firstName')}
-            error={errors.firstName}
-            placeholder="Jan"
-            autoComplete="given-name"
-          />
-
-          <Input
-            label="Achternaam"
-            type="text"
-            value={formData.lastName}
-            onChange={handleInputChange('lastName')}
-            error={errors.lastName}
-            placeholder="Jansen"
-            autoComplete="family-name"
-          />
-        </div>
-
         <Input
           label="Gebruikersnaam"
           type="text"
           value={formData.username}
           onChange={handleInputChange('username')}
           error={errors.username}
-          placeholder="123456"
-          helperText="Je leerlingnummer (6 cijfers)"
-          maxLength={6}
+          placeholder="username123"
+          helperText="Je gebruikersnaam (minimaal 3 karakters)"
           autoComplete="username"
         />
 
@@ -112,7 +89,7 @@ export function RegisterForm() {
           value={formData.email}
           onChange={handleInputChange('email')}
           error={errors.email}
-          placeholder="123456@chrlyceumdelft.nl"
+          placeholder="student@example.com"
           autoComplete="email"
         />
 

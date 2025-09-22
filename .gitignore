@@ -17,3 +17,6 @@ build/
 
 *.log
 go.sum
+
+# Exlude binary files
+bin/

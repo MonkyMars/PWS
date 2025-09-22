@@ -24,23 +24,8 @@ func CloseDatabase() error {
 
 // GetDatabaseStats returns connection pool statistics and logs them
 func GetDatabaseStats() {
-	cfg := config.Get()
-	db := database.GetInstance()
-	stats := db.GetStats()
-
-	// Use centralized logger if available, otherwise fall back to standard log
-	if cfg.IsDevelopment() {
-		logger := config.SetupLogger()
-		logger.Performance("database_pool_stats", 0)
-		logger.Info("Database Pool Statistics",
-			"total_connections", stats.TotalConns,
-			"idle_connections", stats.IdleConns,
-			"stale_connections", stats.StaleConns,
-			"hits", stats.Hits,
-			"misses", stats.Misses,
-			"timeouts", stats.Timeouts,
-		)
-	}
+	// Database pool statistics collection disabled to reduce log noise
+	// Use monitoring tools or add temporary logging here if needed for debugging
 }
 
 // GetDatabaseConfig returns the current database configuration

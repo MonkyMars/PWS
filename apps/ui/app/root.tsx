@@ -4,6 +4,7 @@ import { Navigation } from './components/navigation';
 import { Footer } from './components/footer';
 import { getQueryClient } from './lib/query-client';
 import './app.css';
+import { AuthProvider } from './hooks';
 
 /**
  * External resource links for the application.
@@ -68,13 +69,15 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col">
-        <Navigation />
-        <main className="flex-1">
-          <Outlet />
-        </main>
-        <Footer />
-      </div>
+      <AuthProvider>
+        <div className="min-h-screen flex flex-col">
+          <Navigation />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+          <Footer />
+        </div>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

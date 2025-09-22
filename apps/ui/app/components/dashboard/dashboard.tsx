@@ -8,14 +8,6 @@ export function Dashboard() {
   const { data: user } = useCurrentUser();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
 
-  if (subjectsLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Goedemorgen';
@@ -29,7 +21,7 @@ export function Dashboard() {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-            {getGreeting()}, {user?.firstName}!
+            {getGreeting()}, {user?.username}!
           </h1>
           <p className="text-neutral-600">
             Welkom terug in je PWS ELO dashboard. Hier vind je al je vakken en recente activiteiten.

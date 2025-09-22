@@ -11,18 +11,13 @@ export interface User {
   username: string;
   email: string;
   role: UserRole;
-  firstName: string;
-  lastName: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /**
  * Authentication credentials for login
  */
 export interface LoginCredentials {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -30,11 +25,9 @@ export interface LoginCredentials {
  * Registration data with validation requirements
  */
 export interface RegisterData {
-  username: string; // 6 digits
+  username: string;
   password: string;
   email: string;
-  firstName: string;
-  lastName: string;
 }
 
 /**
@@ -42,8 +35,22 @@ export interface RegisterData {
  */
 export interface AuthResponse {
   user: User;
-  token: string;
-  expiresAt: string;
+  access_token: string;
+  refresh_token: string;
+}
+
+/**
+ * Refresh token request
+ */
+export interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+/**
+ * Logout response
+ */
+export interface LogoutResponse {
+  message: string;
 }
 
 /**
@@ -51,7 +58,7 @@ export interface AuthResponse {
  */
 export interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  error?: string;
 }
