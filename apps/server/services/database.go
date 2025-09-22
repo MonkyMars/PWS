@@ -9,6 +9,7 @@ package services
 import (
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/types"
 )
 
 // Ping tests the database connection
@@ -31,4 +32,8 @@ func GetDatabaseStats() {
 // GetDatabaseConfig returns the current database configuration
 func GetDatabaseConfig() config.DatabaseConfig {
 	return database.GetConfig()
+}
+
+func Query() *types.QueryParams {
+	return types.NewQuery()
 }
