@@ -9,6 +9,7 @@ package services
 import (
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/types"
 )
 
 // Ping tests the database connection
@@ -22,13 +23,11 @@ func CloseDatabase() error {
 	return database.CloseInstance()
 }
 
-// GetDatabaseStats returns connection pool statistics and logs them
-func GetDatabaseStats() {
-	// Database pool statistics collection disabled to reduce log noise
-	// Use monitoring tools or add temporary logging here if needed for debugging
-}
-
 // GetDatabaseConfig returns the current database configuration
 func GetDatabaseConfig() config.DatabaseConfig {
 	return database.GetConfig()
+}
+
+func Query() *types.QueryParams {
+	return types.NewQuery()
 }

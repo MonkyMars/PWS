@@ -84,11 +84,6 @@ func main() {
 		}
 	}()
 
-	// Log database statistics in development mode
-	if cfg.IsDevelopment() {
-		services.GetDatabaseStats()
-	}
-
 	// Start the API server
 	logger.ServerStart()
 	err = api.App()
