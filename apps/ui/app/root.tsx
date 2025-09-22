@@ -1,25 +1,25 @@
-import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Navigation } from "./components/navigation";
-import { Footer } from "./components/footer";
-import { AuthProvider } from "./hooks/use-auth-context";
-import { getQueryClient } from "./lib/query-client";
-import "./app.css";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Navigation } from './components/navigation';
+import { Footer } from './components/footer';
+import { getQueryClient } from './lib/query-client';
+import './app.css';
+import { AuthProvider } from './hooks';
 
 /**
  * External resource links for the application.
  * Includes font preconnections and stylesheets for improved performance.
  */
 export const links = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
+    rel: 'preconnect',
+    href: 'https://fonts.gstatic.com',
+    crossOrigin: 'anonymous',
   },
   {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    rel: 'stylesheet',
+    href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
   },
 ];
 

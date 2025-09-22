@@ -1,27 +1,24 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { Eye, EyeOff, LogIn } from "lucide-react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { useLogin } from "~/hooks";
-import { loginSchema, type LoginFormData } from "./validation";
+import { useState } from 'react';
+import { useNavigate } from 'react-router';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Button } from '~/components/ui/button';
+import { Input } from '~/components/ui/input';
+import { useLogin } from '~/hooks';
+import { loginSchema, type LoginFormData } from './validation';
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof LoginFormData, string>>
-  >({});
+  const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
 
   const navigate = useNavigate();
   const loginMutation = useLogin();
 
   const handleInputChange =
-    (field: keyof LoginFormData) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (field: keyof LoginFormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
       setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -37,7 +34,7 @@ export function LoginForm() {
       setErrors({});
       return true;
     } catch (error) {
-      if (error instanceof Error && "errors" in error) {
+      if (error instanceof Error && 'errors' in error) {
         const zodErrors = (error as any).errors;
         const newErrors: Partial<Record<keyof LoginFormData, string>> = {};
 
@@ -62,11 +59,11 @@ export function LoginForm() {
 
     try {
       await loginMutation.mutateAsync(formData);
-      navigate("/dashboard");
+      navigate('/dashboard');
     } catch (error) {
       // Error is handled by the mutation
       if (import.meta.env.DEV) {
-        console.error("Login failed:", error);
+        console.error('Login failed:', error);
       }
     }
   };
@@ -78,7 +75,7 @@ export function LoginForm() {
           label="E-mailadres"
           type="email"
           value={formData.email}
-          onChange={handleInputChange("email")}
+          onChange={handleInputChange('email')}
           error={errors.email}
           placeholder="student@example.com"
           autoComplete="email"
@@ -87,9 +84,9 @@ export function LoginForm() {
         <div className="relative">
           <Input
             label="Wachtwoord"
-            type={showPassword ? "text" : "password"}
+            type={showPassword ? 'text' : 'password'}
             value={formData.password}
-            onChange={handleInputChange("password")}
+            onChange={handleInputChange('password')}
             error={errors.password}
             placeholder="••••••••"
             autoComplete="current-password"
@@ -98,15 +95,9 @@ export function LoginForm() {
             type="button"
             className="absolute right-3 top-9 text-neutral-400 hover:text-neutral-600 transition-colors"
             onClick={() => setShowPassword(!showPassword)}
-            aria-label={
-              showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"
-            }
+            aria-label={showPassword ? 'Wachtwoord verbergen' : 'Wachtwoord tonen'}
           >
-            {showPassword ? (
-              <EyeOff className="h-5 w-5" />
-            ) : (
-              <Eye className="h-5 w-5" />
-            )}
+            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
         </div>
       </div>
@@ -114,8 +105,7 @@ export function LoginForm() {
       {loginMutation.error && (
         <div className="bg-error-50 border border-error-200 rounded-lg p-4">
           <p className="text-sm text-error-700">
-            {loginMutation.error.message ||
-              "Er is een fout opgetreden bij het inloggen."}
+            {loginMutation.error.message || 'Er is een fout opgetreden bij het inloggen.'}
           </p>
         </div>
       )}
@@ -128,19 +118,13 @@ export function LoginForm() {
             type="checkbox"
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
           />
-          <label
-            htmlFor="remember-me"
-            className="ml-2 block text-sm text-neutral-900"
-          >
+          <label htmlFor="remember-me" className="ml-2 block text-sm text-neutral-900">
             Onthoud mij
           </label>
         </div>
 
         <div className="text-sm">
-          <a
-            href="#"
-            className="font-medium text-primary-600 hover:text-primary-500"
-          >
+          <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
             Wachtwoord vergeten?
           </a>
         </div>

@@ -11,21 +11,10 @@ import (
 	"github.com/MonkyMars/PWS/database"
 )
 
-// InitializeDatabase sets up the database connection using the centralized configuration system
-func InitializeDatabase() error {
-	// Database initialization now uses centralized config automatically
-	return database.Initialize()
-}
-
 // Ping tests the database connection
 func Ping() error {
 	db := database.GetInstance()
 	return db.Health()
-}
-
-// GetDB returns the database instance for use in other services
-func GetDB() *database.DB {
-	return database.GetInstance()
 }
 
 // CloseDatabase closes the database connection

@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCurrentUser } from "./use-auth";
-import type { User, AuthState } from "~/types";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCurrentUser } from './use-auth';
+import type { User, AuthState } from '~/types';
 
 interface AuthContextType extends AuthState {
   login: () => void;
@@ -26,18 +26,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const handleAuthFailure = () => {
       // Clear all auth data
-      queryClient.removeQueries({ queryKey: ["auth"] });
-      setAuthError("Your session has expired. Please log in again.");
+      queryClient.removeQueries({ queryKey: ['auth'] });
+      setAuthError('Your session has expired. Please log in again.');
 
       // Redirect to login page
-      navigate("/login", { replace: true });
+      navigate('/login', { replace: true });
     };
 
     // Listen for auth failure events from API client
-    window.addEventListener("auth:failure", handleAuthFailure);
+    window.addEventListener('auth:failure', handleAuthFailure);
 
     return () => {
-      window.removeEventListener("auth:failure", handleAuthFailure);
+      window.removeEventListener('auth:failure', handleAuthFailure);
     };
   }, [navigate, queryClient]);
 
@@ -52,19 +52,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // This is called after successful login to trigger auth state update
     setAuthError(undefined);
     // Invalidate queries to refetch user data
-    queryClient.invalidateQueries({ queryKey: ["auth"] });
+    queryClient.invalidateQueries({ queryKey: ['auth'] });
   };
 
   const logout = () => {
     // Clear all auth data
-    queryClient.removeQueries({ queryKey: ["auth"] });
+    queryClient.removeQueries({ queryKey: ['auth'] });
     setAuthError(undefined);
-    navigate("/login", { replace: true });
+    navigate('/login', { replace: true });
   };
 
   const refreshAuth = () => {
     // Manually refresh authentication state
-    queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+    queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
   };
 
   const value: AuthContextType = {
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }
@@ -94,7 +94,7 @@ export function useRequireAuth(): AuthContextType {
 
   useEffect(() => {
     if (!auth.isLoading && !auth.isAuthenticated) {
-      navigate("/login", { replace: true });
+      navigate('/login', { replace: true });
     }
   }, [auth.isAuthenticated, auth.isLoading, navigate]);
 

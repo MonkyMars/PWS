@@ -1,6 +1,6 @@
-import { type ReactNode } from "react";
-import { Navigate, useLocation } from "react-router";
-import { useAuth } from "~/hooks/use-auth-context";
+import { type ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router';
+import { useAuth } from '~/hooks/use-auth-context';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({
   children,
-  redirectTo = "/login",
+  redirectTo = '/login',
   requiredRole,
 }: ProtectedRouteProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -35,12 +35,8 @@ export function ProtectedRoute({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Access Denied
-          </h1>
-          <p className="text-gray-600 mb-6">
-            You don't have permission to access this page.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-6">You don't have permission to access this page.</p>
           <button
             onClick={() => window.history.back()}
             className="text-primary-600 hover:text-primary-500"

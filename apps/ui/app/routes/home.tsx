@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link } from 'react-router';
 import {
   BookOpen,
   Users,
@@ -12,18 +12,18 @@ import {
   Mail,
   Phone,
   MapPin,
-} from "lucide-react";
-import { Button } from "~/components/ui/button";
-import { useCurrentUser } from "~/hooks";
-import { Input } from "~/components";
+} from 'lucide-react';
+import { Button } from '~/components/ui/button';
+import { useCurrentUser } from '~/hooks';
+import { Input } from '~/components';
 
 export function meta() {
   return [
-    { title: "PWS ELO - Elektronische Leeromgeving" },
+    { title: 'PWS ELO - Elektronische Leeromgeving' },
     {
-      name: "description",
+      name: 'description',
       content:
-        "De moderne elektronische leeromgeving voor middelbare scholieren. Toegang tot al je vakken, mededelingen en bestanden op één plek.",
+        'De moderne elektronische leeromgeving voor middelbare scholieren. Toegang tot al je vakken, mededelingen en bestanden op één plek.',
     },
   ];
 }
@@ -50,11 +50,11 @@ export default function Home() {
         <div className="absolute top-20 left-10 w-16 h-16 bg-white/10 rounded-full blur-xl animate-float" />
         <div
           className="absolute bottom-32 right-16 w-24 h-24 bg-secondary-400/20 rounded-full blur-2xl animate-float"
-          style={{ animationDelay: "1s" }}
+          style={{ animationDelay: '1s' }}
         />
         <div
           className="absolute top-1/2 left-1/4 w-8 h-8 bg-white/15 rounded-full blur-lg animate-float"
-          style={{ animationDelay: "2s" }}
+          style={{ animationDelay: '2s' }}
         />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
@@ -77,10 +77,9 @@ export default function Home() {
 
             {/* Description */}
             <p className="text-xl md:text-2xl text-primary-100 max-w-4xl mx-auto leading-relaxed">
-              De moderne{" "}
-              <strong className="text-white">Elektronische Leeromgeving</strong>{" "}
-              voor middelbare scholieren. Toegang tot al je vakken, mededelingen
-              en bestanden op één plek.
+              De moderne <strong className="text-white">Elektronische Leeromgeving</strong> voor
+              middelbare scholieren. Toegang tot al je vakken, mededelingen en bestanden op één
+              plek.
             </p>
 
             {/* Key Features */}
@@ -169,10 +168,9 @@ export default function Home() {
               Wat is een ELO?
             </h2>
             <p className="text-lg text-neutral-600 max-w-8xl mx-auto">
-              Een Elektronische Leeromgeving (ELO) is een digitaal platform dat
-              het leren en onderwijzen ondersteunt. Het biedt een centrale plek
-              waar leerlingen en docenten kunnen communiceren, materialen delen
-              en leervoortgang bijhouden.
+              Een Elektronische Leeromgeving (ELO) is een digitaal platform dat het leren en
+              onderwijzen ondersteunt. Het biedt een centrale plek waar leerlingen en docenten
+              kunnen communiceren, materialen delen en leervoortgang bijhouden.
             </p>
           </div>
 
@@ -181,12 +179,9 @@ export default function Home() {
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="h-8 w-8 text-primary-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                Georganiseerd Leren
-              </h3>
+              <h3 className="text-xl font-semibold mb-2 text-neutral-900">Georganiseerd Leren</h3>
               <p className="text-neutral-600">
-                Al je vakken, opdrachten en materialen op één overzichtelijke
-                plek.
+                Al je vakken, opdrachten en materialen op één overzichtelijke plek.
               </p>
             </div>
 
@@ -194,9 +189,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="h-8 w-8 text-secondary-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                Samenwerking
-              </h3>
+              <h3 className="text-xl font-semibold mb-2 text-neutral-900">Samenwerking</h3>
               <p className="text-neutral-600">
                 Directe communicatie met docenten en medestudenten.
               </p>
@@ -206,9 +199,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-success-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="h-8 w-8 text-success-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                Digitale Materialen
-              </h3>
+              <h3 className="text-xl font-semibold mb-2 text-neutral-900">Digitale Materialen</h3>
               <p className="text-neutral-600">
                 Toegang tot alle studiebestanden, presentaties en documenten.
               </p>
@@ -218,9 +209,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-warning-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Bell className="h-8 w-8 text-warning-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                Real-time Updates
-              </h3>
+              <h3 className="text-xl font-semibold mb-2 text-neutral-900">Real-time Updates</h3>
               <p className="text-neutral-600">
                 Ontvang mededelingen en updates van je docenten direct.
               </p>
@@ -237,8 +226,8 @@ export default function Home() {
               Waarom PWS ELO?
             </h2>
             <p className="text-lg text-neutral-600 max-w-8xl mx-auto">
-              Onze ELO is speciaal ontworpen voor middelbare scholieren en biedt
-              alle tools die je nodig hebt voor succesvol leren.
+              Onze ELO is speciaal ontworpen voor middelbare scholieren en biedt alle tools die je
+              nodig hebt voor succesvol leren.
             </p>
           </div>
 
@@ -253,8 +242,8 @@ export default function Home() {
                     Gebruiksvriendelijk Design
                   </h3>
                   <p className="text-neutral-600">
-                    Intuïtieve interface die gemakkelijk te navigeren is, zelfs
-                    voor nieuwe gebruikers.
+                    Intuïtieve interface die gemakkelijk te navigeren is, zelfs voor nieuwe
+                    gebruikers.
                   </p>
                 </div>
               </div>
@@ -268,8 +257,7 @@ export default function Home() {
                     Mobiel Vriendelijk
                   </h3>
                   <p className="text-neutral-600">
-                    Toegang tot je leeromgeving op elke device - desktop, tablet
-                    of smartphone.
+                    Toegang tot je leeromgeving op elke device - desktop, tablet of smartphone.
                   </p>
                 </div>
               </div>
@@ -283,8 +271,8 @@ export default function Home() {
                     Veilig & Betrouwbaar
                   </h3>
                   <p className="text-neutral-600">
-                    Je gegevens zijn veilig met moderne
-                    beveiligingstechnologieën en privacy-bescherming.
+                    Je gegevens zijn veilig met moderne beveiligingstechnologieën en
+                    privacy-bescherming.
                   </p>
                 </div>
               </div>
@@ -294,12 +282,9 @@ export default function Home() {
                   <Check className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                    24/7 Beschikbaar
-                  </h3>
+                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">24/7 Beschikbaar</h3>
                   <p className="text-neutral-600">
-                    Leer op jouw tempo, wanneer en waar je wilt. Altijd toegang
-                    tot je materialen.
+                    Leer op jouw tempo, wanneer en waar je wilt. Altijd toegang tot je materialen.
                   </p>
                 </div>
               </div>
@@ -310,12 +295,9 @@ export default function Home() {
                 <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center mx-auto">
                   <BookOpen className="h-10 w-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-neutral-900">
-                  Klaar om te beginnen?
-                </h3>
+                <h3 className="text-2xl font-bold text-neutral-900">Klaar om te beginnen?</h3>
                 <p className="text-neutral-600">
-                  Maak je account aan en krijg direct toegang tot alle functies
-                  van PWS ELO.
+                  Maak je account aan en krijg direct toegang tot alle functies van PWS ELO.
                 </p>
                 {!user && (
                   <Link to="/register">
@@ -339,8 +321,7 @@ export default function Home() {
               Neem Contact Op
             </h2>
             <p className="text-lg text-neutral-600 max-w-5xl mx-auto">
-              Heb je vragen over PWS ELO of wil je meer informatie? We helpen je
-              graag verder!
+              Heb je vragen over PWS ELO of wil je meer informatie? We helpen je graag verder!
             </p>
           </div>
 
@@ -352,12 +333,8 @@ export default function Home() {
                   <Mail className="h-6 w-6 text-primary-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                    E-mail Support
-                  </h3>
-                  <p className="text-neutral-600 mb-2">
-                    Voor technische vragen en ondersteuning
-                  </p>
+                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">E-mail Support</h3>
+                  <p className="text-neutral-600 mb-2">Voor technische vragen en ondersteuning</p>
                   <a
                     href="mailto:support@pwsschool.nl"
                     className="text-primary-600 hover:text-primary-700 font-medium"
@@ -372,12 +349,8 @@ export default function Home() {
                   <Phone className="h-6 w-6 text-secondary-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                    Telefoon
-                  </h3>
-                  <p className="text-neutral-600 mb-2">
-                    Bereikbaar op werkdagen van 8:00 - 17:00
-                  </p>
+                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">Telefoon</h3>
+                  <p className="text-neutral-600 mb-2">Bereikbaar op werkdagen van 8:00 - 17:00</p>
                   <a
                     href="tel:+31123456789"
                     className="text-primary-600 hover:text-primary-700 font-medium"
@@ -392,9 +365,7 @@ export default function Home() {
                   <MapPin className="h-6 w-6 text-success-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">
-                    Bezoekadres
-                  </h3>
+                  <h3 className="text-xl font-semibold mb-2 text-neutral-900">Bezoekadres</h3>
                   <p className="text-neutral-600">
                     PWS School
                     <br />
@@ -408,9 +379,7 @@ export default function Home() {
 
             {/* Contact Form */}
             <div className="bg-neutral-50 rounded-2xl p-8">
-              <h3 className="text-2xl font-bold text-neutral-900 mb-6">
-                Stuur ons een bericht
-              </h3>
+              <h3 className="text-2xl font-bold text-neutral-900 mb-6">Stuur ons een bericht</h3>
               <form className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -460,9 +429,7 @@ export default function Home() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Bericht
-                  </label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Bericht</label>
                   <textarea
                     rows={4}
                     className="w-full px-3 py-2 text-neutral-700 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -484,9 +451,7 @@ export default function Home() {
       <section className="py-20 bg-primary-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              PWS ELO in Cijfers
-            </h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">PWS ELO in Cijfers</h2>
             <p className="text-xl text-primary-100">
               Ontdek waarom duizenden leerlingen kiezen voor onze leeromgeving.
             </p>

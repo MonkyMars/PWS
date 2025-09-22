@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "~/lib/api-client";
-import type { User, LoginCredentials, RegisterData } from "~/types";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '~/lib/api-client';
+import type { User, LoginCredentials, RegisterData } from '~/types';
 
 /**
  * Track authentication state across app lifecycle
@@ -17,10 +17,10 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: async (credentials: LoginCredentials): Promise<User> => {
-      const response = await apiClient.post<User>("/auth/login", credentials);
+      const response = await apiClient.post<User>('/auth/login', credentials);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Login mislukt");
+        throw new Error(response.message || 'Login mislukt');
       }
 
       return response.data;
@@ -30,12 +30,12 @@ export function useLogin() {
       hasAttemptedAuth = true;
       lastAuthResult = true;
       // Cache user data - tokens are now handled via cookies
-      queryClient.setQueryData(["auth", "user"], user);
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      queryClient.setQueryData(['auth', 'user'], user);
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
     onError: () => {
       // Clear any existing auth data on login failure
-      queryClient.removeQueries({ queryKey: ["auth"] });
+      queryClient.removeQueries({ queryKey: ['auth'] });
     },
   });
 }
@@ -48,10 +48,10 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: async (userData: RegisterData): Promise<User> => {
-      const response = await apiClient.post<User>("/auth/register", userData);
+      const response = await apiClient.post<User>('/auth/register', userData);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Registratie mislukt");
+        throw new Error(response.message || 'Registratie mislukt');
       }
 
       return response.data;
@@ -61,12 +61,12 @@ export function useRegister() {
       hasAttemptedAuth = true;
       lastAuthResult = true;
       // Cache user data - tokens are now handled via cookies
-      queryClient.setQueryData(["auth", "user"], user);
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      queryClient.setQueryData(['auth', 'user'], user);
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
     onError: () => {
       // Clear any existing auth data on registration failure
-      queryClient.removeQueries({ queryKey: ["auth"] });
+      queryClient.removeQueries({ queryKey: ['auth'] });
     },
   });
 }
@@ -82,7 +82,7 @@ export function useLogout() {
       const success = await apiClient.logout();
 
       if (!success) {
-        throw new Error("Uitloggen mislukt");
+        throw new Error('Uitloggen mislukt');
       }
     },
     onSuccess: () => {
@@ -109,9 +109,9 @@ export function useCurrentUser() {
   const queryClient = useQueryClient();
 
   return useQuery({
-    queryKey: ["auth", "user"],
+    queryKey: ['auth', 'user'],
     queryFn: async (): Promise<User | null> => {
-      const response = await apiClient.get<User>("/auth/me");
+      const response = await apiClient.get<User>('/auth/me');
 
       if (!response.success || !response.data) {
         // Track failed auth attempt
@@ -127,7 +127,7 @@ export function useCurrentUser() {
     },
     enabled: () => {
       // SSR check - don't run on server
-      if (typeof document === "undefined") return false;
+      if (typeof document === 'undefined') return false;
 
       // Always allow first attempt since we can't read HttpOnly cookies
       if (!hasAttemptedAuth) return true;
@@ -136,7 +136,7 @@ export function useCurrentUser() {
       if (lastAuthResult === true) return true;
 
       // If we have cached user data, allow refetch to check if still valid
-      const cachedUser = queryClient.getQueryData(["auth", "user"]);
+      const cachedUser = queryClient.getQueryData(['auth', 'user']);
       if (cachedUser) return true;
 
       // If last attempt failed and no cached user, don't spam the API
@@ -144,7 +144,7 @@ export function useCurrentUser() {
     },
     retry: (failureCount: number, error: any) => {
       // Don't retry on 401 errors (handled by API client)
-      if (error?.message?.includes("Authentication failed")) {
+      if (error?.message?.includes('Authentication failed')) {
         hasAttemptedAuth = true;
         lastAuthResult = false;
         return false;
@@ -202,10 +202,10 @@ export function useRefreshToken() {
     onSuccess: (success: boolean) => {
       if (success) {
         // Invalidate user query to refetch user data
-        queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+        queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
       } else {
         // Clear auth data if refresh failed
-        queryClient.removeQueries({ queryKey: ["auth"] });
+        queryClient.removeQueries({ queryKey: ['auth'] });
       }
     },
   });

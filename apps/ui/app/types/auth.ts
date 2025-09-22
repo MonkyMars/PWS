@@ -1,7 +1,7 @@
 /**
  * User role enumeration defining access levels in the ELO system
  */
-export type UserRole = "student" | "teacher" | "admin";
+export type UserRole = 'student' | 'teacher' | 'admin';
 
 /**
  * User interface representing system users

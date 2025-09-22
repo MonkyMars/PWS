@@ -1,9 +1,9 @@
-import type { ApiResponse } from "~/types";
+import type { ApiResponse } from '~/types';
 
 /**
  * API configuration and base URL
  */
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8082";
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
 
 /**
  * API client class for making HTTP requests to the ELO backend with cookie-based auth
@@ -23,10 +23,10 @@ export class ApiClient {
   private async refreshToken(): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/auth/refresh`, {
-        method: "POST",
-        credentials: "include", // Include cookies
+        method: 'POST',
+        credentials: 'include', // Include cookies
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -38,7 +38,7 @@ export class ApiClient {
       return false;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error("Token refresh failed:", error);
+        console.error('Token refresh failed:', error);
       }
       return false;
     }
@@ -71,17 +71,17 @@ export class ApiClient {
   private async request<T>(
     url: string,
     options: RequestInit,
-    retryOnAuth = true,
+    retryOnAuth = true
   ): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
     };
 
     const requestOptions: RequestInit = {
       ...options,
       headers,
-      credentials: "include", // Always include cookies
+      credentials: 'include', // Always include cookies
     };
 
     try {
@@ -102,15 +102,14 @@ export class ApiClient {
         this.handleAuthFailure();
         return {
           success: false,
-          message: "Authentication failed",
+          message: 'Authentication failed',
         };
       }
 
       if (!response.ok) {
         return {
           success: false,
-          message:
-            data.message || `HTTP ${response.status}: ${response.statusText}`,
+          message: data.message || `HTTP ${response.status}: ${response.statusText}`,
           errors: data.errors,
         };
       }
@@ -122,12 +121,11 @@ export class ApiClient {
       };
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error("API request failed:", error);
+        console.error('API request failed:', error);
       }
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Onbekende fout opgetreden",
+        message: error instanceof Error ? error.message : 'Onbekende fout opgetreden',
       };
     }
   }
@@ -137,7 +135,7 @@ export class ApiClient {
    */
   private handleAuthFailure(): void {
     // Emit custom event for auth failure
-    window.dispatchEvent(new CustomEvent("auth:failure"));
+    window.dispatchEvent(new CustomEvent('auth:failure'));
 
     // You could also redirect directly here if preferred
     // window.location.href = "/login";
@@ -146,10 +144,7 @@ export class ApiClient {
   /**
    * Make a GET request to the API
    */
-  async get<T>(
-    endpoint: string,
-    params?: Record<string, any>,
-  ): Promise<ApiResponse<T>> {
+  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
 
     if (params) {
@@ -161,7 +156,7 @@ export class ApiClient {
     }
 
     return this.request<T>(url.toString(), {
-      method: "GET",
+      method: 'GET',
     });
   }
 
@@ -170,7 +165,7 @@ export class ApiClient {
    */
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(`${this.baseUrl}${endpoint}`, {
-      method: "POST",
+      method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -180,7 +175,7 @@ export class ApiClient {
    */
   async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(`${this.baseUrl}${endpoint}`, {
-      method: "PUT",
+      method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -190,7 +185,7 @@ export class ApiClient {
    */
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(`${this.baseUrl}${endpoint}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   }
 
@@ -201,10 +196,10 @@ export class ApiClient {
     endpoint: string,
     file: File,
     additionalData?: Record<string, any>,
-    onProgress?: (progress: number) => void,
+    onProgress?: (progress: number) => void
   ): Promise<ApiResponse<T>> {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append('file', file);
 
     if (additionalData) {
       Object.entries(additionalData).forEach(([key, value]) => {
@@ -229,13 +224,13 @@ export class ApiClient {
           const response = JSON.parse(xhr.responseText);
           resolve(response);
         } catch (error) {
-          reject(new Error("Invalid JSON response"));
+          reject(new Error('Invalid JSON response'));
         }
       };
 
-      xhr.onerror = () => reject(new Error("Upload failed"));
+      xhr.onerror = () => reject(new Error('Upload failed'));
 
-      xhr.open("POST", `${this.baseUrl}${endpoint}`);
+      xhr.open('POST', `${this.baseUrl}${endpoint}`);
       xhr.withCredentials = true; // Include cookies for uploads
       xhr.send(formData);
     });
@@ -246,7 +241,7 @@ export class ApiClient {
    */
   async checkAuth(): Promise<boolean> {
     try {
-      const response = await this.get("/auth/me");
+      const response = await this.get('/auth/me');
       return response.success;
     } catch (error) {
       return false;
@@ -258,7 +253,7 @@ export class ApiClient {
    * This method is kept for compatibility but will always return false for HttpOnly cookies
    */
   hasAuthCookies(): boolean {
-    if (typeof document === "undefined") return false;
+    if (typeof document === 'undefined') return false;
 
     // Note: HttpOnly cookies cannot be read by JavaScript
     // This method will always return false in production where cookies are HttpOnly
@@ -271,7 +266,7 @@ export class ApiClient {
    */
   async logout(): Promise<boolean> {
     try {
-      const response = await this.post("/auth/logout");
+      const response = await this.post('/auth/logout');
       return response.success;
     } catch {
       return false;

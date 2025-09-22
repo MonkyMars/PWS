@@ -50,6 +50,22 @@ func GetSystemHealth(c fiber.Ctx) error {
 	})
 }
 
+// TODO: Add authentication middleware to protect this endpoint in production
+// Thus making sure only authorized admins can access it
+// Currently it's only available in development mode because of this issue
+func GetDatabaseHealth(c fiber.Ctx) error {
+	now := time.Now()
+	if err := services.Ping(); err != nil {
+		return response.ServiceUnavailable(c, "Database connection error: "+err.Error())
+	}
+
+	return response.Success(c, types.DatabaseHealthResponse{
+		Status:  "ok",
+		Message: "Database connection is healthy",
+		Elapsed: time.Since(now).String(),
+	})
+}
+
 func NotFoundHandler(c fiber.Ctx) error {
 	return response.NotFound(c, "The requested resource was not found.")
 }

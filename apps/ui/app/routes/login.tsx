@@ -1,11 +1,11 @@
-import { LoginForm } from "~/components/auth/login-form";
-import { useAuth } from "~/hooks";
-import { Navigate } from "react-router";
+import { LoginForm } from '~/components/auth/login-form';
+import { useAuth } from '~/hooks';
+import { Navigate } from 'react-router';
 
 export function meta() {
   return [
-    { title: "Inloggen | PWS ELO" },
-    { name: "description", content: "Log in op je PWS ELO account" },
+    { title: 'Inloggen | PWS ELO' },
+    { name: 'description', content: 'Log in op je PWS ELO account' },
   ];
 }
 
@@ -32,11 +32,8 @@ export default function Login() {
             Inloggen op je account
           </h2>
           <p className="mt-2 text-center text-sm text-neutral-600">
-            Of{" "}
-            <a
-              href="/register"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
+            Of{' '}
+            <a href="/register" className="font-medium text-primary-600 hover:text-primary-500">
               maak een nieuw account aan
             </a>
           </p>

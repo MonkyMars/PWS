@@ -8,6 +8,7 @@ import (
 
 	"github.com/MonkyMars/PWS/api"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/database"
 	"github.com/MonkyMars/PWS/services"
 
 	"github.com/joho/godotenv"
@@ -45,7 +46,7 @@ func main() {
 	)
 
 	// Initialize database connection with centralized config
-	err = services.InitializeDatabase()
+	err = database.Initialize()
 	if err != nil {
 		logger.DatabaseError("initialization", err)
 		log.Fatalf("Database initialization error: %v", err)

@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router";
-import { Menu, X, BookOpen, Home, LogIn, User, LogOut } from "lucide-react";
-import { Button } from "./ui/button";
-import { useAuth } from "~/hooks/use-auth-context";
-import { useLogout } from "~/hooks";
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router';
+import { Menu, X, BookOpen, Home, LogIn, User, LogOut } from 'lucide-react';
+import { Button } from './ui/button';
+import { useAuth } from '~/hooks/use-auth-context';
+import { useLogout } from '~/hooks';
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -21,18 +21,16 @@ export function Navigation() {
   const isActivePage = (path: string) => location.pathname === path;
 
   const navItems = [
-    { to: "/", label: "Home", icon: Home, requiresAuth: false },
+    { to: '/', label: 'Home', icon: Home, requiresAuth: false },
     {
-      to: "/dashboard",
-      label: "Dashboard",
+      to: '/dashboard',
+      label: 'Dashboard',
       icon: BookOpen,
       requiresAuth: true,
     },
   ];
 
-  const visibleNavItems = navItems.filter(
-    (item) => !item.requiresAuth || isAuthenticated,
-  );
+  const visibleNavItems = navItems.filter((item) => !item.requiresAuth || isAuthenticated);
 
   return (
     <nav className="bg-white border-b border-neutral-200 sticky top-0 z-50">
@@ -55,8 +53,8 @@ export function Navigation() {
                 to={item.to}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActivePage(item.to)
-                    ? "bg-primary-100 text-primary-700"
-                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                    ? 'bg-primary-100 text-primary-700'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                 }`}
               >
                 <item.icon className="h-4 w-4" />
@@ -73,12 +71,8 @@ export function Navigation() {
                       <User className="h-4 w-4 text-primary-600" />
                     </div>
                     <div className="hidden lg:block">
-                      <p className="text-sm font-medium text-neutral-900">
-                        {user.username}
-                      </p>
-                      <p className="text-xs text-neutral-500 capitalize">
-                        {user.role}
-                      </p>
+                      <p className="text-sm font-medium text-neutral-900">{user.username}</p>
+                      <p className="text-xs text-neutral-500 capitalize">{user.role}</p>
                     </div>
                   </div>
                   <Button
@@ -114,11 +108,7 @@ export function Navigation() {
             onClick={toggleMenu}
             aria-label="Toggle menu"
           >
-            {isMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
       </div>
@@ -134,8 +124,8 @@ export function Navigation() {
                 onClick={() => setIsMenuOpen(false)}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium transition-colors ${
                   isActivePage(item.to)
-                    ? "bg-primary-100 text-primary-700"
-                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                    ? 'bg-primary-100 text-primary-700'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                 }`}
               >
                 <item.icon className="h-5 w-5" />
@@ -152,12 +142,8 @@ export function Navigation() {
                       <User className="h-5 w-5 text-primary-600" />
                     </div>
                     <div>
-                      <p className="text-base font-medium text-neutral-900">
-                        {user.username}
-                      </p>
-                      <p className="text-sm text-neutral-500 capitalize">
-                        {user.role}
-                      </p>
+                      <p className="text-base font-medium text-neutral-900">{user.username}</p>
+                      <p className="text-sm text-neutral-500 capitalize">{user.role}</p>
                     </div>
                   </div>
                   <div className="px-3">
@@ -181,9 +167,7 @@ export function Navigation() {
                     </Button>
                   </Link>
                   <Link to="/register" onClick={() => setIsMenuOpen(false)}>
-                    <Button className="w-full justify-center">
-                      Registreren
-                    </Button>
+                    <Button className="w-full justify-center">Registreren</Button>
                   </Link>
                 </div>
               )}

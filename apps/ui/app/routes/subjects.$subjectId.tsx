@@ -1,12 +1,12 @@
-import { useParams } from "react-router";
-import { SubjectDetail } from "~/components/subjects/subject-detail";
-import { ProtectedRoute } from "~/components";
-import { Navigate } from "react-router";
+import { useParams } from 'react-router';
+import { SubjectDetail } from '~/components/subjects/subject-detail';
+import { ProtectedRoute } from '~/components';
+import { Navigate } from 'react-router';
 
 export function meta() {
   return [
-    { title: "Vak Details | PWS ELO" },
-    { name: "description", content: "Bekijk details van je vak" },
+    { title: 'Vak Details | PWS ELO' },
+    { name: 'description', content: 'Bekijk details van je vak' },
   ];
 }
 

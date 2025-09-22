@@ -270,10 +270,10 @@ The application uses React Router v7 with file-based routing:
 
 ```typescript
 // app/routes.ts
-import { type RouteConfig, index } from "@react-router/dev/routes";
+import { type RouteConfig, index } from '@react-router/dev/routes';
 
 export default [
-  index("routes/home.tsx"), // Maps "/" to home.tsx
+  index('routes/home.tsx'), // Maps "/" to home.tsx
 ] satisfies RouteConfig;
 ```
 
@@ -331,7 +331,7 @@ interface ResourceLink {
 }
 
 // Type-safe route configuration
-export default [index("routes/home.tsx")] satisfies RouteConfig;
+export default [index('routes/home.tsx')] satisfies RouteConfig;
 ```
 
 ## Development Guidelines
@@ -411,7 +411,7 @@ async function fetchUser(id: string): Promise<User> {
   const result: ApiResponse<User> = await response.json();
 
   if (!result.success) {
-    throw new Error(result.error?.message || "Failed to fetch user");
+    throw new Error(result.error?.message || 'Failed to fetch user');
   }
 
   return result.data!;
