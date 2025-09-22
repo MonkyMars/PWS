@@ -4,6 +4,7 @@ import (
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
+
 // BadRequest sends a 400 Bad Request response for malformed or invalid requests.
 // This function should be used when the client sends invalid request data.
 //
