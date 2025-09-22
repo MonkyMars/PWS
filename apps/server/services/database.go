@@ -23,12 +23,6 @@ func CloseDatabase() error {
 	return database.CloseInstance()
 }
 
-// GetDatabaseStats returns connection pool statistics and logs them
-func GetDatabaseStats() {
-	// Database pool statistics collection disabled to reduce log noise
-	// Use monitoring tools or add temporary logging here if needed for debugging
-}
-
 // GetDatabaseConfig returns the current database configuration
 func GetDatabaseConfig() config.DatabaseConfig {
 	return database.GetConfig()
