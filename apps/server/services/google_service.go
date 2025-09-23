@@ -8,12 +8,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
 	"github.com/MonkyMars/PWS/lib"
-	"github.com/MonkyMars/PWS/types"
-	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -79,53 +76,38 @@ func (gs *GoogleService) getUserFromState(state string) (uuid.UUID, error) {
 	return userID, nil
 }
 
-// GET /api/auth/google/url
-// Returns an OAuth URL to redirect the user to Google for consent.
-func (gs *GoogleService) GoogleAuthURL(c fiber.Ctx) error {
-	// You must be logged in with your app to link Google account:
-	claimsInterface := c.Locals("claims")
-	if claimsInterface == nil {
-		return response.Unauthorized(c, "unauthenticated")
-	}
-
-	claims, ok := claimsInterface.(*types.AuthClaims)
-	if claims == nil || !ok {
-		return response.Unauthorized(c, "unauthenticated")
-	}
-
+// GenerateGoogleAuthURL generates an OAuth URL for the authenticated user
+func (gs *GoogleService) GenerateGoogleAuthURL(userID uuid.UUID) (string, error) {
 	// create state and persist it server-side (or in a secure cookie) mapped to the user ID
 	state, err := gs.generateState()
 	if err != nil {
-		return response.InternalServerError(c, "failed to generate state: "+err.Error())
+		return "", fmt.Errorf("failed to generate state: %w", err)
 	}
 
 	// Store state -> user mapping in cache with expiry
-	err = gs.saveOAuthState(claims.Sub, state)
+	err = gs.saveOAuthState(userID, state)
 	if err != nil {
-		return response.InternalServerError(c, "failed to save OAuth state: "+err.Error())
+		return "", fmt.Errorf("failed to save OAuth state: %w", err)
 	}
 
 	// request offline access to get refresh_token. prompt=consent ensures refresh token is returned
 	googleOAuthConfig := getGoogleOAuthConfig()
 	authURL := googleOAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
-	return response.Success(c, authURL)
+	return authURL, nil
 }
 
-// GET /api/auth/google/callback
-// Handles the OAuth callback, exchanges code for tokens, stores refresh token server-side
-func (gs *GoogleService) GoogleAuthCallback(c fiber.Ctx) error {
+// HandleGoogleCallback processes the OAuth callback and returns redirect URL
+func (gs *GoogleService) HandleGoogleCallback(state, code string) (string, error) {
 	ctx := context.Background()
-	state := c.Query("state")
-	code := c.Query("code")
 
 	if state == "" || code == "" {
-		return response.BadRequest(c, "state and code are required")
+		return "", fmt.Errorf("state and code are required")
 	}
 
 	// Verify state maps to an authenticated user and is not expired
 	userID, err := gs.getUserFromState(state)
 	if err != nil {
-		return response.BadRequest(c, "invalid or expired OAuth state: "+err.Error())
+		return "", fmt.Errorf("invalid or expired OAuth state: %w", err)
 	}
 
 	// Exchange the code for token
@@ -133,7 +115,7 @@ func (gs *GoogleService) GoogleAuthCallback(c fiber.Ctx) error {
 	token, err := googleOAuthConfig.Exchange(ctx, code)
 	if err != nil {
 		log.Println("token exchange error:", err)
-		return response.InternalServerError(c, "failed to exchange token: "+err.Error())
+		return "", fmt.Errorf("failed to exchange token: %w", err)
 	}
 
 	// token.RefreshToken will be non-empty when you correctly requested offline access and user consented
@@ -147,26 +129,21 @@ func (gs *GoogleService) GoogleAuthCallback(c fiber.Ctx) error {
 	err = gs.SaveUserRefreshToken(userID, token.RefreshToken)
 	if err != nil {
 		log.Println("failed to save refresh token:", err)
-		return response.InternalServerError(c, "failed to save token: "+err.Error())
+		return "", fmt.Errorf("failed to save token: %w", err)
 	}
 
-	// Redirect to frontend app (or render a success page)
+	// Return redirect URL for frontend
 	cfg := config.Get()
-	return c.Redirect().To(cfg.FrontendURL + "/google-linked?success=1")
+	return cfg.FrontendURL + "/google-linked?success=1", nil
 }
 
-func (gs *GoogleService) GoogleAccessToken(c fiber.Ctx) error {
+// GetGoogleAccessToken gets a fresh access token for the user
+func (gs *GoogleService) GetGoogleAccessToken(userID uuid.UUID) (map[string]any, error) {
 	ctx := context.Background()
-	claimsInterface := c.Locals("claims")
-	if claimsInterface == nil {
-		return response.Unauthorized(c, "unauthenticated")
-	}
-	claims := claimsInterface.(*types.AuthClaims)
-	userID := claims.Sub
 
 	refreshToken, err := gs.LoadUserRefreshToken(userID)
 	if err != nil || refreshToken == "" {
-		return response.Unauthorized(c, "no linked Google account")
+		return nil, fmt.Errorf("no linked Google account")
 	}
 
 	googleOAuthConfig := getGoogleOAuthConfig()
@@ -174,15 +151,15 @@ func (gs *GoogleService) GoogleAccessToken(c fiber.Ctx) error {
 	newToken, err := ts.Token()
 	if err != nil {
 		log.Println("token refresh error:", err)
-		return response.InternalServerError(c, "failed to refresh token: "+err.Error())
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
 
 	// newToken.AccessToken is short-lived (~1 hour). Send to frontend to pass to Picker.
-	return response.Success(c, map[string]any{
+	return map[string]any{
 		"access_token": newToken.AccessToken,
 		"expiry":       newToken.Expiry.Format(time.RFC3339),
 		"token_type":   newToken.TokenType,
-	})
+	}, nil
 }
 
 func (gs *GoogleService) SaveUserRefreshToken(userID uuid.UUID, refreshToken string) error {

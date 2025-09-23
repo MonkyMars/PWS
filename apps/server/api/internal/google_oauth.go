@@ -13,17 +13,32 @@ import (
 func GoogleAuthURL(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
+	// Get user from auth middleware
+	claimsInterface := c.Locals("claims")
+	if claimsInterface == nil {
+		logger.Error("No claims found in context for Google OAuth URL")
+		return response.Unauthorized(c, "unauthenticated")
+	}
+
+	claims, ok := claimsInterface.(*types.AuthClaims)
+	if !ok || claims == nil {
+		logger.Error("Invalid claims type in context")
+		return response.Unauthorized(c, "unauthenticated")
+	}
+
 	// Initialize Google service
 	googleService := &services.GoogleService{}
 
-	// Get OAuth URL (this includes user authentication check)
-	err := googleService.GoogleAuthURL(c)
+	// Generate OAuth URL
+	authURL, err := googleService.GenerateGoogleAuthURL(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to generate Google OAuth URL", "error", err)
-		return err // GoogleService already returns proper response
+		logger.Error("Failed to generate Google OAuth URL",
+			"user_id", claims.Sub,
+			"error", err)
+		return response.InternalServerError(c, "failed to generate OAuth URL")
 	}
 
-	return nil // GoogleService already sent response
+	return response.Success(c, authURL)
 }
 
 // GoogleAuthCallback handles the OAuth callback from Google
@@ -31,20 +46,26 @@ func GoogleAuthURL(c fiber.Ctx) error {
 func GoogleAuthCallback(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
+	state := c.Query("state")
+	code := c.Query("code")
+
 	// Initialize Google service
 	googleService := &services.GoogleService{}
 
 	// Handle OAuth callback (this includes state validation and token exchange)
-	err := googleService.GoogleAuthCallback(c)
+	redirectURL, err := googleService.HandleGoogleCallback(state, code)
 	if err != nil {
 		logger.Error("Failed to handle Google OAuth callback",
-			"state", c.Query("state"),
-			"code_present", c.Query("code") != "",
+			"state", state,
+			"code_present", code != "",
 			"error", err)
-		return err // GoogleService already returns proper response
+
+		// Return error response for invalid callback
+		return response.BadRequest(c, "OAuth callback failed: "+err.Error())
 	}
 
-	return nil // GoogleService already sent response or redirect
+	// Redirect to frontend success page
+	return c.Redirect().To(redirectURL)
 }
 
 // GoogleAccessToken handles getting a fresh Google access token
@@ -52,17 +73,36 @@ func GoogleAuthCallback(c fiber.Ctx) error {
 func GoogleAccessToken(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
+	// Get user from auth middleware
+	claimsInterface := c.Locals("claims")
+	if claimsInterface == nil {
+		logger.Error("No claims found in context for Google access token")
+		return response.Unauthorized(c, "unauthenticated")
+	}
+
+	claims, ok := claimsInterface.(*types.AuthClaims)
+	if !ok || claims == nil {
+		logger.Error("Invalid claims type in context")
+		return response.Unauthorized(c, "unauthenticated")
+	}
+
 	// Initialize Google service
 	googleService := &services.GoogleService{}
 
-	// Get access token (this includes user authentication check and refresh token validation)
-	err := googleService.GoogleAccessToken(c)
+	// Get access token
+	tokenData, err := googleService.GetGoogleAccessToken(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to get Google access token", "error", err)
-		return err // GoogleService already returns proper response
+		logger.Error("Failed to get Google access token",
+			"user_id", claims.Sub,
+			"error", err)
+
+		if err.Error() == "no linked Google account" {
+			return response.Unauthorized(c, "no linked Google account")
+		}
+		return response.InternalServerError(c, "failed to refresh token")
 	}
 
-	return nil // GoogleService already sent response
+	return response.Success(c, tokenData)
 }
 
 // GoogleUnlink handles unlinking a user's Google account
@@ -123,7 +163,7 @@ func GoogleLinkStatus(c fiber.Ctx) error {
 
 	isLinked := refreshToken != ""
 
-	return response.Success(c, map[string]interface{}{
+	return response.Success(c, map[string]any{
 		"linked":  isLinked,
 		"user_id": claims.Sub,
 	})
