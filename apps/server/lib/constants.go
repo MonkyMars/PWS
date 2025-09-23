@@ -12,8 +12,16 @@ var (
 	ErrUserNotFound       = errors.New("user not found")
 )
 
-var (
+const (
 	RoleAdmin   = "admin"
 	RoleTeacher = "teacher"
 	RoleStudent = "student"
+)
+
+const (
+	TableUsers           = "users"
+	TableFiles           = "files"
+	TableSubjects        = "subjects"
+	TableUserOAuthTokens = "user_oauth_tokens"
+	TableUserSubjects    = "user_subjects"
 )
