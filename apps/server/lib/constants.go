@@ -11,3 +11,9 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUserNotFound       = errors.New("user not found")
 )
+
+var (
+	RoleAdmin   = "admin"
+	RoleTeacher = "teacher"
+	RoleStudent = "student"
+)
