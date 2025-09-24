@@ -10,7 +10,7 @@ import (
 
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
-	"github.com/MonkyMars/PWS/lib"
+	"github.com/MonkyMars/PWS/types"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -142,7 +142,11 @@ func (gs *GoogleService) GetGoogleAccessToken(userID uuid.UUID) (map[string]any,
 	ctx := context.Background()
 
 	refreshToken, err := gs.LoadUserRefreshToken(userID)
-	if err != nil || refreshToken == "" {
+	if err != nil {
+		return nil, fmt.Errorf("failed to load refresh token: %w", err)
+	}
+
+	if refreshToken == "" {
 		return nil, fmt.Errorf("no linked Google account")
 	}
 
@@ -150,11 +154,11 @@ func (gs *GoogleService) GetGoogleAccessToken(userID uuid.UUID) (map[string]any,
 	ts := googleOAuthConfig.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})
 	newToken, err := ts.Token()
 	if err != nil {
-		log.Println("token refresh error:", err)
+		log.Printf("GetGoogleAccessToken: Token refresh error - %v", err)
 		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
 
-	// newToken.AccessToken is short-lived (~1 hour). Send to frontend to pass to Picker.
+	log.Printf("GetGoogleAccessToken: Successfully refreshed token for user %s", userID.String())
 	return map[string]any{
 		"access_token": newToken.AccessToken,
 		"expiry":       newToken.Expiry.Format(time.RFC3339),
@@ -163,44 +167,65 @@ func (gs *GoogleService) GetGoogleAccessToken(userID uuid.UUID) (map[string]any,
 }
 
 func (gs *GoogleService) SaveUserRefreshToken(userID uuid.UUID, refreshToken string) error {
-	query := Query().SetOperation("upsert").SetTable(lib.TableUserOAuthTokens).SetData(map[string]any{
+	query := Query().SetOperation("insert").SetTable("user_oauth_tokens").SetData(map[string]any{
 		"user_id":       userID,
 		"provider":      "google",
 		"refresh_token": refreshToken,
 	})
+	// On conflict (same user_id and provider), update the refresh_token and updated_at timestamp
+	query.OnConflict = "(user_id, provider) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, updated_at = NOW()"
 
-	_, err := database.ExecuteQuery[any](query)
+	_, err := database.ExecuteQuery[types.UserOAuthToken](query)
+
 	if err != nil {
-		return err
+		log.Printf("SaveUserRefreshToken: Failed to save token - %v", err)
+		return fmt.Errorf("failed to save refresh token: %w", err)
 	}
+
+	log.Printf("SaveUserRefreshToken: Successfully saved token for user %s", userID.String())
 	return nil
 }
 
 func (gs *GoogleService) LoadUserRefreshToken(userID uuid.UUID) (string, error) {
-	query := Query().SetOperation("select").SetTable(lib.TableUserOAuthTokens).SetLimit(1)
+	query := Query().SetOperation("select").SetTable("user_oauth_tokens").SetLimit(1)
 	query.Where["user_id"] = userID
 	query.Where["provider"] = "google"
+	query.Returning = []string{"refresh_token"}
 
-	data, err := database.ExecuteQuery[struct {
-		RefreshToken string `json:"refresh_token"`
+	result, err := database.ExecuteQuery[struct {
+		RefreshToken string `pg:"refresh_token"`
 	}](query)
+
 	if err != nil {
-		return "", err
+		if err.Error() == "pg: no rows in result set" {
+			log.Printf("LoadUserRefreshToken: No token found for user %s", userID.String())
+			return "", nil // No token found
+		}
+		if err.Error() == `ERROR #42P01 relation "user_oauth_tokens" does not exist:` ||
+			err.Error() == `ERROR #42P01 relation "public.user_oauth_tokens" does not exist:` {
+			log.Printf("LoadUserRefreshToken: user_oauth_tokens table does not exist")
+			return "", nil // Table doesn't exist, treat as no token
+		}
+		log.Printf("LoadUserRefreshToken: Query failed - %v", err)
+		return "", fmt.Errorf("failed to load refresh token: %w", err)
 	}
-	if data.Single == nil {
-		return "", nil // no token found
-	}
-	return data.Single.RefreshToken, nil
+
+	log.Printf("LoadUserRefreshToken: Found token for user %s", userID.String())
+	return result.Single.RefreshToken, nil
 }
 
 func (gs *GoogleService) DeleteUserRefreshToken(userID uuid.UUID) error {
-	query := Query().SetOperation("delete").SetTable(lib.TableUserOAuthTokens)
+	query := Query().SetOperation("delete").SetTable("user_oauth_tokens")
 	query.Where["user_id"] = userID
 	query.Where["provider"] = "google"
 
-	_, err := database.ExecuteQuery[any](query)
+	_, err := database.ExecuteQuery[struct{}](query)
+
 	if err != nil {
-		return err
+		log.Printf("DeleteUserRefreshToken: Failed to delete token - %v", err)
+		return fmt.Errorf("failed to delete refresh token: %w", err)
 	}
+
+	log.Printf("DeleteUserRefreshToken: Successfully deleted token for user %s", userID.String())
 	return nil
 }

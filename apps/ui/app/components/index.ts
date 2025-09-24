@@ -20,3 +20,10 @@ export { SubjectDetail } from './subjects/subject-detail';
 
 // File components
 export { FileViewer } from './files/file-viewer';
+export {
+  UploadButton,
+  SingleFileUploadButton,
+  MultipleFileUploadButton,
+  ImageUploadButton,
+  DocumentUploadButton,
+} from './files/upload-button';

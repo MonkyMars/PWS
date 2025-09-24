@@ -69,3 +69,12 @@ type User struct {
 	PasswordHash string    `json:"-" pg:"password_hash,notnull"`
 	Role         string    `json:"role" pg:"role,notnull,default:'student'"`
 }
+
+type UserOAuthToken struct {
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	Provider     string    `json:"provider"`
+	RefreshToken string    `json:"refresh_token"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}

@@ -5,14 +5,14 @@ import (
 )
 
 type DriveFile struct {
-	FileID   string `json:"fileId"`
+	FileID   string `json:"file_id"`
 	Name     string `json:"name"`
-	MimeType string `json:"mimeType"`
+	MimeType string `json:"mime_type"`
 }
 
 type UploadSingleFileRequest struct {
-	File      DriveFile
-	SubjectID uuid.UUID
+	File      DriveFile `json:"file"`
+	SubjectID uuid.UUID `json:"subject_id"`
 }
 
 type UploadMultipleFilesRequest struct {

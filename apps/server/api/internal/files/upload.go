@@ -2,6 +2,7 @@ package files
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/MonkyMars/PWS/api/response"
@@ -26,7 +27,6 @@ func UploadSingleFile(c fiber.Ctx) error {
 		return response.Unauthorized(c, "Unauthorized")
 	}
 
-	// Check if user has permission to upload file for the given subject
 	if claims.Role != lib.RoleAdmin && claims.Role != lib.RoleTeacher {
 		return response.Forbidden(c, "You do not have permission to upload files")
 	}
@@ -34,25 +34,31 @@ func UploadSingleFile(c fiber.Ctx) error {
 	// Parse request body
 	var req types.UploadSingleFileRequest
 	if err := c.Bind().Body(&req); err != nil {
+		log.Printf("UploadSingleFile: Failed to parse request body - %v", err)
 		return response.BadRequest(c, "Invalid request body: "+err.Error())
 	}
 
 	if req.File.FileID == "" || req.File.Name == "" || req.File.MimeType == "" {
+		log.Printf("UploadSingleFile: Missing required file fields")
 		return response.BadRequest(c, "Missing required file fields")
 	}
 
 	// Upload meta data to database
-	query := services.Query().SetOperation("insert").SetTable("files").SetData(map[string]any{
+	fileData := map[string]any{
 		"file_id":     req.File.FileID,
 		"name":        req.File.Name,
 		"mime_type":   req.File.MimeType,
 		"subject_id":  req.SubjectID,
 		"uploaded_by": claims.Sub,
 		"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", req.File.FileID),
-	})
+	}
+
+	query := services.Query().SetOperation("insert").SetTable("files").SetData(fileData)
+	query.Returning = []string{"file_id", "name", "mime_type", "subject_id", "uploaded_by", "url"}
 
 	data, err := database.ExecuteQuery[types.File](query)
 	if err != nil {
+		log.Printf("UploadSingleFile: Database query failed - %v", err)
 		return response.InternalServerError(c, "Failed to upload file: "+err.Error())
 	}
 
@@ -72,7 +78,6 @@ func UploadMultipleFiles(c fiber.Ctx) error {
 		return response.Unauthorized(c, "Unauthorized")
 	}
 
-	// Check if user has permission to upload file for the given subject
 	if claims.Role != lib.RoleAdmin && claims.Role != lib.RoleTeacher {
 		return response.Forbidden(c, "You do not have permission to upload files")
 	}
@@ -121,7 +126,7 @@ func UploadMultipleFiles(c fiber.Ctx) error {
 				"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", file.FileID),
 			}
 
-			query := services.Query().SetOperation("insert").SetTable("files").SetData(fileData)
+			query := services.Query().SetOperation("insert").SetTable("files").SetData(fileData).SetReturning("*")
 			result, err := database.ExecuteQuery[types.File](query)
 
 			// Safely store the result

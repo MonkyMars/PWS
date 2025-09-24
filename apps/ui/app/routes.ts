@@ -21,4 +21,5 @@ export default [
   route('register', 'routes/register.tsx'),
   route('dashboard', 'routes/dashboard.tsx'),
   route('subjects/:subjectId', 'routes/subjects.$subjectId.tsx'),
+  route('test-upload', 'routes/test-upload.tsx'),
 ] satisfies RouteConfig;
