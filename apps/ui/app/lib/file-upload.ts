@@ -77,7 +77,7 @@ export class FileUploadService {
   static initializePicker(
     accessToken: string,
     onSelection: (files: DriveFile[]) => void,
-    allowMultiple: boolean = false
+    config: { allowMultiple?: boolean; acceptedMimeTypes?: string[] } = {}
   ): void {
     const pickerCallback = (data: any) => {
       if (data.action === google.picker.Action.PICKED) {
@@ -100,8 +100,15 @@ export class FileUploadService {
       .setCallback(pickerCallback)
       .setSize(1051, 650);
 
-    if (!allowMultiple) {
-      builder = builder.setSelectableMimeTypes('application/pdf,image/*,video/*,text/*');
+    // Configure multiple selection
+    if (config.allowMultiple !== false) {
+      builder = builder.enableFeature(google.picker.Feature.MULTISELECT_ENABLED);
+    }
+
+    // Configure MIME type restrictions
+    if (config.acceptedMimeTypes && config.acceptedMimeTypes.length > 0) {
+      const mimeTypes = config.acceptedMimeTypes.join(',');
+      builder = builder.setSelectableMimeTypes(mimeTypes);
     }
 
     const picker = builder.build();
@@ -140,7 +147,7 @@ export class FileUploadService {
    */
   static async openPicker(
     subjectId: string,
-    allowMultiple: boolean = false,
+    config: { allowMultiple?: boolean; acceptedMimeTypes?: string[] } = {},
     onProgress?: (progress: FileUploadProgress[]) => void
   ): Promise<UploadResult> {
     try {
@@ -207,7 +214,7 @@ export class FileUploadService {
           }
         };
 
-        this.initializePicker(accessToken, onSelection, allowMultiple);
+        this.initializePicker(accessToken, onSelection, config);
       });
     } catch (error) {
       return {
@@ -260,6 +267,9 @@ declare global {
         Action: {
           PICKED: string;
         };
+        Feature: {
+          MULTISELECT_ENABLED: string;
+        };
       };
     };
     gapi?: {
@@ -274,6 +284,7 @@ declare global {
     setCallback(callback: (data: any) => void): GooglePickerBuilder;
     setSize(width: number, height: number): GooglePickerBuilder;
     setSelectableMimeTypes(types: string): GooglePickerBuilder;
+    enableFeature(feature: string): GooglePickerBuilder;
     build(): GooglePicker;
   }
 
@@ -291,6 +302,9 @@ declare global {
       };
       Action: {
         PICKED: string;
+      };
+      Feature: {
+        MULTISELECT_ENABLED: string;
       };
     };
   };

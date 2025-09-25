@@ -46,12 +46,12 @@ export default function TestUpload() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto bg-gray-100 px-4 py-8 max-w-4xl">
       <div className="space-y-8">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">File Upload Test</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-neutral-700 mb-2">File Upload Test</h1>
+          <p className="text-neutral-500">
             Test the Google Drive file picker integration with various upload button configurations.
           </p>
         </div>
@@ -60,7 +60,7 @@ export default function TestUpload() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Basic Upload Button */}
           <div className="bg-white p-6 rounded-lg shadow-md border">
-            <h2 className="text-xl font-semibold mb-4">Basic Upload Button</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-600">Basic Upload Button</h2>
             <p className="text-gray-600 mb-4 text-sm">
               Basic file upload with custom configuration.
             </p>
@@ -81,7 +81,7 @@ export default function TestUpload() {
 
           {/* Single File Upload */}
           <div className="bg-white p-6 rounded-lg shadow-md border">
-            <h2 className="text-xl font-semibold mb-4">Single File Upload</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-600">Single File Upload</h2>
             <p className="text-gray-600 mb-4 text-sm">Pre-configured for single file selection.</p>
             <SingleFileUploadButton
               config={{ subjectId: selectedSubjectId }}
@@ -94,7 +94,7 @@ export default function TestUpload() {
 
           {/* Multiple Files Upload */}
           <div className="bg-white p-6 rounded-lg shadow-md border">
-            <h2 className="text-xl font-semibold mb-4">Multiple Files Upload</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-600">Multiple Files Upload</h2>
             <p className="text-gray-600 mb-4 text-sm">
               Pre-configured for multiple file selection (up to 10 files).
             </p>
@@ -109,7 +109,7 @@ export default function TestUpload() {
 
           {/* Image Upload */}
           <div className="bg-white p-6 rounded-lg shadow-md border">
-            <h2 className="text-xl font-semibold mb-4">Image Upload</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-600">Image Upload</h2>
             <p className="text-gray-600 mb-4 text-sm">Pre-configured for image files only.</p>
             <ImageUploadButton
               config={{ subjectId: selectedSubjectId }}
@@ -124,7 +124,7 @@ export default function TestUpload() {
 
           {/* Document Upload */}
           <div className="bg-white p-6 rounded-lg shadow-md border">
-            <h2 className="text-xl font-semibold mb-4">Document Upload</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-600">Document Upload</h2>
             <p className="text-gray-600 mb-4 text-sm">
               Pre-configured for documents (PDF, Word, etc.).
             </p>
@@ -135,25 +135,6 @@ export default function TestUpload() {
               onProgress={handleProgress}
               buttonText="Upload Documents"
               variant="ghost"
-            />
-          </div>
-
-          {/* Custom Styled Upload */}
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 rounded-lg shadow-md border">
-            <h2 className="text-xl font-semibold mb-4">Custom Styled Upload</h2>
-            <p className="text-gray-600 mb-4 text-sm">Upload button with custom styling.</p>
-            <UploadButton
-              config={{
-                subjectId: selectedSubjectId,
-                allowMultiple: false,
-              }}
-              onUploadComplete={handleUploadComplete}
-              onUploadStart={handleUploadStart}
-              onProgress={handleProgress}
-              buttonText="🚀 Upload to Cloud"
-              variant="primary"
-              size="lg"
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             />
           </div>
         </div>
@@ -262,7 +243,7 @@ export default function TestUpload() {
           <div className="space-y-4">
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Basic Usage:</h4>
-              <pre className="bg-white p-3 rounded text-xs overflow-x-auto">
+              <pre className="bg-white text-gray-600 p-3 rounded text-xs overflow-x-auto">
                 {`<UploadButton
   config={{
     subjectId: "your-subject-id",
@@ -275,7 +256,7 @@ export default function TestUpload() {
 
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Pre-configured Buttons:</h4>
-              <pre className="bg-white p-3 rounded text-xs overflow-x-auto">
+              <pre className="bg-white text-gray-600 p-3 rounded text-xs overflow-x-auto">
                 {`<SingleFileUploadButton config={{ subjectId: "id" }} />
 <MultipleFileUploadButton config={{ subjectId: "id" }} />
 <ImageUploadButton config={{ subjectId: "id" }} />

@@ -126,7 +126,8 @@ func UploadMultipleFiles(c fiber.Ctx) error {
 				"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", file.FileID),
 			}
 
-			query := services.Query().SetOperation("insert").SetTable("files").SetData(fileData).SetReturning("*")
+			query := services.Query().SetOperation("insert").SetTable("files").SetData(fileData)
+			query.Returning = []string{"file_id", "name", "mime_type", "subject_id", "uploaded_by", "url"}
 			result, err := database.ExecuteQuery[types.File](query)
 
 			// Safely store the result

@@ -67,7 +67,10 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
       const result = await FileUploadService.openPicker(
         // Not sensitive since this is just for demo purposes
         'df8584f7-0889-4700-8832-e50bcea6e589', // Hard coded uuid because subject logic is not implemented yet
-        config.allowMultiple,
+        {
+          allowMultiple: config.allowMultiple,
+          acceptedMimeTypes: config.acceptedMimeTypes,
+        },
         (progress) => {
           setUploadProgress(progress);
           onProgress?.(progress);
