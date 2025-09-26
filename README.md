@@ -88,7 +88,7 @@ PWS/
    cd apps/server
 
    # Install dependencies
-   go mod download
+   go mod tidy
 
    # Copy environment configuration
    cp .env.example .env
@@ -138,7 +138,7 @@ bun run start
 
 ### Backend Architecture
 
-#### Configuration Management (`api/config/`)
+#### Configuration Management (`/config/`)
 
 - **Environment Variables**: Centralized loading and validation
 - **Logging Setup**: Structured logging configuration with slog
@@ -164,6 +164,12 @@ bun run start
 - **Route Organization**: Feature-based route grouping
 - **Handler Functions**: Clean separation of route logic
 
+#### Internal (`api/internal/`)
+
+- **Logic**: Contains all the business logic in an organized way
+- **Core**: The core of the server
+- **Health**: Clean health routes logic
+
 ### Frontend Architecture
 
 #### Component Structure (`app/`)
@@ -176,7 +182,6 @@ bun run start
 #### Styling (`app/app.css`)
 
 - **Tailwind CSS**: Utility-first styling approach
-- **Dark Mode**: Automatic theme switching
 - **Responsive Design**: Mobile-first breakpoints
 - **Component Styling**: Scoped styles with CSS modules support
 
@@ -222,7 +227,10 @@ All API endpoints return responses in the following format:
 
 ### Health Check Endpoints
 
+These endpoints are only available in the development enviroment
+
 - `GET /health` - Basic server health check
+- `GET /health/database` - Ping the database and check for errors
 
 ## Development Guidelines
 
@@ -299,78 +307,6 @@ interface UserProfileProps {
   onEdit: () => void;
 }
 ```
-
-## Deployment
-
-### Docker Deployment
-
-Both applications include Dockerfile configurations for containerized deployment.
-
-**Backend**:
-
-```bash
-cd apps/server
-docker build -t pws-server .
-docker run -p 8080:8080 --env-file .env pws-server
-```
-
-**Frontend**:
-
-```bash
-cd apps/ui
-docker build -t pws-ui .
-docker run -p 3000:3000 pws-ui
-```
-
-### Environment Configuration
-
-**Backend** (`.env`):
-
-```bash
-# Server Configuration
-PORT=8080
-HOST=localhost
-APP_ENV=production
-
-# CORS Configuration
-CORS_ORIGINS=https://yourdomain.com
-CORS_CREDENTIALS=true
-
-# Logging
-LOG_LEVEL=info
-LOG_FORMAT=json
-```
-
-**Frontend**:
-
-```bash
-# API Configuration
-VITE_API_URL=https://api.yourdomain.com
-VITE_APP_TITLE=PWS
-
-# Environment
-NODE_ENV=production
-```
-
-### Platform Support
-
-The application can be deployed to any platform supporting Docker:
-
-- AWS ECS / Fargate
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-- Heroku (with container support)
-
-## Contributing
-
-1. **Fork the repository** and create a feature branch
-2. **Follow coding standards** for both Go and TypeScript
-3. **Write comprehensive tests** for new functionality
-4. **Update documentation** as needed
-5. **Submit a pull request** with clear description
 
 ### Code Quality
 
