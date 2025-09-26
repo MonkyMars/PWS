@@ -62,13 +62,13 @@ export class FileUploadService {
    * Get Google OAuth URL for linking account
    */
   static async getGoogleAuthURL(): Promise<string> {
-    const response = await apiClient.get<{ auth_url: string }>('/auth/google/url');
+    const response = await apiClient.get<string>('/auth/google/url');
 
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to get Google auth URL');
     }
 
-    return response.data.auth_url;
+    return response.data;
   }
 
   /**
@@ -148,15 +148,37 @@ export class FileUploadService {
   static async openPicker(
     subjectId: string,
     config: { allowMultiple?: boolean; acceptedMimeTypes?: string[] } = {},
-    onProgress?: (progress: FileUploadProgress[]) => void
+    onProgress?: (progress: FileUploadProgress[]) => void,
+    onAuthStart?: () => void
   ): Promise<UploadResult> {
     try {
       // Check if user has linked Google account
       const isLinked = await this.checkGoogleLinkStatus();
       if (!isLinked) {
+        // Notify that OAuth flow is starting
+        onAuthStart?.();
+
+        // Automatically get OAuth URL and open popup
         const authUrl = await this.getGoogleAuthURL();
-        window.open(authUrl, '_blank', 'width=500,height=600');
-        throw new Error('Please link your Google account first');
+        console.log(authUrl);
+        const authPopup = window.open(
+          authUrl,
+          'google-oauth',
+          'width=500,height=600,scrollbars=yes,resizable=yes'
+        );
+
+        if (!authPopup) {
+          throw new Error('Failed to open Google OAuth popup. Please disable popup blocker.');
+        }
+
+        // Wait for auth completion
+        await this.waitForAuthCompletion(authPopup);
+
+        // Verify linking was successful
+        const isNowLinked = await this.checkGoogleLinkStatus();
+        if (!isNowLinked) {
+          throw new Error('Google account linking was not completed. Please try again.');
+        }
       }
 
       // Load Google Picker API
@@ -235,6 +257,47 @@ export class FileUploadService {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  /**
+   * Wait for Google OAuth popup to complete
+   */
+  private static waitForAuthCompletion(popup: Window): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const checkClosed = setInterval(() => {
+        try {
+          if (popup.closed) {
+            clearInterval(checkClosed);
+            // Give a brief moment for the auth to process
+            setTimeout(() => resolve(), 1000);
+            return;
+          }
+
+          // Check if we can access the popup's location (same origin)
+          // This will throw if we're still on the OAuth provider's domain
+          const location = popup.location.href;
+
+          // If we can read the location and it's back to our domain, auth is likely complete
+          if (location.includes(window.location.origin)) {
+            popup.close();
+            clearInterval(checkClosed);
+            setTimeout(() => resolve(), 1000);
+          }
+        } catch (e) {
+          // Expected when popup is on different origin (OAuth provider)
+          // Continue checking
+        }
+      }, 1000);
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(checkClosed);
+        if (!popup.closed) {
+          popup.close();
+        }
+        reject(new Error('Google OAuth timeout. Please try again.'));
+      }, 300000);
+    });
   }
 
   /**

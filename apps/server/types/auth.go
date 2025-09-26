@@ -48,20 +48,6 @@ type LogoutResponse struct {
 	Message string `json:"message"`
 }
 
-type SecurityBreachResponse struct {
-	Message   string    `json:"message"`
-	Status    string    `json:"status"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-type TokenFamilyBreach struct {
-	UserID          uuid.UUID `json:"user_id"`
-	SuspiciousJTI   string    `json:"suspicious_jti"`
-	DetectedAt      time.Time `json:"detected_at"`
-	ActionTaken     string    `json:"action_taken"`
-	RecommendedStep string    `json:"recommended_step"`
-}
-
 type User struct {
 	Id           uuid.UUID `json:"id" pg:"id,pk,type:uuid,default:gen_random_uuid()"`
 	Username     string    `json:"username" pg:"username,unique,notnull"`
@@ -71,10 +57,16 @@ type User struct {
 }
 
 type UserOAuthToken struct {
-	ID           uuid.UUID `json:"id"`
+	Id           uuid.UUID `json:"id"`
 	UserID       uuid.UUID `json:"user_id"`
 	Provider     string    `json:"provider"`
 	RefreshToken string    `json:"refresh_token"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type GoogleRefreshTokenResponse struct {
+	tableName    struct{}  `pg:"user_oauth_tokens"`
+	Id           uuid.UUID `json:"id"`
+	RefreshToken string    `json:"refresh_token"`
 }

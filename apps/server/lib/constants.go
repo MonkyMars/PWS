@@ -8,8 +8,10 @@ const (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotFound       = errors.New("user not found")
+	ErrInvalidCredentials   = errors.New("invalid credentials")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrFailedToRefreshToken = errors.New("failed to refresh token")
+	ErrFailedToDeleteToken  = errors.New("failed to delete token")
 )
 
 const (

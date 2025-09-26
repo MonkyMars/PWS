@@ -40,6 +40,7 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
   const [uploadProgress, setUploadProgress] = useState<FileUploadProgress[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isGoogleLinked, setIsGoogleLinked] = useState<boolean | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
 
   // Check Google link status on component mount
   React.useEffect(() => {
@@ -59,6 +60,7 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
   const handleUpload = useCallback(async () => {
     setError(null);
     setIsUploading(true);
+    setIsLinking(false);
     setUploadProgress([]);
 
     try {
@@ -74,10 +76,16 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
         (progress) => {
           setUploadProgress(progress);
           onProgress?.(progress);
+        },
+        () => {
+          // OAuth flow is starting
+          setIsLinking(true);
         }
       );
 
       if (result.success) {
+        // Update Google linked status after successful upload
+        setIsGoogleLinked(true);
         onUploadComplete?.(result);
       } else {
         setError(result.errors?.[0] || 'Upload failed');
@@ -85,8 +93,17 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Upload failed';
       setError(errorMessage);
+
+      // If error mentions linking, it might be an OAuth issue
+      if (
+        errorMessage.toLowerCase().includes('link') ||
+        errorMessage.toLowerCase().includes('oauth')
+      ) {
+        setIsGoogleLinked(false);
+      }
     } finally {
       setIsUploading(false);
+      setIsLinking(false);
     }
   }, [config, onUploadComplete, onUploadStart, onProgress]);
 
@@ -115,36 +132,19 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
     }
   }, []);
 
-  // Show link Google account button if not linked
-  if (isGoogleLinked === false) {
-    return (
-      <div className="flex flex-col items-center gap-2">
-        <Button
-          variant={variant}
-          size={size}
-          onClick={handleLinkGoogle}
-          disabled={disabled}
-          className={className}
-        >
-          <Link className="w-4 h-4 mr-2" />
-          Link Google Drive
-        </Button>
-        {error && (
-          <div className="flex items-center gap-2 text-sm text-red-600">
-            <AlertCircle className="w-4 h-4" />
-            {error}
-          </div>
-        )}
-      </div>
-    );
-  }
+  // Show loading if checking status or linking in progress
+  if (isGoogleLinked === null || isLinking) {
+    const loadingText =
+      isGoogleLinked === null
+        ? 'Checking...'
+        : isLinking
+          ? 'Linking Google Drive...'
+          : 'Loading...';
 
-  // Show loading if checking status
-  if (isGoogleLinked === null) {
     return (
       <Button variant={variant} size={size} disabled className={className}>
         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-        Checking...
+        {loadingText}
       </Button>
     );
   }
@@ -161,7 +161,7 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
         {isUploading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Uploading...
+            {isLinking ? 'Linking Google Drive...' : 'Uploading...'}
           </>
         ) : (
           <>
@@ -193,17 +193,29 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
         </div>
       )}
 
-      {/* Error message */}
+      {/* Error message with manual link option */}
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600">
-          <AlertCircle className="w-4 h-4" />
-          {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-3 h-3" />
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-sm text-red-600">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          {/* Show manual link option if error is related to OAuth/linking and not already linked */}
+          {(error.toLowerCase().includes('link') ||
+            error.toLowerCase().includes('oauth') ||
+            error.toLowerCase().includes('popup')) &&
+            isGoogleLinked === false && (
+              <Button variant="outline" size="sm" onClick={handleLinkGoogle} className="text-xs">
+                <Link className="w-3 h-3 mr-1" />
+                Try Manual Link
+              </Button>
+            )}
         </div>
       )}
     </div>
