@@ -227,7 +227,7 @@ All API endpoints return responses in the following format:
 
 ### Health Check Endpoints
 
-These endpoints are only available in the development enviroment
+These endpoints are only available in the development environment
 
 - `GET /health` - Basic server health check
 - `GET /health/database` - Ping the database and check for errors
