@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/types"
 	"github.com/go-pg/pg/v10"
 )
 
@@ -108,7 +109,7 @@ func (db *DB) GetStats() *pg.PoolStats {
 }
 
 // GetConfig returns the current database configuration
-func GetConfig() config.DatabaseConfig {
+func GetConfig() types.DatabaseConfig {
 	cfg := config.Get()
 	return cfg.Database
 }

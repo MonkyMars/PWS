@@ -7,7 +7,6 @@
 package services
 
 import (
-	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
 	"github.com/MonkyMars/PWS/types"
 )
@@ -24,7 +23,7 @@ func CloseDatabase() error {
 }
 
 // GetDatabaseConfig returns the current database configuration
-func GetDatabaseConfig() config.DatabaseConfig {
+func GetDatabaseConfig() types.DatabaseConfig {
 	return database.GetConfig()
 }
 

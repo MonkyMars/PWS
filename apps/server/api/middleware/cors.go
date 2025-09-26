@@ -7,15 +7,17 @@
 package middleware
 
 import (
+	"github.com/MonkyMars/PWS/config"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 )
 
 func SetupCORS() fiber.Handler {
+	cfg := config.Get()
 	return cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		AllowCredentials: true,
+		AllowOrigins:     cfg.Cors.AllowOrigins,
+		AllowMethods:     cfg.Cors.AllowMethods,
+		AllowHeaders:     cfg.Cors.AllowHeaders,
+		AllowCredentials: cfg.Cors.AllowCredentials,
 	})
 }
