@@ -4,6 +4,7 @@
 package config
 
 import (
+	"strings"
 	"fmt"
 	"log"
 	"os"
@@ -36,6 +37,9 @@ type Config struct {
 
 	// Cache Settings
 	Cache CacheConfig
+
+	// CORS Settings
+	Cors CorsConfig
 }
 
 // DatabaseConfig holds all database-related configuration
@@ -94,6 +98,13 @@ type CacheConfig struct {
 	MaxRetries      int
 	MinRetryBackoff time.Duration
 	MaxRetryBackoff time.Duration
+}
+
+type CorsConfig struct {
+	AllowOrigins     []string
+	AllowMethods     []string
+	AllowHeaders     []string
+	AllowCredentials bool
 }
 
 var (
@@ -171,6 +182,13 @@ func Load() *Config {
 				MaxRetries:      getEnvInt("CACHE_MAX_RETRIES", 3),
 				MinRetryBackoff: getEnvDuration("CACHE_MIN_RETRY_BACKOFF", 8*time.Millisecond),
 				MaxRetryBackoff: getEnvDuration("CACHE_MAX_RETRY_BACKOFF", 512*time.Millisecond),
+			},
+
+			Cors: CorsConfig{
+				AllowOrigins:     strings.Split(getEnv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://localhost:3000"), ","),
+				AllowMethods:     strings.Split(getEnv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS"), ","),
+				AllowHeaders:     strings.Split(getEnv("CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization"), ","),
+				AllowCredentials: getEnvBool("CORS_ALLOW_CREDENTIALS", true),
 			},
 		}
 
@@ -350,6 +368,17 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 			return duration
 		}
 		log.Printf("Invalid duration value for %s: %s, using default: %v", key, value, defaultValue)
+	}
+	return defaultValue
+}
+
+// getEnvBool retrieves a boolean environment variable or returns the default value if not set or invalid.
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+		log.Printf("Invalid boolean value for %s: %s, using default: %v", key, value, defaultValue)
 	}
 	return defaultValue
 }
