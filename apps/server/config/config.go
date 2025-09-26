@@ -124,9 +124,9 @@ func Load() *Config {
 
 			// CORS Settings
 			Cors: types.CorsConfig{
-				AllowOrigins:     strings.Split(getEnv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://localhost:3000"), ","),
-				AllowMethods:     strings.Split(getEnv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS"), ","),
-				AllowHeaders:     strings.Split(getEnv("CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization"), ","),
+				AllowOrigins:     getEnvSlice("CORS_ALLOW_ORIGINS", []string{"http://localhost:5173", "http://localhost:3000"}),
+				AllowMethods:     getEnvSlice("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+				AllowHeaders:     getEnvSlice("CORS_ALLOW_HEADERS", []string{"Origin", "Content-Type", "Accept", "Authorization"}),
 				AllowCredentials: getEnvBool("CORS_ALLOW_CREDENTIALS", true),
 			},
 		}
@@ -318,6 +318,17 @@ func getEnvBool(key string, defaultValue bool) bool {
 			return boolValue
 		}
 		log.Printf("Invalid boolean value for %s: %s, using default: %v", key, value, defaultValue)
+	}
+	return defaultValue
+}
+
+func getEnvSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		parts := strings.Split(value, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		return parts
 	}
 	return defaultValue
 }
