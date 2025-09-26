@@ -57,7 +57,7 @@ export default function Home() {
           style={{ animationDelay: '2s' }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="text-center space-y-8">
             {/* Badge */}
             <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
