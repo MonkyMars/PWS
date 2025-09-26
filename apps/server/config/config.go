@@ -4,13 +4,15 @@
 package config
 
 import (
-	"strings"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/MonkyMars/PWS/types"
 )
 
 // Config holds all application configuration values loaded from environment variables.
@@ -24,88 +26,24 @@ type Config struct {
 	LogLevel    string
 
 	// Auth Settings
-	Auth AuthConfig
+	Auth types.AuthConfig
 
 	// API Settings
-	Supabase SupabaseConfig
+	Supabase types.SupabaseConfig
 
 	// Database Settings
-	Database DatabaseConfig
+	Database types.DatabaseConfig
 
 	// Server Settings
-	Server ServerConfig
+	Server types.ServerConfig
 
 	// Cache Settings
-	Cache CacheConfig
+	Cache types.CacheConfig
 
 	// CORS Settings
-	Cors CorsConfig
+	Cors types.CorsConfig
 }
 
-// DatabaseConfig holds all database-related configuration
-type DatabaseConfig struct {
-	Host         string
-	Port         int
-	User         string
-	Password     string
-	Name         string
-	SSLMode      string
-	MaxConns     int
-	MinConns     int
-	MaxIdleTime  time.Duration
-	MaxLifetime  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-
-	// Alternative: Full connection string
-	ConnectionString string
-}
-
-// ServerConfig holds server-related configuration
-type ServerConfig struct {
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	IdleTimeout    time.Duration
-	MaxHeaderBytes int
-}
-
-type SupabaseConfig struct {
-	Url        string
-	AnonKey    string
-	ServiceKey string
-}
-
-type AuthConfig struct {
-	AccessTokenSecret  string
-	AccessTokenExpiry  time.Duration
-	RefreshTokenSecret string
-	RefreshTokenExpiry time.Duration
-}
-
-type CacheConfig struct {
-	Address         string
-	Username        string
-	Password        string
-	DB              int
-	PoolSize        int
-	MinIdleConns    int
-	MaxIdleConns    int
-	PoolTimeout     time.Duration
-	IdleTimeout     time.Duration
-	DialTimeout     time.Duration
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	MaxRetries      int
-	MinRetryBackoff time.Duration
-	MaxRetryBackoff time.Duration
-}
-
-type CorsConfig struct {
-	AllowOrigins     []string
-	AllowMethods     []string
-	AllowHeaders     []string
-	AllowCredentials bool
-}
 
 var (
 	configInstance *Config
@@ -127,13 +65,13 @@ func Load() *Config {
 			LogLevel:    getEnv("LOG_LEVEL", "info"),
 
 			// API Settings
-			Supabase: SupabaseConfig{
+			Supabase: types.SupabaseConfig{
 				Url:        getEnv("SUPABASE_URL", ""),
 				AnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
 				ServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 			},
 
-			Auth: AuthConfig{
+			Auth: types.AuthConfig{
 				AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", ""),
 				AccessTokenExpiry:  getEnvDuration("ACCESS_TOKEN_EXPIRY", 15*time.Minute),
 				RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
@@ -141,7 +79,7 @@ func Load() *Config {
 			},
 
 			// Database Settings
-			Database: DatabaseConfig{
+			Database: types.DatabaseConfig{
 				Host:             getEnv("DB_HOST", "localhost"),
 				Port:             getEnvInt("DB_PORT", 5432),
 				User:             getEnv("DB_USER", "postgres"),
@@ -158,7 +96,7 @@ func Load() *Config {
 			},
 
 			// Server Settings
-			Server: ServerConfig{
+			Server: types.ServerConfig{
 				ReadTimeout:    getEnvDuration("SERVER_READ_TIMEOUT", 30*time.Second),
 				WriteTimeout:   getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
 				IdleTimeout:    getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
@@ -166,7 +104,7 @@ func Load() *Config {
 			},
 
 			// Cache Settings
-			Cache: CacheConfig{
+			Cache: types.CacheConfig{
 				Address:         getEnv("CACHE_ADDRESS", "localhost:6379"),
 				Username:        getEnv("CACHE_USERNAME", ""),
 				Password:        getEnv("CACHE_PASSWORD", ""),
@@ -184,7 +122,8 @@ func Load() *Config {
 				MaxRetryBackoff: getEnvDuration("CACHE_MAX_RETRY_BACKOFF", 512*time.Millisecond),
 			},
 
-			Cors: CorsConfig{
+			// CORS Settings
+			Cors: types.CorsConfig{
 				AllowOrigins:     strings.Split(getEnv("CORS_ALLOW_ORIGINS", "http://localhost:5173,http://localhost:3000"), ","),
 				AllowMethods:     strings.Split(getEnv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS"), ","),
 				AllowHeaders:     strings.Split(getEnv("CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization"), ","),
