@@ -140,9 +140,6 @@ export class ApiClient {
   private handleAuthFailure(): void {
     // Emit custom event for auth failure
     window.dispatchEvent(new CustomEvent('auth:failure'));
-
-    // You could also redirect directly here if preferred
-    // window.location.href = "/login";
   }
 
   /**
