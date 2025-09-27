@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -92,7 +92,18 @@ func (cs *CacheService) withRetry(operation func() error, maxRetries int) error 
 		}
 
 		// add jitter ±50%
-		jitter := rand.Intn(backoff/2 + 1)
+		jitterBytes := make([]byte, 4)
+		_, err = rand.Read(jitterBytes)
+		if err != nil {
+			// fallback to no jitter if random fails
+			time.Sleep(time.Duration(backoff) * time.Millisecond)
+			continue
+		}
+		jitter := int(uint32(jitterBytes[0])<<24 | uint32(jitterBytes[1])<<16 | uint32(jitterBytes[2])<<8 | uint32(jitterBytes[3]))
+		// No need to handle negative values; uint32 avoids sign extension
+		// jitter is always non-negative
+		
+		jitter = jitter % (backoff/2 + 1)
 		backoffWithJitter := backoff/2 + jitter
 
 		time.Sleep(time.Duration(backoffWithJitter) * time.Millisecond)
