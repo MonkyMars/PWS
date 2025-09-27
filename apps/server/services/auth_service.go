@@ -123,7 +123,11 @@ func (a *AuthService) compareArgon2Hash(password, encoded string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(expected)))
+	expectedLen := len(expected)
+	if expectedLen < 0 || expectedLen > 0x7FFFFFFF {
+		return false, fmt.Errorf("invalid hash length: %d", expectedLen)
+	}
+	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(expectedLen))
 	return subtleCompare(hash, expected), nil
 }
 
