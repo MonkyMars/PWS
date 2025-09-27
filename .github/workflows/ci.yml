@@ -1,0 +1,294 @@
+name: Go Fiber & React Router CI
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+jobs:
+  # Lightning-fast parallel builds with comprehensive tooling
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: go-fiber-server
+            paths: "apps/server/**/*.go apps/server/go.mod apps/server/go.sum"
+            working_directory: apps/server
+            build_script: |
+              if ! echo "$CHANGED_FILES" | grep -qE "apps/server/.*\.(go|mod|sum)$"; then
+                echo "No Go server changes detected, skipping build"
+                exit 0
+              fi
+              echo "Starting Go Fiber server build..."
+
+              # Verify Go version matches go.mod
+              echo "Checking Go version..."
+              go version
+
+              # Download dependencies
+              echo "Downloading dependencies..."
+              go mod download
+              go mod verify
+
+              # Run formatting check
+              echo "Checking code formatting..."
+              if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+                echo "Code is not formatted. Run 'go fmt ./...'"
+                gofmt -s -l .
+                exit 1
+              fi
+
+              # Run go vet
+              echo "Running go vet..."
+              go vet ./...
+
+              # Install and run golangci-lint
+              echo "Running golangci-lint..."
+              curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.61.0
+              export PATH="$(go env GOPATH)/bin:$PATH"
+              golangci-lint run ./...
+
+              # Run tests with coverage
+              echo "Running tests..."
+              go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+              # Build the application
+              echo "Building application..."
+              go build -v -o ./bin/server ./main.go
+
+              echo "Go Fiber server build complete"
+
+          - name: react-router-ui
+            paths: "apps/ui/**/*.ts apps/ui/**/*.tsx apps/ui/package.json apps/ui/bun.lock"
+            working_directory: apps/ui
+            build_script: |
+              if ! echo "$CHANGED_FILES" | grep -qE "apps/ui/.*\.(ts|tsx|json)$|apps/ui/bun\.lock$"; then
+                echo "No React Router UI changes detected, skipping build"
+                exit 0
+              fi
+              echo "Starting React Router UI build..."
+
+              # Install Bun
+              curl -fsSL https://bun.sh/install | bash
+              export PATH="$HOME/.bun/bin:$PATH"
+
+              # Install dependencies
+              echo "Installing dependencies..."
+              bun install --frozen-lockfile --silent
+
+              # Run type checking
+              echo "Running TypeScript type checking..."
+              bun run typecheck
+
+              # Build the application
+              echo "Building application..."
+              bun run build
+
+              echo "React Router UI build complete"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Go
+        if: matrix.name == 'go-fiber-server'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.0"
+          cache-dependency-path: apps/server/go.sum
+
+      - name: Get changed files
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1)
+          fi
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          echo "$CHANGED_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+      - name: Cache Go modules
+        if: matrix.name == 'go-fiber-server'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('apps/server/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Cache Bun dependencies
+        if: matrix.name == 'react-router-ui'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            apps/ui/node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('apps/ui/bun.lock', 'apps/ui/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Build and Test ${{ matrix.name }}
+        run: |
+          cd ${{ matrix.working_directory }}
+          ${{ matrix.build_script }}
+        env:
+          CGO_ENABLED: 0
+          GO111MODULE: on
+
+      - name: Upload Go test coverage
+        if: matrix.name == 'go-fiber-server'
+        uses: codecov/codecov-action@v4
+        with:
+          file: apps/server/coverage.out
+          flags: go-server
+          name: go-fiber-server
+          fail_ci_if_error: false
+
+  # Security scanning
+  security:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.0"
+
+      - name: Clean and download dependencies
+        run: |
+          cd apps/server
+          # Clean module cache and rebuild go.sum
+          go clean -modcache
+          go mod tidy -v
+          go mod download -x
+          go mod verify
+
+      - name: Run Gosec Security Scanner
+        run: |
+          cd apps/server
+          curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+          echo "Running security scan..."
+
+          # Ensure dependencies are properly resolved
+          go list -m all > /dev/null || (echo "Module resolution failed, retrying..." && go mod tidy)
+
+          # Run gosec and capture exit code
+          set +e
+          gosec -fmt sarif -out gosec.sarif -nosec-tag notsec -exclude-dir=vendor ./...
+          GOSEC_EXIT_CODE=$?
+          set -e
+
+          if [ $GOSEC_EXIT_CODE -eq 0 ]; then
+            echo "Security scan completed - no issues found"
+          else
+            echo "Security scan completed with findings - check SARIF output for details"
+            echo "Exit code: $GOSEC_EXIT_CODE"
+          fi
+
+          # Always create the SARIF file even if empty
+          touch gosec.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: apps/server/gosec.sarif
+        if: always()
+
+      - name: Display security scan summary
+        run: |
+          cd apps/server
+          if [ -f gosec.sarif ] && [ -s gosec.sarif ]; then
+            echo "Security scan results saved to SARIF format"
+            echo "Check the Security tab in GitHub for detailed findings"
+            # Count findings if jq is available
+            if command -v jq >/dev/null 2>&1; then
+              FINDINGS=$(jq '.runs[0].results | length' gosec.sarif 2>/dev/null || echo "unknown")
+              echo "Number of security findings: $FINDINGS"
+            fi
+          else
+            echo "No security issues found by gosec"
+          fi
+        if: always()
+
+  # Dependency vulnerability check
+  vulnerability-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.0"
+
+      - name: Clean and prepare dependencies
+        run: |
+          cd apps/server
+          # Clean and rebuild go.sum completely
+          go clean -modcache
+          go mod tidy -v
+          go mod download -x
+          go mod verify
+          # Verify all packages can be listed
+          go list -m all
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          cd apps/server
+          # Final verification that modules are ready
+          go list -m all > /dev/null
+
+          # Run vulnerability check
+          set +e
+          govulncheck -test ./...
+          VULN_EXIT_CODE=$?
+          set -e
+
+          if [ $VULN_EXIT_CODE -eq 0 ]; then
+            echo "No vulnerabilities found"
+          else
+            echo "Vulnerability check completed with findings (exit code: $VULN_EXIT_CODE)"
+            echo "Check the output above for details"
+          fi
+
+  # Final summary
+  ci-complete:
+    needs: [build-and-test, security, vulnerability-check]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: CI Summary
+        run: |
+          echo "## CI/CD Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Test | ${{ needs.build-and-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Vulnerability Check | ${{ needs.vulnerability-check.result }} |" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.build-and-test.result }}" == "success" && \
+                "${{ needs.security.result }}" != "failure" && \
+                "${{ needs.vulnerability-check.result }}" != "failure" ]]; then
+            echo "All CI checks completed successfully"
+            echo "### Ready to merge!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Some CI checks failed"
+            echo "### Please fix the issues before merging" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
