@@ -99,10 +99,10 @@ func (cs *CacheService) withRetry(operation func() error, maxRetries int) error 
 			time.Sleep(time.Duration(backoff) * time.Millisecond)
 			continue
 		}
-		jitter := int(jitterBytes[0])<<24 | int(jitterBytes[1])<<16 | int(jitterBytes[2])<<8 | int(jitterBytes[3])
-		if jitter < 0 {
-			jitter = -jitter
-		}
+		jitter := int(uint32(jitterBytes[0])<<24 | uint32(jitterBytes[1])<<16 | uint32(jitterBytes[2])<<8 | uint32(jitterBytes[3]))
+		// No need to handle negative values; uint32 avoids sign extension
+		// jitter is always non-negative
+		
 		jitter = jitter % (backoff/2 + 1)
 		backoffWithJitter := backoff/2 + jitter
 
