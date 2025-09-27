@@ -32,29 +32,29 @@ export const links = () => [
  * @returns JSX element representing the complete HTML document structure
  */
 export function Layout({ children }: { children: React.ReactNode }) {
-	return (
-		<html lang="nl">
-			<head>
-				<meta charSet="utf-8" />
-				<meta name="viewport" content="width=device-width, initial-scale=1" />
-				<meta
-					name="description"
-					content="PWS ELO - Elektronische Leeromgeving voor middelbare scholieren"
-				/>
-				<meta
-					name="keywords"
-					content="ELO, elektronische leeromgeving, onderwijs, school, leerlingen"
-				/>
-				<Meta />
-				<Links />
-			</head>
-			<body>
-				{children}
-				<ScrollRestoration />
-				<Scripts />
-			</body>
-		</html>
-	);
+  return (
+    <html lang="nl" suppressHydrationWarning>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="description"
+          content="PWS ELO - Elektronische Leeromgeving voor middelbare scholieren"
+        />
+        <meta
+          name="keywords"
+          content="ELO, elektronische leeromgeving, onderwijs, school, leerlingen"
+        />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        {children}
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
 }
 
 /**

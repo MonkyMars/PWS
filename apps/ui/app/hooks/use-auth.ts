@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '~/lib/api-client';
 import { env } from '~/lib/env';
 import type { User, LoginCredentials, RegisterData } from '~/types';
+import { useNavigate } from 'react-router';
 
 /**
  * Track authentication state across app lifecycle
@@ -86,6 +87,7 @@ export function useRegister() {
  * Hook for user logout
  */
 export function useLogout() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -102,6 +104,8 @@ export function useLogout() {
       lastAuthResult = false;
       // Clear all cached data
       queryClient.clear();
+
+      navigate('/login');
     },
     onError: () => {
       // Reset auth tracking even if logout fails
