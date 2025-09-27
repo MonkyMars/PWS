@@ -124,7 +124,7 @@ func (a *AuthService) compareArgon2Hash(password, encoded string) (bool, error) 
 		return false, err
 	}
 	expectedLen := len(expected)
-	if expectedLen < 0 || expectedLen > 0x7FFFFFFF {
+	if expectedLen > 0x7FFFFFFF {
 		return false, fmt.Errorf("invalid hash length: %d", expectedLen)
 	}
 	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(expectedLen))
