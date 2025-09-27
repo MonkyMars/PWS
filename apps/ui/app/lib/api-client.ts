@@ -98,8 +98,12 @@ export class ApiClient {
           return this.request<T>(url, options, false);
         }
 
-        // No refresh token or refresh failed, handle auth failure
-        this.handleAuthFailure();
+        // Only trigger auth failure for non-auth endpoints
+        // /auth/me returning 401 is expected for unauthenticated users
+        if (!url.includes('/auth/me')) {
+          this.handleAuthFailure();
+        }
+
         return {
           success: false,
           message: 'Authentication failed',

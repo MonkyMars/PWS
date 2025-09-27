@@ -91,6 +91,9 @@ export function useLogout() {
       lastAuthResult = false;
       // Clear all cached data
       queryClient.clear();
+
+      // Redirect to login or home page if needed
+      window.location.href = '/login';
     },
     onError: () => {
       // Reset auth tracking even if logout fails

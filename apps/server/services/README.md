@@ -27,7 +27,8 @@ Handles all authentication operations.
 
 **How to use:**
 ```go
-authService := &services.AuthService{}
+logger := config.SetupLogger()
+authService := &services.AuthService{Logger: logger}
 
 // Login user
 user, err := authService.Login(&types.AuthRequest{

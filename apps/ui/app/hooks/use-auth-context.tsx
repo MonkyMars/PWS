@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCurrentUser } from './use-auth';
 import type { User, AuthState } from '~/types';
@@ -18,9 +18,13 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { data: user, isLoading, error } = useCurrentUser();
   const [authError, setAuthError] = useState<string | undefined>();
+
+  // Define which routes are protected and require authentication
+  const protectedRoutes = ['/dashboard', '/subjects'];
 
   // Handle authentication failures from API client
   useEffect(() => {
@@ -29,8 +33,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       queryClient.removeQueries({ queryKey: ['auth'] });
       setAuthError('Your session has expired. Please log in again.');
 
-      // Redirect to login page
-      navigate('/login', { replace: true });
+      // Only redirect to login if user is on a protected route
+      const isOnProtectedRoute = protectedRoutes.some((route) =>
+        location.pathname.startsWith(route)
+      );
+
+      if (isOnProtectedRoute) {
+        navigate('/login', { replace: true });
+      }
     };
 
     // Listen for auth failure events from API client
@@ -39,7 +49,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       window.removeEventListener('auth:failure', handleAuthFailure);
     };
-  }, [navigate, queryClient]);
+  }, [navigate, queryClient, location.pathname]);
 
   // Clear auth error when user changes (successful login)
   useEffect(() => {
