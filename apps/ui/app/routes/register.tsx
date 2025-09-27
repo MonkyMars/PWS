@@ -1,20 +1,33 @@
 import { RegisterForm } from '~/components/auth/register-form';
+import { FeatureDisabled } from '~/components/feature-disabled';
 import { useAuth } from '~/hooks';
 import { Navigate } from 'react-router';
+import { env } from '~/lib/env';
 
 export function meta() {
-  return [
-    { title: 'Registreren | PWS ELO' },
-    { name: 'description', content: 'Maak een nieuw PWS ELO account aan' },
-  ];
+	return [
+		{ title: 'Registreren | PWS ELO' },
+		{ name: 'description', content: 'Maak een nieuw PWS ELO account aan' },
+	];
 }
 
 export default function Register() {
-  const { isAuthenticated, isLoading } = useAuth();
+	const { isAuthenticated, isLoading } = useAuth();
 
   if (isAuthenticated && !isLoading) {
     return <Navigate to="/dashboard" replace />;
   }
+  
+  // Check if registration feature is disabled
+	if (!env.features.enableRegister) {
+		return (
+			<FeatureDisabled
+				featureName="Registratie"
+				description="De registratie functionaliteit is momenteel uitgeschakeld door de beheerder."
+			/>
+		);
+	}
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">

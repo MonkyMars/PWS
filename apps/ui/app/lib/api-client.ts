@@ -1,9 +1,10 @@
 import type { ApiResponse } from '~/types';
+import { env } from './env';
 
 /**
  * API configuration and base URL
  */
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
+const API_URL = env.apiUrl;
 
 /**
  * API client class for making HTTP requests to the ELO backend with cookie-based auth

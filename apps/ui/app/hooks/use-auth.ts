@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '~/lib/api-client';
+import { env } from '~/lib/env';
 import type { User, LoginCredentials, RegisterData } from '~/types';
 import { useNavigate } from 'react-router';
 
@@ -18,6 +19,11 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: async (credentials: LoginCredentials): Promise<User> => {
+      // Check if login feature is enabled
+      if (!env.features.enableLogin) {
+        throw new Error('Login functionaliteit is uitgeschakeld');
+      }
+
       const response = await apiClient.post<User>('/auth/login', credentials);
 
       if (!response.success || !response.data) {
@@ -49,6 +55,11 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: async (userData: RegisterData): Promise<User> => {
+      // Check if registration feature is enabled
+      if (!env.features.enableRegister) {
+        throw new Error('Registratie functionaliteit is uitgeschakeld');
+      }
+
       const response = await apiClient.post<User>('/auth/register', userData);
 
       if (!response.success || !response.data) {

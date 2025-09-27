@@ -11,16 +11,16 @@ import { AuthProvider } from './hooks';
  * Includes font preconnections and stylesheets for improved performance.
  */
 export const links = () => [
-  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-  {
-    rel: 'preconnect',
-    href: 'https://fonts.gstatic.com',
-    crossOrigin: 'anonymous',
-  },
-  {
-    rel: 'stylesheet',
-    href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
-  },
+	{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+	{
+		rel: 'preconnect',
+		href: 'https://fonts.gstatic.com',
+		crossOrigin: 'anonymous',
+	},
+	{
+		rel: 'stylesheet',
+		href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
+	},
 ];
 
 /**
@@ -65,19 +65,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
  * @returns JSX element that renders the current route's component
  */
 export default function App() {
-  const queryClient = getQueryClient();
+	const queryClient = getQueryClient();
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <div className="min-h-screen flex flex-col">
-          <Navigation />
-          <main className="flex-1">
-            <Outlet />
-          </main>
-          <Footer />
-        </div>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+	return (
+		<QueryClientProvider client={queryClient}>
+			<AuthProvider>
+				<div className="min-h-screen flex flex-col">
+					<Navigation />
+					<main className="flex-1">
+						<Outlet />
+					</main>
+					<Footer />
+				</div>
+			</AuthProvider>
+		</QueryClientProvider>
+	);
 }
