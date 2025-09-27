@@ -28,7 +28,7 @@ func Login(c fiber.Ctx) error
 
 **`Register(c fiber.Ctx)`** - Handles user registration
 ```go
-// POST /auth/register  
+// POST /auth/register
 // Expects: {"username": "user", "email": "user@example.com", "password": "password"}
 // Returns: New user data and sets authentication cookies
 func Register(c fiber.Ctx) error
@@ -98,25 +98,28 @@ All handler functions follow the same pattern:
 
 ```go
 func CreateUser(c fiber.Ctx) error {
-    // 1. Extract request data
+		// 1. Set up logger
+		logger := config.SetupLogger()
+
+    // 2. Extract request data
     var req types.CreateUserRequest
     if err := c.Bind().Body(&req); err != nil {
         return response.BadRequest(c, "Invalid request body")
     }
-    
-    // 2. Validate input
+
+    // 3. Validate input
     if req.Email == "" {
         return response.BadRequest(c, "Email is required")
     }
-    
-    // 3. Call service
-    authService := &services.AuthService{}
+
+    // 4. Call service
+    authService := &services.AuthService{Logger: logger}
     user, err := authService.CreateUser(&req)
     if err != nil {
         return response.InternalServerError(c, "Failed to create user")
     }
-    
-    // 4. Return response
+
+    // 5. Return response
     return response.Created(c, user)
 }
 ```
@@ -164,7 +167,7 @@ if strings.TrimSpace(authRequest.Email) == "" {
 if len(registerRequest.Password) < 6 {
     return response.SendValidationError(c, []types.ValidationError{
         {
-            Field:   "password", 
+            Field:   "password",
             Message: "Password must be at least 6 characters long",
             Value:   registerRequest.Password,
         },
@@ -180,7 +183,7 @@ Handlers use the response package for consistent error handling:
 // Bad request (400)
 return response.BadRequest(c, "Invalid input data")
 
-// Unauthorized (401) 
+// Unauthorized (401)
 return response.Unauthorized(c, "Invalid credentials")
 
 // Not found (404)
@@ -202,23 +205,26 @@ Handlers create service instances and call their methods:
 
 ```go
 func Login(c fiber.Ctx) error {
+		// Set up logger
+		logger := config.SetupLogger()
+
     // Create service instance
-    authService := &services.AuthService{}
+    authService := &services.AuthService{Logger: logger}
     cookieService := &services.CookieService{}
-    
+
     // Call service methods
     user, err := authService.Login(&authRequest)
     if err != nil {
         return response.Unauthorized(c, "Invalid credentials")
     }
-    
+
     // Generate tokens
     accessToken, err := authService.GenerateAccessToken(user)
     refreshToken, err := authService.GenerateRefreshToken(user)
-    
+
     // Set cookies
     cookieService.SetAuthCookies(c, accessToken, refreshToken)
-    
+
     return response.Success(c, user)
 }
 ```
@@ -243,11 +249,11 @@ func Me(c fiber.Ctx) error {
     if !ok {
         return response.Unauthorized(c, "Unauthorized")
     }
-    
+
     // Use user ID from claims
     userID := claims.Sub
     user, err := authService.GetUserByID(userID)
-    
+
     return response.Success(c, user)
 }
 ```
@@ -280,13 +286,13 @@ Handlers can be tested using Fiber's test utilities:
 func TestLogin(t *testing.T) {
     app := fiber.New()
     app.Post("/auth/login", Login)
-    
+
     req := httptest.NewRequest("POST", "/auth/login", strings.NewReader(`{
         "email": "test@example.com",
         "password": "password"
     }`))
     req.Header.Set("Content-Type", "application/json")
-    
+
     resp, err := app.Test(req)
     assert.NoError(t, err)
     assert.Equal(t, 200, resp.StatusCode)

@@ -6,7 +6,7 @@ import { Input } from '~/components/ui/input';
 import { useRegister } from '~/hooks';
 import { registerSchema, type RegisterFormData } from './validation';
 
-export function RegisterForm() {
+export function RegisterForm({ isLoading }: { isLoading: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<RegisterFormData>({
     username: '',
@@ -146,8 +146,8 @@ export function RegisterForm() {
       <Button
         type="submit"
         className="w-full"
-        isLoading={registerMutation.isPending}
-        disabled={registerMutation.isPending}
+        isLoading={registerMutation.isPending || isLoading}
+        disabled={registerMutation.isPending || isLoading}
       >
         <UserPlus className="h-4 w-4 mr-2" />
         Account aanmaken

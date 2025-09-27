@@ -46,7 +46,7 @@ func Login(c fiber.Ctx) error {
 	}
 
 	// Initialize auth service
-	authService := &services.AuthService{}
+	authService := &services.AuthService{Logger: logger}
 
 	// Initialize cookie service
 	cookieService := &services.CookieService{}
@@ -136,15 +136,17 @@ func Register(c fiber.Ctx) error {
 	}
 
 	// Initialize auth service
-	authService := &services.AuthService{}
+	authService := &services.AuthService{Logger: logger}
+	// Initialize cookie service
+	cookieService := &services.CookieService{}
 
 	// Attempt registration
 	user, err := authService.Register(&registerRequest)
 	if err != nil {
 		logger.Error("Registration failed", "email", registerRequest.Email, "username", registerRequest.Username, "error", err)
 
-		if strings.Contains(err.Error(), "already exists") {
-			return response.Conflict(c, "User with the given email or username already exists")
+		if errors.Is(err, lib.ErrUserAlreadyExists) {
+			return response.Conflict(c, "User with this email or username already exists")
 		}
 
 		return response.InternalServerError(c, "An error occurred during registration")
@@ -163,14 +165,9 @@ func Register(c fiber.Ctx) error {
 		return response.InternalServerError(c, "Failed to generate refresh token")
 	}
 
-	// Create response
-	authResponse := types.AuthResponse{
-		User:         user,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}
+	cookieService.SetAuthCookies(c, accessToken, refreshToken)
 
-	return response.Success(c, authResponse)
+	return response.Success(c, user)
 }
 
 // RefreshToken handles token refresh using refresh tokens
@@ -180,7 +177,7 @@ func RefreshToken(c fiber.Ctx) error {
 	token := c.Cookies(lib.RefreshTokenCookieName)
 
 	// Initialize auth service
-	authService := &services.AuthService{}
+	authService := &services.AuthService{Logger: logger}
 
 	// Initialize cookie service for setting new cookies
 	cookieService := &services.CookieService{}
@@ -225,7 +222,7 @@ func Me(c fiber.Ctx) error {
 	}
 
 	// Initialize auth service
-	authService := &services.AuthService{}
+	authService := &services.AuthService{Logger: logger}
 
 	// Fetch user info
 	user, err := authService.GetUserByID(claims.Sub)
@@ -250,7 +247,7 @@ func Logout(c fiber.Ctx) error {
 	refreshToken := c.Cookies(lib.RefreshTokenCookieName)
 
 	// Initialize services
-	authService := &services.AuthService{}
+	authService := &services.AuthService{Logger: logger}
 	cookieService := &services.CookieService{}
 
 	// Blacklist access token if present
