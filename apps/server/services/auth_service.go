@@ -337,8 +337,12 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 	insertQuery.Returning = []string{"id", "username", "email", "role"}
 
 	result, err := database.ExecuteQuery[types.User](insertQuery)
-	if err != nil || result.Single == nil {
+	if err != nil {
 		a.Logger.Error("Failed to create user during registration", "error", err)
+		return nil, lib.ErrCreateUser
+	}
+	if result.Single == nil {
+		a.Logger.Error("User creation succeeded but no user was returned during registration")
 		return nil, lib.ErrCreateUser
 	}
 
