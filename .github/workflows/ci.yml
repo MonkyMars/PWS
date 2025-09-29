@@ -48,12 +48,6 @@ jobs:
               echo "Running go vet..."
               go vet ./...
 
-              # Install and run golangci-lint
-              echo "Running golangci-lint..."
-              curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.61.0
-              export PATH="$(go env GOPATH)/bin:$PATH"
-              golangci-lint run ./...
-
               # Run tests with coverage
               echo "Running tests..."
               go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
@@ -63,6 +57,9 @@ jobs:
               go build -v -o ./bin/server ./main.go
 
               echo "Go Fiber server build complete"
+
+          - name: Golangci-lint
+            uses: golangci/golangci-lint-action@v8.0.0
 
           - name: react-router-ui
             paths: "apps/ui/**/*.ts apps/ui/**/*.tsx apps/ui/package.json apps/ui/bun.lock"
