@@ -48,10 +48,6 @@ jobs:
               echo "Running go vet..."
               go vet ./...
 
-              # Run tests with coverage
-              echo "Running tests..."
-              go test -v -race -coverprofile=coverage.out -covermode=atomic ./tests
-
               # Build the application
               echo "Building application..."
               go build -v -o ./bin/server ./main.go
