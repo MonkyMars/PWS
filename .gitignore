@@ -19,3 +19,6 @@ build/
 
 # Exlude binary files
 bin/
+
+# Exclude coverage reports
+*.out
