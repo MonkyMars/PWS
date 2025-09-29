@@ -85,7 +85,6 @@ func main() {
 	}()
 
 	// Start the API server
-	logger.ServerStart()
 	err = api.App()
 	if err != nil {
 		logger.ServerError(err)
