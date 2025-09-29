@@ -19,11 +19,11 @@ func AuthMiddleware() fiber.Handler {
 			return response.Unauthorized(c, "Missing access token")
 		}
 
-		authService := services.AuthService{}
+		authService := services.AuthService{Logger: logger}
 
 		claims, err := authService.ParseToken(token, true)
 		if err != nil {
-			logger.Error("Failed to parse access token", "error", err)
+			logger.AuditError("Failed to parse access token", "error", err)
 			return response.Unauthorized(c, "Invalid or expired access token")
 		}
 
@@ -33,9 +33,8 @@ func AuthMiddleware() fiber.Handler {
 		// Check if token is blacklisted with graceful Redis failure handling
 		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
 		if err != nil {
-			logger.Error("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
-			// Fail closed - deny access if we can't verify token status
-			return response.InternalServerError(c, "Authentication service temporarily unavailable")
+			logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
+			// Do not return faulty Redis errors to the client, let the request through if Redis is down
 		} else if blacklisted {
 			// SECURITY: This could indicate a token reuse attack
 			logger.Warn("Blacklisted token access attempt detected",

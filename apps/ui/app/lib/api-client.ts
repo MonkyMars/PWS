@@ -1,9 +1,10 @@
 import type { ApiResponse } from '~/types';
+import { env } from './env';
 
 /**
  * API configuration and base URL
  */
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
+const API_URL = env.apiUrl;
 
 /**
  * API client class for making HTTP requests to the ELO backend with cookie-based auth
@@ -98,8 +99,12 @@ export class ApiClient {
           return this.request<T>(url, options, false);
         }
 
-        // No refresh token or refresh failed, handle auth failure
-        this.handleAuthFailure();
+        // Only trigger auth failure for non-auth endpoints
+        // /auth/me returning 401 is expected for unauthenticated users
+        if (!url.includes('/auth/me')) {
+          this.handleAuthFailure();
+        }
+
         return {
           success: false,
           message: 'Authentication failed',
@@ -136,9 +141,6 @@ export class ApiClient {
   private handleAuthFailure(): void {
     // Emit custom event for auth failure
     window.dispatchEvent(new CustomEvent('auth:failure'));
-
-    // You could also redirect directly here if preferred
-    // window.location.href = "/login";
   }
 
   /**

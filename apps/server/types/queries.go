@@ -21,6 +21,9 @@ type QueryParams struct {
 	// Data contains the data to insert or update
 	Data map[string]any `json:"data,omitempty"`
 
+	// Entries contains multiple entries for bulk insert/update operations
+	Entries []any `json:"entries,omitempty"`
+
 	// Select specifies which columns to select (for SELECT operations)
 	Select []string `json:"select,omitempty"`
 
@@ -140,6 +143,12 @@ func (q *QueryParams) AddData(key string, value any) *QueryParams {
 	return q
 }
 
+// SetEntries sets multiple entries for insert/update operations
+func (q *QueryParams) SetEntries(entries []any) *QueryParams {
+	q.Entries = entries
+	return q
+}
+
 // SetSelect sets the columns to select
 func (q *QueryParams) SetSelect(columns []string) *QueryParams {
 	q.Select = columns
@@ -231,8 +240,12 @@ func (q *QueryParams) Validate() error {
 		// Select operations don't require additional validation
 		return nil
 	case "insert":
-		if len(q.Data) == 0 {
+		if len(q.Data) == 0 && len(q.Entries) == 0 {
 			return ErrNoDataProvided
+		}
+		// Ensure only one of Data or Entries is provided
+		if len(q.Data) > 0 && len(q.Entries) > 0 {
+			return ErrBothDataAndEntriesProvided
 		}
 		return nil
 	case "update":
@@ -260,8 +273,9 @@ func (q *QueryParams) Validate() error {
 
 // Common query builder errors
 var (
-	ErrNoDataProvided   = fmt.Errorf("no data provided for insert/update operation")
-	ErrNoWhereCondition = fmt.Errorf("no WHERE condition provided for update/delete operation")
-	ErrNoRawSQL         = fmt.Errorf("no raw SQL provided for raw operation")
-	ErrInvalidOperation = fmt.Errorf("invalid operation specified")
+	ErrNoDataProvided             = fmt.Errorf("no data provided for insert/update operation")
+	ErrNoWhereCondition           = fmt.Errorf("no WHERE condition provided for update/delete operation")
+	ErrNoRawSQL                   = fmt.Errorf("no raw SQL provided for raw operation")
+	ErrInvalidOperation           = fmt.Errorf("invalid operation specified")
+	ErrBothDataAndEntriesProvided = fmt.Errorf("cannot provide both Data and Entries for insert operation - use one or the other")
 )

@@ -1,28 +1,33 @@
 import { LoginForm } from '~/components/auth/login-form';
+import { FeatureDisabled } from '~/components/feature-disabled';
 import { useAuth } from '~/hooks';
 import { Navigate } from 'react-router';
+import { env } from '~/lib/env';
 
 export function meta() {
-  return [
-    { title: 'Inloggen | PWS ELO' },
-    { name: 'description', content: 'Log in op je PWS ELO account' },
-  ];
+	return [
+		{ title: 'Inloggen | PWS ELO' },
+		{ name: 'description', content: 'Log in op je PWS ELO account' },
+	];
 }
 
 export default function Login() {
-  const { isAuthenticated, isLoading } = useAuth();
+	const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
+  if (isAuthenticated && !isLoading) {
     return <Navigate to="/dashboard" replace />;
   }
+  
+  // Check if login feature is disabled
+  if (!env.features.enableLogin) {
+		return (
+			<FeatureDisabled
+				featureName="Inloggen"
+				description="De inlog functionaliteit is momenteel uitgeschakeld door de beheerder."
+			/>
+		);
+	}
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -38,7 +43,7 @@ export default function Login() {
             </a>
           </p>
         </div>
-        <LoginForm />
+        <LoginForm isLoading={isLoading} />
       </div>
     </div>
   );

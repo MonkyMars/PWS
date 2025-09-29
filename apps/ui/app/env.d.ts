@@ -2,8 +2,9 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string;
-  readonly VITE_GOOGLE_API_KEY: string;
-  readonly VITE_GOOGLE_CLIENT_ID: string;
+  readonly VITE_ENABLE_LOGIN: string;
+  readonly VITE_ENABLE_REGISTER: string;
+  readonly NODE_ENV: string;
 }
 
 interface ImportMeta {

@@ -3,11 +3,15 @@ package config
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/MonkyMars/PWS/types"
+	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -202,4 +206,116 @@ func (l *Logger) Performance(operation string, duration time.Duration) {
 		slog.String("operation", operation),
 		slog.Duration("duration", duration),
 	)
+}
+
+// AuditError logs error messages to both the standard logger and the audit system.
+// This function creates an audit log entry that gets batched and stored in the database
+// via the audit worker for persistent error tracking and analysis.
+//
+// Parameters:
+//   - message: A descriptive error message
+//   - attrs: Additional structured attributes to include in both logs
+func (l *Logger) AuditError(message string, attrs ...any) {
+	// Log to standard logger first
+	l.Error(message, attrs...)
+
+	// Create audit log entry with validation
+	auditAttrs := make(map[string]any)
+
+	// Process attrs in pairs (key, value)
+	for i := 0; i < len(attrs)-1; i += 2 {
+		if key, ok := attrs[i].(string); ok && key != "" {
+			auditAttrs[key] = attrs[i+1]
+		}
+	}
+
+	auditLog := types.AuditLog{
+		Timestamp: time.Now(),
+		Level:     "ERROR",
+		Message:   message,
+		Attrs:     auditAttrs,
+	}
+
+	entryHash := generateEntryHash(auditLog)
+	auditLog.EntryHash = entryHash
+
+	// Send to audit worker (non-blocking)
+	addAuditLogFunc := getAddAuditLogFunc()
+	if addAuditLogFunc != nil {
+		addAuditLogFunc(auditLog)
+	}
+}
+
+// getAddAuditLogFunc returns the AddAuditLog function to avoid circular imports
+// This uses a lazy loading approach to access the workers.AddAuditLog function
+func getAddAuditLogFunc() func(types.AuditLog) {
+	auditMutex.RLock()
+	defer auditMutex.RUnlock()
+	return globalAddAuditLogFunc
+}
+
+// Global variable to hold the AddAuditLog function reference
+var (
+	globalAddAuditLogFunc func(types.AuditLog)
+	auditMutex            sync.RWMutex
+)
+
+// SetAuditLogFunc sets the audit log function to avoid circular dependencies.
+// This should be called during application initialization to wire up the audit logging.
+func SetAuditLogFunc(fn func(types.AuditLog)) {
+	if fn == nil {
+		return // Don't set nil function
+	}
+	auditMutex.Lock()
+	defer auditMutex.Unlock()
+	globalAddAuditLogFunc = fn
+}
+
+// generateEntryHash creates a unique hash for an audit log entry
+// This is used for deduplication to prevent the same entry from being inserted multiple times
+func generateEntryHash(entry types.AuditLog) string {
+	// Validate required fields
+	if entry.Message == "" || entry.Level == "" {
+		return "" // Return empty hash for invalid entries
+	}
+
+	// Normalize timestamp to second precision to handle minor timing differences
+	timestamp := entry.Timestamp.Truncate(time.Second).Unix()
+
+	// Handle nil attrs map
+	attrs := entry.Attrs
+	if attrs == nil {
+		attrs = make(map[string]any)
+	}
+
+	// Create a deterministic representation of the entry
+	data := map[string]any{
+		"timestamp": timestamp,
+		"level":     entry.Level,
+		"message":   entry.Message,
+		"attrs":     attrs,
+	}
+
+	// Convert to JSON for consistent hashing
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		// Fallback to a simple string representation with sanitized message
+		sanitizedMessage := entry.Message
+		if len(sanitizedMessage) > 100 {
+			sanitizedMessage = sanitizedMessage[:100] + "..."
+		}
+		fallbackHash := fmt.Sprintf("%d_%s_%s", timestamp, entry.Level, sanitizedMessage)
+
+		// Ensure fallback hash is not too long for database column
+		if len(fallbackHash) > 64 {
+			// Use a hash of the fallback string if it's too long
+			hash := sha256.Sum256([]byte(fallbackHash))
+			return fmt.Sprintf("%x", hash)
+		}
+		return fallbackHash
+	}
+
+	// Generate SHA256 hash
+	hash := sha256.Sum256(jsonData)
+	return fmt.Sprintf("%x", hash)
 }

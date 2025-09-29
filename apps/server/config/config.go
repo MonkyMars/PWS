@@ -8,8 +8,11 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/MonkyMars/PWS/types"
 )
 
 // Config holds all application configuration values loaded from environment variables.
@@ -23,10 +26,10 @@ type Config struct {
 	LogLevel    string
 
 	// Auth Settings
-	Auth AuthConfig
+	Auth types.AuthConfig
 
 	// API Settings
-	Supabase SupabaseConfig
+	Supabase types.SupabaseConfig
 
 	// Google OAuth Settings
 	Google GoogleConfig
@@ -35,71 +38,19 @@ type Config struct {
 	FrontendURL string
 
 	// Database Settings
-	Database DatabaseConfig
+	Database types.DatabaseConfig
 
 	// Server Settings
-	Server ServerConfig
+	Server types.ServerConfig
 
 	// Cache Settings
-	Cache CacheConfig
-}
+	Cache types.CacheConfig
 
-// DatabaseConfig holds all database-related configuration
-type DatabaseConfig struct {
-	Host         string
-	Port         int
-	User         string
-	Password     string
-	Name         string
-	SSLMode      string
-	MaxConns     int
-	MinConns     int
-	MaxIdleTime  time.Duration
-	MaxLifetime  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	// CORS Settings
+	Cors types.CorsConfig
 
-	// Alternative: Full connection string
-	ConnectionString string
-}
-
-// ServerConfig holds server-related configuration
-type ServerConfig struct {
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	IdleTimeout    time.Duration
-	MaxHeaderBytes int
-}
-
-type SupabaseConfig struct {
-	Url        string
-	AnonKey    string
-	ServiceKey string
-}
-
-type AuthConfig struct {
-	AccessTokenSecret  string
-	AccessTokenExpiry  time.Duration
-	RefreshTokenSecret string
-	RefreshTokenExpiry time.Duration
-}
-
-type CacheConfig struct {
-	Address         string
-	Username        string
-	Password        string
-	DB              int
-	PoolSize        int
-	MinIdleConns    int
-	MaxIdleConns    int
-	PoolTimeout     time.Duration
-	IdleTimeout     time.Duration
-	DialTimeout     time.Duration
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	MaxRetries      int
-	MinRetryBackoff time.Duration
-	MaxRetryBackoff time.Duration
+	// Audit Settings
+	Audit types.AuditConfig
 }
 
 type GoogleConfig struct {
@@ -128,13 +79,13 @@ func Load() *Config {
 			LogLevel:    getEnv("LOG_LEVEL", "info"),
 
 			// API Settings
-			Supabase: SupabaseConfig{
+			Supabase: types.SupabaseConfig{
 				Url:        getEnv("SUPABASE_URL", ""),
 				AnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
 				ServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 			},
 
-			Auth: AuthConfig{
+			Auth: types.AuthConfig{
 				AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", ""),
 				AccessTokenExpiry:  getEnvDuration("ACCESS_TOKEN_EXPIRY", 15*time.Minute),
 				RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
@@ -152,7 +103,7 @@ func Load() *Config {
 			FrontendURL: getEnv("FRONTEND_URL", ""),
 
 			// Database Settings
-			Database: DatabaseConfig{
+			Database: types.DatabaseConfig{
 				Host:             getEnv("DB_HOST", "localhost"),
 				Port:             getEnvInt("DB_PORT", 5432),
 				User:             getEnv("DB_USER", "postgres"),
@@ -169,7 +120,7 @@ func Load() *Config {
 			},
 
 			// Server Settings
-			Server: ServerConfig{
+			Server: types.ServerConfig{
 				ReadTimeout:    getEnvDuration("SERVER_READ_TIMEOUT", 30*time.Second),
 				WriteTimeout:   getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
 				IdleTimeout:    getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
@@ -177,7 +128,7 @@ func Load() *Config {
 			},
 
 			// Cache Settings
-			Cache: CacheConfig{
+			Cache: types.CacheConfig{
 				Address:         getEnv("CACHE_ADDRESS", "localhost:6379"),
 				Username:        getEnv("CACHE_USERNAME", ""),
 				Password:        getEnv("CACHE_PASSWORD", ""),
@@ -193,6 +144,25 @@ func Load() *Config {
 				MaxRetries:      getEnvInt("CACHE_MAX_RETRIES", 3),
 				MinRetryBackoff: getEnvDuration("CACHE_MIN_RETRY_BACKOFF", 8*time.Millisecond),
 				MaxRetryBackoff: getEnvDuration("CACHE_MAX_RETRY_BACKOFF", 512*time.Millisecond),
+			},
+
+			// CORS Settings
+			Cors: types.CorsConfig{
+				AllowOrigins:     getEnvSlice("CORS_ALLOW_ORIGINS", []string{"http://localhost:5173", "http://localhost:3000"}),
+				AllowMethods:     getEnvSlice("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+				AllowHeaders:     getEnvSlice("CORS_ALLOW_HEADERS", []string{"Origin", "Content-Type", "Accept", "Authorization"}),
+				AllowCredentials: getEnvBool("CORS_ALLOW_CREDENTIALS", true),
+			},
+
+			// Audit Settings
+			Audit: types.AuditConfig{
+				BatchSize:     getEnvInt("AUDIT_BATCH_SIZE", 10),
+				FlushTime:     getEnvDuration("AUDIT_FLUSH_TIME", 2*time.Second),
+				ChannelSize:   getEnvInt("AUDIT_CHANNEL_SIZE", 100),
+				MaxRetries:    getEnvInt("AUDIT_MAX_RETRIES", 3),
+				MaxFailures:   getEnvInt("AUDIT_MAX_FAILURES", 5),
+				RetentionDays: getEnvInt("AUDIT_RETENTION_DAYS", 90),
+				Enabled:       getEnvBool("AUDIT_ENABLED", true),
 			},
 		}
 
@@ -385,6 +355,28 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 			return duration
 		}
 		log.Printf("Invalid duration value for %s: %s, using default: %v", key, value, defaultValue)
+	}
+	return defaultValue
+}
+
+// getEnvBool retrieves a boolean environment variable or returns the default value if not set or invalid.
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+		log.Printf("Invalid boolean value for %s: %s, using default: %v", key, value, defaultValue)
+	}
+	return defaultValue
+}
+
+func getEnvSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		parts := strings.Split(value, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		return parts
 	}
 	return defaultValue
 }

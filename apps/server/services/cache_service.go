@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -92,7 +92,18 @@ func (cs *CacheService) withRetry(operation func() error, maxRetries int) error 
 		}
 
 		// add jitter ±50%
-		jitter := rand.Intn(backoff/2 + 1)
+		jitterBytes := make([]byte, 4)
+		_, err = rand.Read(jitterBytes)
+		if err != nil {
+			// fallback to no jitter if random fails
+			time.Sleep(time.Duration(backoff) * time.Millisecond)
+			continue
+		}
+		jitter := int(uint32(jitterBytes[0])<<24 | uint32(jitterBytes[1])<<16 | uint32(jitterBytes[2])<<8 | uint32(jitterBytes[3]))
+		// No need to handle negative values; uint32 avoids sign extension
+		// jitter is always non-negative
+
+		jitter = jitter % (backoff/2 + 1)
 		backoffWithJitter := backoff/2 + jitter
 
 		time.Sleep(time.Duration(backoffWithJitter) * time.Millisecond)
@@ -305,11 +316,11 @@ func (cs *CacheService) Ping() error {
 }
 
 // GetConnectionStats returns Redis connection pool statistics
-func (cs *CacheService) GetConnectionStats() map[string]interface{} {
+func (cs *CacheService) GetConnectionStats() map[string]any {
 	client := GetRedisClient()
 	stats := client.PoolStats()
 
-	return map[string]interface{}{
+	return map[string]any{
 		"hits":        stats.Hits,
 		"misses":      stats.Misses,
 		"timeouts":    stats.Timeouts,
@@ -438,17 +449,17 @@ func (cs *CacheService) GetActiveSessionsCount() (int, error) {
 }
 
 // GetRateLimitStatus returns current rate limit information for debugging
-func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]interface{}, error) {
+func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]any, error) {
 	key := fmt.Sprintf("ratelimit:%s:%s", ip, endpoint)
 
 	client := GetRedisClient()
-	var result map[string]interface{}
+	var result map[string]any
 
 	err := cs.withRetry(func() error {
 		// Get current count
 		val, err := client.Get(redisCtx, key).Result()
 		if err == redis.Nil {
-			result = map[string]interface{}{
+			result = map[string]any{
 				"count": 0,
 				"ttl":   0,
 			}
@@ -474,7 +485,7 @@ func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]inte
 			}
 		}
 
-		result = map[string]interface{}{
+		result = map[string]any{
 			"count": count,
 			"ttl":   int(ttl.Seconds()),
 		}

@@ -6,7 +6,7 @@ import { Input } from '~/components/ui/input';
 import { useLogin } from '~/hooks';
 import { loginSchema, type LoginFormData } from './validation';
 
-export function LoginForm() {
+export function LoginForm({ isLoading }: { isLoading: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -133,8 +133,8 @@ export function LoginForm() {
       <Button
         type="submit"
         className="w-full"
-        isLoading={loginMutation.isPending}
-        disabled={loginMutation.isPending}
+        isLoading={loginMutation.isPending || isLoading}
+        disabled={loginMutation.isPending || isLoading}
       >
         <LogIn className="h-4 w-4 mr-2" />
         Inloggen

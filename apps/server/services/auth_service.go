@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -45,7 +44,9 @@ func subtleCompare(a, b []byte) bool {
 }
 
 // AuthService provides authentication-related services
-type AuthService struct{}
+type AuthService struct {
+	Logger *config.Logger
+}
 
 // HashPassword hashes a plain-text password and returns a string and possible error
 func (a *AuthService) HashPassword(password string, p *types.ArgonParams) (string, error) {
@@ -123,16 +124,12 @@ func (a *AuthService) compareArgon2Hash(password, encoded string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(expected)))
-	return subtleCompare(hash, expected), nil
-}
-
-// min helper function for Go versions that don't have it built-in
-func min(a, b int) int {
-	if a < b {
-		return a
+	expectedLen := len(expected)
+	if expectedLen > 0x7FFFFFFF {
+		return false, fmt.Errorf("invalid hash length: %d", expectedLen)
 	}
-	return b
+	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(expectedLen))
+	return subtleCompare(hash, expected), nil
 }
 
 // GetRefreshTokenExpiration returns the expiration time for refresh tokens using configuration settings
@@ -274,7 +271,7 @@ func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.Au
 
 // Login authenticates a user and returns the user object if successful
 func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error) {
-	log.Println("Attempting login for email:", authRequest.Email)
+	a.Logger.Info("Attempting login for user", "email", authRequest.Email)
 	columns := []string{"id", "username", "email", "password_hash", "role"}
 	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
 	query.Where["public.users.email"] = authRequest.Email
@@ -312,7 +309,7 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 
 	existingUser, err := database.ExecuteQuery[types.User](query)
 	if err == nil && existingUser.Single != nil {
-		return nil, fmt.Errorf("user with email already exists")
+		return nil, lib.ErrUserAlreadyExists
 	}
 
 	// Also check username
@@ -321,13 +318,14 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 
 	existingUser, err = database.ExecuteQuery[types.User](query)
 	if err == nil && existingUser.Single != nil {
-		return nil, fmt.Errorf("user with username already exists")
+		return nil, lib.ErrUsernameTaken
 	}
 
 	// Hash password
 	hashedPassword, err := a.HashPassword(registerRequest.Password, DefaultParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
+		a.Logger.AuditError("Failed to hash password during registration", "error", err)
+		return nil, lib.ErrHashingPassword
 	}
 
 	// Create user
@@ -344,11 +342,12 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 
 	result, err := database.ExecuteQuery[types.User](insertQuery)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		a.Logger.AuditError("Failed to create user during registration", "error", err)
+		return nil, lib.ErrCreateUser
 	}
-
 	if result.Single == nil {
-		return nil, fmt.Errorf("failed to create user: no data returned")
+		a.Logger.Error("User creation succeeded but no user was returned during registration")
+		return nil, lib.ErrCreateUser
 	}
 
 	return result.Single, nil
@@ -356,33 +355,32 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 
 // RefreshToken validates a refresh token and returns new JWT tokens with rotation for security
 func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse, error) {
-	logger := config.SetupLogger()
-
 	// Parse and validate refresh token
 	claims, err := a.ParseToken(refreshTokenStr, false)
 	if err != nil {
-		return nil, fmt.Errorf("invalid refresh token: %w", err)
+		a.Logger.Warn("Invalid refresh token during refresh attempt", "error", err)
+		return nil, lib.ErrInvalidToken
 	}
 
 	// Check if token is expired
 	if time.Now().After(claims.Exp) {
-		return nil, fmt.Errorf("refresh token expired")
+		return nil, lib.ErrExpiredToken
 	}
 
 	// Check if token is already blacklisted (detects token reuse/replay attacks)
 	cacheService := CacheService{}
 	blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
 	if err != nil {
-		logger.Error("Failed to check token blacklist during refresh", "error", err, "jti", claims.Jti.String())
-		return nil, fmt.Errorf("token validation failed")
+		a.Logger.AuditError("Failed to check token blacklist during refresh", "error", err, "jti", claims.Jti.String())
+		return nil, lib.ErrValidatingToken
 	}
 
 	if blacklisted {
-		logger.Warn("Attempted reuse of blacklisted refresh token - possible replay attack",
+		a.Logger.Warn("Attempted reuse of blacklisted refresh token - possible replay attack",
 			"jti", claims.Jti.String(),
 			"user_id", claims.Sub,
 			"user_email", claims.Email)
-		return nil, fmt.Errorf("token has been revoked - possible security breach detected")
+		return nil, lib.ErrInvalidToken
 	}
 
 	// Get user from database to ensure they still exist
@@ -392,13 +390,13 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 
 	user, err := database.ExecuteQuery[types.User](query)
 	if err != nil || user.Single == nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, lib.ErrUserNotFound
 	}
 
 	// SECURITY: Immediately blacklist the old refresh token to prevent reuse
 	err = a.BlacklistToken(refreshTokenStr, false)
 	if err != nil {
-		logger.Error("Failed to blacklist old refresh token during rotation",
+		a.Logger.AuditError("Failed to blacklist old refresh token during rotation",
 			"error", err,
 			"jti", claims.Jti.String(),
 			"user_id", claims.Sub)
@@ -409,13 +407,13 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	// Generate new access token
 	accessToken, err := a.GenerateAccessToken(user.Single)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate access token: %w", err)
+		return nil, lib.ErrGeneratingToken
 	}
 
 	// Generate new refresh token (token rotation)
 	newRefreshToken, err := a.GenerateRefreshToken(user.Single)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+		return nil, lib.ErrGeneratingToken
 	}
 
 	return &types.AuthResponse{
