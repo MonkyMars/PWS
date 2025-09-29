@@ -160,7 +160,6 @@ export class FileUploadService {
 
         // Automatically get OAuth URL and open popup
         const authUrl = await this.getGoogleAuthURL();
-        console.log(authUrl);
         const authPopup = window.open(
           authUrl,
           'google-oauth',
