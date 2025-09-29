@@ -2,7 +2,6 @@ package types
 
 import "time"
 
-
 // DatabaseConfig holds all database-related configuration
 type DatabaseConfig struct {
 	Host         string
