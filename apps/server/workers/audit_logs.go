@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,14 +10,6 @@ import (
 	"github.com/MonkyMars/PWS/database"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
-)
-
-const (
-	DefaultBatchSize   = 10
-	DefaultFlushTime   = 2 * time.Second
-	DefaultChannelSize = 100
-	MaxRetries         = 3
-	MaxFailures        = 5 // Circuit breaker threshold
 )
 
 var (
@@ -31,6 +24,9 @@ var (
 	failureCount   int
 	totalProcessed int64
 	totalDropped   int64
+	cleanupCtx     context.Context
+	cleanupCancel  context.CancelFunc
+	cleanupRunning bool
 )
 
 func StartAuditWorker() {
@@ -50,16 +46,15 @@ func StartAuditWorker() {
 		workerRunning = true
 		failureCount = 0
 
-		auditWg.Add(1)
-		go func() {
-			defer auditWg.Done()
+		auditWg.Go(func() {
 			defer func() {
 				workerMutex.Lock()
 				workerRunning = false
 				workerMutex.Unlock()
 			}()
 			runAuditWorker(auditCtx)
-		}()
+		})
+
 	})
 }
 
@@ -120,17 +115,30 @@ func flushBatch(entries []types.AuditLog) {
 	}
 
 	var err error
+	var successfulInserts int64
+
 	for attempt := 0; attempt < cfg.Audit.MaxRetries; attempt++ {
-		if err = tryFlushBatch(entries); err == nil {
+		successfulInserts, err = tryFlushBatchWithCount(entries)
+		if err == nil {
 			workerMutex.Lock()
 			failureCount = 0 // Reset failure count on success
 			lastFlushTime = time.Now()
-			totalProcessed += int64(len(entries))
+			totalProcessed += successfulInserts
 			workerMutex.Unlock()
 
-			logger.Debug("Flushed audit log batch", "count", len(entries), "attempt", attempt+1)
+			logger.Debug("Flushed audit log batch",
+				"count", len(entries),
+				"successful_inserts", successfulInserts,
+				"attempt", attempt+1)
 			return
 		}
+
+		// Log retry attempt
+		logger.Warn("Audit batch flush failed, retrying",
+			"attempt", attempt+1,
+			"max_retries", cfg.Audit.MaxRetries,
+			"error", err,
+			"batch_size", len(entries))
 
 		if attempt < cfg.Audit.MaxRetries-1 {
 			// Exponential backoff: 100ms, 200ms, 400ms
@@ -152,36 +160,53 @@ func flushBatch(entries []types.AuditLog) {
 		"total_failures", failureCount)
 }
 
-func tryFlushBatch(entries []types.AuditLog) error {
+func tryFlushBatchWithCount(entries []types.AuditLog) (int64, error) {
 	// Convert AuditLog entries to the format expected by SetEntries
 	auditEntries := make([]any, 0, len(entries))
+	skippedEntries := 0
+
 	for _, entry := range entries {
 		// Validate entry before adding
 		if entry.Message == "" {
+			skippedEntries++
 			continue // Skip invalid entries
 		}
 
 		auditEntry := map[string]any{
-			"timestamp": entry.Timestamp,
-			"level":     entry.Level,
-			"message":   entry.Message,
-			"attrs":     entry.Attrs,
+			"timestamp":  entry.Timestamp,
+			"level":      entry.Level,
+			"message":    entry.Message,
+			"attrs":      entry.Attrs,
+			"entry_hash": entry.EntryHash,
 		}
+
 		auditEntries = append(auditEntries, auditEntry)
 	}
 
 	if len(auditEntries) == 0 {
-		return nil // Nothing to flush
+		return 0, nil // Nothing to flush
 	}
 
 	query := services.Query().
 		SetOperation("insert").
 		SetTable("audit_logs").
-		SetEntries(auditEntries).
-		WithTransaction() // Use transaction for consistency
+		SetEntries(auditEntries)
 
-	_, err := database.ExecuteQuery[types.AuditLog](query)
-	return err
+	result, err := database.ExecuteQuery[types.AuditLog](query)
+	if err != nil {
+		return 0, fmt.Errorf("database insert failed: %w", err)
+	}
+
+	// Return the actual number of rows inserted (may be less than auditEntries due to duplicates)
+	successfulInserts := result.Count
+	if skippedEntries > 0 {
+		logger := config.SetupLogger()
+		logger.Debug("Skipped invalid audit entries during flush",
+			"skipped_count", skippedEntries,
+			"total_entries", len(entries))
+	}
+
+	return successfulInserts, nil
 }
 
 // AddAuditLog adds an audit log entry to the processing queue
@@ -260,6 +285,9 @@ func StopAuditWorker() {
 		workerRunning = false
 		workerMutex.Unlock()
 	}
+
+	// Also stop the cleanup scheduler
+	StopCleanupScheduler()
 }
 
 // HealthStatus returns the current health status of the audit worker
@@ -283,6 +311,7 @@ func HealthStatus() map[string]any {
 		"total_processed": totalProcessed,
 		"total_dropped":   totalDropped,
 		"is_healthy":      cfg.Audit.Enabled && workerRunning && failureCount < cfg.Audit.MaxFailures,
+		"cleanup_running": cleanupRunning,
 		"configuration": map[string]any{
 			"batch_size":     cfg.Audit.BatchSize,
 			"flush_time":     cfg.Audit.FlushTime.String(),
@@ -298,4 +327,104 @@ func ResetFailureCount() {
 	workerMutex.Lock()
 	defer workerMutex.Unlock()
 	failureCount = 0
+}
+
+func CleanupOldLogs() error {
+	cfg := config.Get()
+	logger := config.SetupLogger()
+
+	if !cfg.Audit.Enabled || cfg.Audit.RetentionDays <= 0 {
+		return nil // No cleanup needed
+	}
+
+	cutoff := time.Now().AddDate(0, 0, -cfg.Audit.RetentionDays)
+	query := services.Query().
+		SetOperation("delete").
+		SetTable("audit_logs").
+		SetWhereRaw("audit_logs.timestamp < ?", cutoff)
+	result, err := database.ExecuteQuery[types.AuditLog](query)
+	if err != nil {
+		logger.Error("Failed to clean up old audit logs", "error", err)
+		return fmt.Errorf("cleanup failed: %w", err)
+	}
+
+	logger.Info("Cleaned up old audit logs", "deleted_count", result.Count)
+	return nil
+}
+
+// StartCleanupScheduler starts a goroutine that runs CleanupOldLogs daily at 00:00
+func StartCleanupScheduler() {
+	cfg := config.Get()
+
+	// Check if audit logging is enabled
+	if !cfg.Audit.Enabled {
+		return
+	}
+
+	workerMutex.Lock()
+	defer workerMutex.Unlock()
+
+	// Don't start if already running
+	if cleanupRunning {
+		return
+	}
+
+	cleanupCtx, cleanupCancel = context.WithCancel(context.Background())
+	cleanupRunning = true
+
+	go func() {
+		defer func() {
+			workerMutex.Lock()
+			cleanupRunning = false
+			workerMutex.Unlock()
+		}()
+
+		logger := config.SetupLogger()
+		logger.Info("Starting audit log cleanup scheduler")
+
+		for {
+			// Calculate time until next midnight (00:00)
+			now := time.Now()
+			nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+			duration := nextMidnight.Sub(now)
+
+			// Wait until midnight or context cancellation
+			select {
+			case <-time.After(duration):
+				// Run cleanup
+				if err := CleanupOldLogs(); err != nil {
+					logger.Error("Scheduled cleanup failed", "error", err)
+				} else {
+					logger.Info("Scheduled cleanup completed successfully")
+				}
+			case <-cleanupCtx.Done():
+				logger.Info("Cleanup scheduler stopped")
+				return
+			}
+		}
+	}()
+}
+
+// StopCleanupScheduler gracefully stops the cleanup scheduler
+func StopCleanupScheduler() {
+	workerMutex.Lock()
+	defer workerMutex.Unlock()
+
+	if cleanupCancel != nil {
+		cleanupCancel()
+	}
+}
+
+// TriggerCleanupNow manually triggers a cleanup operation (useful for testing or admin operations)
+func TriggerCleanupNow() error {
+	logger := config.SetupLogger()
+	logger.Info("Manual cleanup triggered")
+
+	if err := CleanupOldLogs(); err != nil {
+		logger.Error("Manual cleanup failed", "error", err)
+		return err
+	}
+
+	logger.Info("Manual cleanup completed successfully")
+	return nil
 }

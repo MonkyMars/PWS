@@ -12,6 +12,8 @@ func SetupAppRoutes(app *fiber.App) {
 		app.Get("/health", internal.GetSystemHealth)
 		app.Get("/health/database", internal.GetDatabaseHealth)
 		app.Get("/health/audit", internal.GetAuditHealth)
+		app.Get("/logs", internal.GetLogs)
 	}
+
 	app.Use(internal.NotFoundHandler)
 }

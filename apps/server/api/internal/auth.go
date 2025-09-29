@@ -54,8 +54,7 @@ func Login(c fiber.Ctx) error {
 	// Attempt login
 	user, err := authService.Login(&authRequest)
 	if err != nil {
-		logger.Error("Login failed", "email", authRequest.Email, "error", err)
-
+		logger.AuditError("Login failed", "email", authRequest.Email, "error", err.Error())
 		if errors.Is(err, lib.ErrInvalidCredentials) {
 			return response.Unauthorized(c, "Invalid email or password")
 		}
@@ -143,12 +142,11 @@ func Register(c fiber.Ctx) error {
 	// Attempt registration
 	user, err := authService.Register(&registerRequest)
 	if err != nil {
-		logger.Error("Registration failed", "email", registerRequest.Email, "username", registerRequest.Username, "error", err)
-
-		if errors.Is(err, lib.ErrUserAlreadyExists) {
+		if errors.Is(err, lib.ErrUserAlreadyExists) || errors.Is(err, lib.ErrUsernameTaken) {
 			return response.Conflict(c, "User with this email or username already exists")
 		}
 
+		logger.AuditError("Registration failed", "email", registerRequest.Email, "username", registerRequest.Username, "error", err.Error())
 		return response.InternalServerError(c, "An error occurred during registration")
 	}
 

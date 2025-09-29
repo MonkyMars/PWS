@@ -3,6 +3,7 @@ package config
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MonkyMars/PWS/types"
+	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -234,6 +236,9 @@ func (l *Logger) AuditError(message string, attrs ...any) {
 		Attrs:     auditAttrs,
 	}
 
+	entryHash := generateEntryHash(auditLog)
+	auditLog.EntryHash = entryHash
+
 	// Send to audit worker (non-blocking)
 	addAuditLogFunc := getAddAuditLogFunc()
 	if addAuditLogFunc != nil {
@@ -264,4 +269,53 @@ func SetAuditLogFunc(fn func(types.AuditLog)) {
 	auditMutex.Lock()
 	defer auditMutex.Unlock()
 	globalAddAuditLogFunc = fn
+}
+
+// generateEntryHash creates a unique hash for an audit log entry
+// This is used for deduplication to prevent the same entry from being inserted multiple times
+func generateEntryHash(entry types.AuditLog) string {
+	// Validate required fields
+	if entry.Message == "" || entry.Level == "" {
+		return "" // Return empty hash for invalid entries
+	}
+
+	// Normalize timestamp to second precision to handle minor timing differences
+	timestamp := entry.Timestamp.Truncate(time.Second).Unix()
+
+	// Handle nil attrs map
+	attrs := entry.Attrs
+	if attrs == nil {
+		attrs = make(map[string]any)
+	}
+
+	// Create a deterministic representation of the entry
+	data := map[string]any{
+		"timestamp": timestamp,
+		"level":     entry.Level,
+		"message":   entry.Message,
+		"attrs":     attrs,
+	}
+
+	// Convert to JSON for consistent hashing
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		// Fallback to a simple string representation with sanitized message
+		sanitizedMessage := entry.Message
+		if len(sanitizedMessage) > 100 {
+			sanitizedMessage = sanitizedMessage[:100] + "..."
+		}
+		fallbackHash := fmt.Sprintf("%d_%s_%s", timestamp, entry.Level, sanitizedMessage)
+
+		// Ensure fallback hash is not too long for database column
+		if len(fallbackHash) > 64 {
+			// Use a hash of the fallback string if it's too long
+			hash := sha256.Sum256([]byte(fallbackHash))
+			return fmt.Sprintf("%x", hash)
+		}
+		return fallbackHash
+	}
+
+	// Generate SHA256 hash
+	hash := sha256.Sum256(jsonData)
+	return fmt.Sprintf("%x", hash)
 }

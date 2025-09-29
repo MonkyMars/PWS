@@ -38,6 +38,9 @@ func main() {
 	// Initialize audit logging
 	initializeAuditLogging()
 
+	// Start cleanup scheduler for audit logs
+	workers.StartCleanupScheduler()
+
 	// Minimal config info in development mode
 	if cfg.IsDevelopment() {
 		log.Printf("Development mode - %s:%s", cfg.AppName, cfg.Port)
@@ -84,6 +87,9 @@ func main() {
 		// Stop audit worker first to flush remaining logs
 		workers.StopAuditWorker()
 
+		// Stop cleanup scheduler
+		workers.StopCleanupScheduler()
+
 		if err := services.CloseDatabase(); err != nil {
 			logger.DatabaseError("close", err)
 		}
@@ -112,6 +118,9 @@ func setupGracefulShutdown(logger *config.Logger) {
 
 		// Stop audit worker gracefully first
 		workers.StopAuditWorker()
+
+		// Stop cleanup scheduler
+		workers.StopCleanupScheduler()
 
 		// Close database connection
 		if err := services.CloseDatabase(); err != nil {
