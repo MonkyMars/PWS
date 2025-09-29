@@ -170,40 +170,60 @@ func executeSelect[T any](ctx context.Context, db *DB, query *types.QueryParams,
 	return nil
 }
 
-// executeInsert handles INSERT operations
+// executeInsert handles INSERT operations for both single and bulk inserts
 func executeInsert[T any](ctx context.Context, db *DB, query *types.QueryParams, result *types.QueryResult[T]) error {
-	// Build a raw INSERT query since go-pg's Value method works differently
 	if query.Table == "" {
 		return fmt.Errorf("table name is required for insert operation")
 	}
 
-	// Build column and value lists
-	var columns []string
+	var sql string
 	var values []any
-	for key, value := range query.Data {
-		columns = append(columns, key)
-		values = append(values, value)
+
+	// Handle bulk insert if Entries are provided
+	if len(query.Entries) > 0 {
+		// Extract columns from all entries
+		columns, err := ExtractColumnsFromEntries(query.Entries)
+		if err != nil {
+			return fmt.Errorf("failed to extract columns from entries: %w", err)
+		}
+
+		// Build bulk insert SQL
+		sql, values, err = BuildBulkInsertSQL(query.Table, query.Entries, columns, query.Returning, query.OnConflict)
+		if err != nil {
+			return fmt.Errorf("failed to build bulk insert SQL: %w", err)
+		}
+	} else {
+		// Handle single insert with Data field
+		var columns []string
+		for key, value := range query.Data {
+			columns = append(columns, key)
+			values = append(values, value)
+		}
+
+		if len(columns) == 0 {
+			return fmt.Errorf("no data provided for insert")
+		}
+
+		// Build the SQL for single insert
+		sql = fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+			query.Table,
+			joinStrings(columns, ", "),
+			buildPlaceholders(len(values)))
+
+		// Add RETURNING clause if specified
+		if len(query.Returning) > 0 {
+			sql += " RETURNING " + joinStrings(query.Returning, ", ")
+		}
+
+		// Add ON CONFLICT clause if specified
+		if query.OnConflict != "" {
+			sql += " ON CONFLICT " + query.OnConflict
+		}
 	}
 
-	if len(columns) == 0 {
-		return fmt.Errorf("no data provided for insert")
-	}
-
-	// Build the SQL
-	sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
-		query.Table,
-		joinStrings(columns, ", "),
-		buildPlaceholders(len(values)))
-
-	// Add RETURNING clause if specified
-	if len(query.Returning) > 0 {
-		sql += " RETURNING " + joinStrings(query.Returning, ", ")
-	}
-
-	// Add ON CONFLICT clause if specified
-	if query.OnConflict != "" {
-		sql += " ON CONFLICT " + query.OnConflict
-	}
+	// Store query for debugging
+	result.Query = sql
+	result.Args = values
 
 	// Execute the query
 	if len(query.Returning) > 0 {
@@ -383,6 +403,16 @@ func Insert[T any](table string, data map[string]any) (*types.QueryResult[T], er
 	return ExecuteQuery[T](query)
 }
 
+// BulkInsert executes a bulk INSERT query for multiple records
+func BulkInsert[T any](table string, entries []any) (*types.QueryResult[T], error) {
+	query := types.NewQuery().
+		SetOperation("insert").
+		SetTable(table).
+		SetEntries(entries)
+
+	return ExecuteQuery[T](query)
+}
+
 // Update executes an UPDATE query
 func Update[T any](table string, data map[string]any, where map[string]any) (*types.QueryResult[T], error) {
 	query := types.NewQuery().
@@ -445,4 +475,106 @@ func buildPlaceholders(count int) string {
 		result += ", ?"
 	}
 	return result
+}
+
+// buildBulkInsertSQL builds SQL for bulk insert operations with multiple value rows
+func BuildBulkInsertSQL(table string, entries []any, columns []string, returning []string, onConflict string) (string, []any, error) {
+	if len(entries) == 0 {
+		return "", nil, fmt.Errorf("no entries provided for bulk insert")
+	}
+	if len(columns) == 0 {
+		return "", nil, fmt.Errorf("no columns provided for bulk insert")
+	}
+	if table == "" {
+		return "", nil, fmt.Errorf("table name is required for bulk insert")
+	}
+
+	// Build the base INSERT statement
+	sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES ",
+		table,
+		joinStrings(columns, ", "))
+
+	var allValues []any
+	var valueRows []string
+
+	// Process each entry
+	for i, entry := range entries {
+		// Convert entry to map[string]any with proper error handling
+		entryMap, err := convertToMap(entry, i)
+		if err != nil {
+			return "", nil, err
+		}
+
+		// Build values for this row in the same order as columns
+		var rowValues []any
+		for _, col := range columns {
+			if val, exists := entryMap[col]; exists {
+				rowValues = append(rowValues, val)
+			} else {
+				rowValues = append(rowValues, nil) // Use NULL for missing columns
+			}
+		}
+
+		// Add this row's values to the total
+		allValues = append(allValues, rowValues...)
+		valueRows = append(valueRows, fmt.Sprintf("(%s)", buildPlaceholders(len(columns))))
+	}
+
+	// Combine all value rows
+	sql += joinStrings(valueRows, ", ")
+
+	// Add RETURNING clause if specified
+	if len(returning) > 0 {
+		sql += " RETURNING " + joinStrings(returning, ", ")
+	}
+
+	// Add ON CONFLICT clause if specified
+	if onConflict != "" {
+		sql += " ON CONFLICT " + onConflict
+	}
+
+	return sql, allValues, nil
+}
+
+// convertToMap safely converts an interface{} to map[string]any
+func convertToMap(entry any, index int) (map[string]any, error) {
+	switch v := entry.(type) {
+	case map[string]any:
+		// Create a copy to avoid modifying original
+		result := make(map[string]any, len(v))
+		for k, val := range v {
+			result[k] = val
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("entry %d is not a valid map type: got %T", index, entry)
+	}
+}
+
+// extractColumnsFromEntries extracts all unique column names from a slice of entries
+func ExtractColumnsFromEntries(entries []any) ([]string, error) {
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("no entries provided")
+	}
+
+	columnSet := make(map[string]bool)
+
+	for i, entry := range entries {
+		entryMap, err := convertToMap(entry, i)
+		if err != nil {
+			return nil, err
+		}
+
+		for col := range entryMap {
+			columnSet[col] = true
+		}
+	}
+
+	// Convert set to slice
+	var columns []string
+	for col := range columnSet {
+		columns = append(columns, col)
+	}
+
+	return columns, nil
 }

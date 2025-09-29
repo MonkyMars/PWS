@@ -19,3 +19,7 @@ var (
 	ErrGeneratingToken    = errors.New("error generating token")
 	ErrValidatingToken    = errors.New("error validating token")
 )
+
+const (
+	TableAuditLogs = "audit_logs"
+)

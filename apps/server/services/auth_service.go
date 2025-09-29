@@ -324,7 +324,7 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 	// Hash password
 	hashedPassword, err := a.HashPassword(registerRequest.Password, DefaultParams)
 	if err != nil {
-		a.Logger.Error("Failed to hash password during registration", "error", err)
+		a.Logger.AuditError("Failed to hash password during registration", "error", err)
 		return nil, lib.ErrHashingPassword
 	}
 
@@ -342,7 +342,7 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 
 	result, err := database.ExecuteQuery[types.User](insertQuery)
 	if err != nil {
-		a.Logger.Error("Failed to create user during registration", "error", err)
+		a.Logger.AuditError("Failed to create user during registration", "error", err)
 		return nil, lib.ErrCreateUser
 	}
 	if result.Single == nil {
@@ -371,7 +371,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	cacheService := CacheService{}
 	blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
 	if err != nil {
-		a.Logger.Error("Failed to check token blacklist during refresh", "error", err, "jti", claims.Jti.String())
+		a.Logger.AuditError("Failed to check token blacklist during refresh", "error", err, "jti", claims.Jti.String())
 		return nil, lib.ErrValidatingToken
 	}
 
@@ -396,7 +396,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	// SECURITY: Immediately blacklist the old refresh token to prevent reuse
 	err = a.BlacklistToken(refreshTokenStr, false)
 	if err != nil {
-		a.Logger.Error("Failed to blacklist old refresh token during rotation",
+		a.Logger.AuditError("Failed to blacklist old refresh token during rotation",
 			"error", err,
 			"jti", claims.Jti.String(),
 			"user_id", claims.Sub)

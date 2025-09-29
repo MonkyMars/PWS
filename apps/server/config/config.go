@@ -42,6 +42,9 @@ type Config struct {
 
 	// CORS Settings
 	Cors types.CorsConfig
+
+	// Audit Settings
+	Audit types.AuditConfig
 }
 
 var (
@@ -127,6 +130,17 @@ func Load() *Config {
 				AllowMethods:     getEnvSlice("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
 				AllowHeaders:     getEnvSlice("CORS_ALLOW_HEADERS", []string{"Origin", "Content-Type", "Accept", "Authorization"}),
 				AllowCredentials: getEnvBool("CORS_ALLOW_CREDENTIALS", true),
+			},
+
+			// Audit Settings
+			Audit: types.AuditConfig{
+				BatchSize:     getEnvInt("AUDIT_BATCH_SIZE", 10),
+				FlushTime:     getEnvDuration("AUDIT_FLUSH_TIME", 2*time.Second),
+				ChannelSize:   getEnvInt("AUDIT_CHANNEL_SIZE", 100),
+				MaxRetries:    getEnvInt("AUDIT_MAX_RETRIES", 3),
+				MaxFailures:   getEnvInt("AUDIT_MAX_FAILURES", 5),
+				RetentionDays: getEnvInt("AUDIT_RETENTION_DAYS", 90),
+				Enabled:       getEnvBool("AUDIT_ENABLED", true),
 			},
 		}
 

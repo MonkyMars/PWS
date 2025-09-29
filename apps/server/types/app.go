@@ -1,5 +1,11 @@
 package types
 
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
 type HealthResponse struct {
 	Status            string            `json:"status"`
 	Message           string            `json:"message"`
@@ -18,4 +24,13 @@ type DatabaseHealthResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`
 	Elapsed string `json:"elapsed,omitempty"`
+}
+
+type AuditLog struct {
+	Id        uuid.UUID      `json:"id" pg:"id,pk,type:uuid,default:gen_random_uuid()"`
+	Timestamp time.Time      `json:"timestamp"`
+	Level     string         `json:"level"`
+	Message   string         `json:"message"`
+	Attrs     map[string]any `json:"attrs,omitempty"`
+	EntryHash string         `json:"entry_hash,omitempty"`
 }

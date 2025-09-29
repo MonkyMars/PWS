@@ -23,7 +23,7 @@ func AuthMiddleware() fiber.Handler {
 
 		claims, err := authService.ParseToken(token, true)
 		if err != nil {
-			logger.Error("Failed to parse access token", "error", err)
+			logger.AuditError("Failed to parse access token", "error", err)
 			return response.Unauthorized(c, "Invalid or expired access token")
 		}
 
@@ -33,7 +33,7 @@ func AuthMiddleware() fiber.Handler {
 		// Check if token is blacklisted with graceful Redis failure handling
 		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
 		if err != nil {
-			logger.Error("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
+			logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down
 		} else if blacklisted {
 			// SECURITY: This could indicate a token reuse attack

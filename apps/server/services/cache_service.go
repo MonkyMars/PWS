@@ -316,11 +316,11 @@ func (cs *CacheService) Ping() error {
 }
 
 // GetConnectionStats returns Redis connection pool statistics
-func (cs *CacheService) GetConnectionStats() map[string]interface{} {
+func (cs *CacheService) GetConnectionStats() map[string]any {
 	client := GetRedisClient()
 	stats := client.PoolStats()
 
-	return map[string]interface{}{
+	return map[string]any{
 		"hits":        stats.Hits,
 		"misses":      stats.Misses,
 		"timeouts":    stats.Timeouts,
@@ -449,17 +449,17 @@ func (cs *CacheService) GetActiveSessionsCount() (int, error) {
 }
 
 // GetRateLimitStatus returns current rate limit information for debugging
-func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]interface{}, error) {
+func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]any, error) {
 	key := fmt.Sprintf("ratelimit:%s:%s", ip, endpoint)
 
 	client := GetRedisClient()
-	var result map[string]interface{}
+	var result map[string]any
 
 	err := cs.withRetry(func() error {
 		// Get current count
 		val, err := client.Get(redisCtx, key).Result()
 		if err == redis.Nil {
-			result = map[string]interface{}{
+			result = map[string]any{
 				"count": 0,
 				"ttl":   0,
 			}
@@ -485,7 +485,7 @@ func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]inte
 			}
 		}
 
-		result = map[string]interface{}{
+		result = map[string]any{
 			"count": count,
 			"ttl":   int(ttl.Seconds()),
 		}
