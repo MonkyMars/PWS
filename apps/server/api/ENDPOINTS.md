@@ -15,3 +15,10 @@ This is the documentation for all the endpoints and how they work.
 - POST /auth/refresh - Refresh access token using refresh token in cookies
 - POST /auth/logout - Logout user, blacklist tokens and clear cookies
 - GET /auth/me - Get current authenticated user info (requires valid access token)
+
+### Google OAuth Endpoints
+- GET /auth/google/url - Get Google OAuth authorization URL (requires valid access token)
+- GET /auth/google/callback - Handle Google OAuth callback (public endpoint)
+- GET /auth/google/access-token - Get fresh Google access token (requires valid access token)
+- GET /auth/google/status - Check if user has linked Google account (requires valid access token)
+- DELETE /auth/google/unlink - Unlink user's Google account (requires valid access token)

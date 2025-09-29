@@ -31,6 +31,12 @@ type Config struct {
 	// API Settings
 	Supabase types.SupabaseConfig
 
+	// Google OAuth Settings
+	Google GoogleConfig
+
+	// Frontend Settings
+	FrontendURL string
+
 	// Database Settings
 	Database types.DatabaseConfig
 
@@ -45,6 +51,12 @@ type Config struct {
 
 	// Audit Settings
 	Audit types.AuditConfig
+}
+
+type GoogleConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
 }
 
 var (
@@ -79,6 +91,16 @@ func Load() *Config {
 				RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
 				RefreshTokenExpiry: getEnvDuration("REFRESH_TOKEN_EXPIRY", 7*24*time.Hour),
 			},
+
+			// Google OAuth Settings
+			Google: GoogleConfig{
+				ClientID:     getEnv("GOOGLE_OAUTH_CLIENT_ID", ""),
+				ClientSecret: getEnv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+				RedirectURL:  getEnv("GOOGLE_OAUTH_REDIRECT_URL", ""),
+			},
+
+			// Frontend Settings
+			FrontendURL: getEnv("FRONTEND_URL", ""),
 
 			// Database Settings
 			Database: types.DatabaseConfig{
@@ -241,6 +263,19 @@ func (c *Config) Validate() error {
 	// Validate cache settings
 	if c.Cache.Address == "" {
 		log.Println("Warning: CACHE_ADDRESS is not set, caching will be disabled")
+	}
+
+	// Validate Google OAuth settings (optional - only if any Google OAuth field is set)
+	if c.Google.ClientID != "" || c.Google.ClientSecret != "" || c.Google.RedirectURL != "" {
+		if c.Google.ClientID == "" {
+			return fmt.Errorf("GOOGLE_OAUTH_CLIENT_ID is required when Google OAuth is configured")
+		}
+		if c.Google.ClientSecret == "" {
+			return fmt.Errorf("GOOGLE_OAUTH_CLIENT_SECRET is required when Google OAuth is configured")
+		}
+		if c.Google.RedirectURL == "" {
+			return fmt.Errorf("GOOGLE_OAUTH_REDIRECT_URL is required when Google OAuth is configured")
+		}
 	}
 
 	if c.Environment != "development" && c.Environment != "production" && c.Environment != "staging" {

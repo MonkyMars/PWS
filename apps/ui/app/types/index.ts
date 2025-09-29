@@ -2,3 +2,4 @@
 export * from './auth';
 export * from './subject';
 export * from './api';
+export * from './file';

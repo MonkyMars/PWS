@@ -11,7 +11,7 @@ func SetupAuthRoutes(app *fiber.App) {
 	// Create auth route group
 	auth := app.Group("/auth")
 
-	// Authentication endpoints
+	// Basic authentication endpoints
 	auth.Post("/login", internal.Login)
 	auth.Post("/register", internal.Register)
 	auth.Post("/refresh", internal.RefreshToken)
@@ -19,4 +19,16 @@ func SetupAuthRoutes(app *fiber.App) {
 
 	// Protected route to get current user info
 	auth.Get("/me", middleware.AuthMiddleware(), internal.Me)
+
+	// Google OAuth endpoints
+	googleAuth := auth.Group("/google")
+
+	// Protected Google OAuth endpoints (require user to be logged in first)
+	googleAuth.Get("/url", middleware.AuthMiddleware(), internal.GoogleAuthURL)
+	googleAuth.Get("/status", middleware.AuthMiddleware(), internal.GoogleLinkStatus)
+	googleAuth.Get("/access-token", middleware.AuthMiddleware(), internal.GoogleAccessToken)
+	googleAuth.Delete("/unlink", middleware.AuthMiddleware(), internal.GoogleUnlink)
+
+	// Public Google OAuth callback (no auth required as it validates state)
+	googleAuth.Get("/callback", internal.GoogleAuthCallback)
 }
