@@ -21,6 +21,10 @@ var (
 // CacheService provides Redis caching functionality with connection pooling and retry logic
 type CacheService struct{}
 
+func NewCacheService() *CacheService {
+	return &CacheService{}
+}
+
 // GetRedisClient returns a singleton Redis client with proper connection pooling
 func GetRedisClient() *redis.Client {
 	redisOnce.Do(func() {

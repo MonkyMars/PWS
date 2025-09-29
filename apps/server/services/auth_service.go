@@ -48,6 +48,12 @@ type AuthService struct {
 	Logger *config.Logger
 }
 
+func NewAuthService() *AuthService {
+	return &AuthService{
+		Logger: config.SetupLogger(),
+	}
+}
+
 // HashPassword hashes a plain-text password and returns a string and possible error
 func (a *AuthService) HashPassword(password string, p *types.ArgonParams) (string, error) {
 	salt, err := generateSalt(p.SaltLen)

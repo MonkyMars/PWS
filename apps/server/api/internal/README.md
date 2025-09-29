@@ -113,7 +113,7 @@ func CreateUser(c fiber.Ctx) error {
     }
 
     // 4. Call service
-    authService := &services.AuthService{Logger: logger}
+    authService := services.NewAuthService()
     user, err := authService.CreateUser(&req)
     if err != nil {
         return response.InternalServerError(c, "Failed to create user")
@@ -209,8 +209,8 @@ func Login(c fiber.Ctx) error {
 		logger := config.SetupLogger()
 
     // Create service instance
-    authService := &services.AuthService{Logger: logger}
-    cookieService := &services.CookieService{}
+    authService := services.NewAuthService()
+    cookieService := services.NewCookieService()
 
     // Call service methods
     user, err := authService.Login(&authRequest)

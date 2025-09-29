@@ -46,10 +46,10 @@ func Login(c fiber.Ctx) error {
 	}
 
 	// Initialize auth service
-	authService := &services.AuthService{Logger: logger}
+	authService := services.NewAuthService()
 
 	// Initialize cookie service
-	cookieService := &services.CookieService{}
+	cookieService := services.NewCookieService()
 
 	// Attempt login
 	user, err := authService.Login(&authRequest)
@@ -135,9 +135,9 @@ func Register(c fiber.Ctx) error {
 	}
 
 	// Initialize auth service
-	authService := &services.AuthService{Logger: logger}
+	authService := services.NewAuthService()
 	// Initialize cookie service
-	cookieService := &services.CookieService{}
+	cookieService := services.NewCookieService()
 
 	// Attempt registration
 	user, err := authService.Register(&registerRequest)
@@ -175,10 +175,10 @@ func RefreshToken(c fiber.Ctx) error {
 	token := c.Cookies(lib.RefreshTokenCookieName)
 
 	// Initialize auth service
-	authService := &services.AuthService{Logger: logger}
+	authService := services.NewAuthService()
 
 	// Initialize cookie service for setting new cookies
-	cookieService := &services.CookieService{}
+	cookieService := services.NewCookieService()
 
 	// Refresh tokens with rotation
 	authResponse, err := authService.RefreshToken(token)
@@ -220,7 +220,7 @@ func Me(c fiber.Ctx) error {
 	}
 
 	// Initialize auth service
-	authService := &services.AuthService{Logger: logger}
+	authService := services.NewAuthService()
 
 	// Fetch user info
 	user, err := authService.GetUserByID(claims.Sub)
@@ -245,8 +245,8 @@ func Logout(c fiber.Ctx) error {
 	refreshToken := c.Cookies(lib.RefreshTokenCookieName)
 
 	// Initialize services
-	authService := &services.AuthService{Logger: logger}
-	cookieService := &services.CookieService{}
+	authService := services.NewAuthService()
+	cookieService := services.NewCookieService()
 
 	// Blacklist access token if present
 	if strings.TrimSpace(accessToken) != "" {

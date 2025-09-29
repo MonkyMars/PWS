@@ -27,12 +27,12 @@ func GoogleAuthURL(c fiber.Ctx) error {
 	}
 
 	// Initialize Google service
-	googleService := &services.GoogleService{}
+	googleService := services.NewGoogleService()
 
 	// Generate OAuth URL
 	authURL, err := googleService.GenerateGoogleAuthURL(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to generate Google OAuth URL",
+		logger.AuditError("Failed to generate Google OAuth URL",
 			"user_id", claims.Sub,
 			"error", err)
 		return response.InternalServerError(c, "failed to generate OAuth URL")
@@ -50,12 +50,12 @@ func GoogleAuthCallback(c fiber.Ctx) error {
 	code := c.Query("code")
 
 	// Initialize Google service
-	googleService := &services.GoogleService{}
+	googleService := services.NewGoogleService()
 
 	// Handle OAuth callback (this includes state validation and token exchange)
 	redirectURL, err := googleService.HandleGoogleCallback(state, code)
 	if err != nil {
-		logger.Error("Failed to handle Google OAuth callback",
+		logger.AuditError("Failed to handle Google OAuth callback",
 			"state", state,
 			"code_present", code != "",
 			"error", err)
@@ -87,12 +87,12 @@ func GoogleAccessToken(c fiber.Ctx) error {
 	}
 
 	// Initialize Google service
-	googleService := &services.GoogleService{}
+	googleService := services.NewGoogleService()
 
 	// Get access token
 	tokenData, err := googleService.GetGoogleAccessToken(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to get Google access token",
+		logger.AuditError("Failed to get Google access token",
 			"user_id", claims.Sub,
 			"error", err)
 
@@ -118,13 +118,13 @@ func GoogleUnlink(c fiber.Ctx) error {
 	}
 
 	// Initialize Google service
-	googleService := &services.GoogleService{}
+	googleService := services.NewGoogleService()
 
 	// Delete the user's refresh token
 	claims := claimsInterface.(*types.AuthClaims)
 	err := googleService.DeleteUserRefreshToken(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to unlink Google account",
+		logger.AuditError("Failed to unlink Google account",
 			"user_id", claims.Sub,
 			"error", err)
 		return response.InternalServerError(c, "failed to unlink Google account")
@@ -149,13 +149,13 @@ func GoogleLinkStatus(c fiber.Ctx) error {
 	}
 
 	// Initialize Google service
-	googleService := &services.GoogleService{}
+	googleService := services.NewGoogleService()
 
 	// Check if user has a refresh token
 	claims := claimsInterface.(*types.AuthClaims)
 	refreshToken, err := googleService.LoadUserRefreshToken(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to check Google link status",
+		logger.AuditError("Failed to check Google link status",
 			"user_id", claims.Sub,
 			"error", err)
 		return response.InternalServerError(c, "failed to check Google link status")

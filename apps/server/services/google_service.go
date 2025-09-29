@@ -17,7 +17,15 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-type GoogleService struct{}
+type GoogleService struct {
+	logger *config.Logger
+}
+
+func NewGoogleService() *GoogleService {
+	return &GoogleService{
+		logger: config.SetupLogger(),
+	}
+}
 
 // getGoogleOAuthConfig returns the OAuth config using values from the centralized config
 func getGoogleOAuthConfig() *oauth2.Config {
