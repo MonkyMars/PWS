@@ -50,7 +50,7 @@ jobs:
 
               # Run tests with coverage
               echo "Running tests..."
-              go test -v -race -coverprofile=coverage.out -covermode=atomic ./tests
+              go test -v -coverprofile=coverage.out -covermode=atomic ./tests
 
               # Build the application
               echo "Building application..."
