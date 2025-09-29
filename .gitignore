@@ -16,7 +16,6 @@ build/
 .env.local
 
 *.log
-go.sum
 
 # Exlude binary files
 bin/
