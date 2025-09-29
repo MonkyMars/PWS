@@ -13,9 +13,11 @@ This package defines all the data structures and types used throughout the appli
 ## Main Files
 
 ### `auth.go`
+
 Contains authentication-related types.
 
 **User Authentication:**
+
 ```go
 type AuthRequest struct {
     Email    string `json:"email"`
@@ -30,6 +32,7 @@ type RegisterRequest struct {
 ```
 
 **JWT Claims:**
+
 ```go
 type AuthClaims struct {
     Sub   uuid.UUID `json:"sub"`     // User ID
@@ -42,6 +45,7 @@ type AuthClaims struct {
 ```
 
 **Response Types:**
+
 ```go
 type AuthResponse struct {
     User         *User  `json:"user"`
@@ -55,6 +59,7 @@ type LogoutResponse struct {
 ```
 
 **Password Hashing:**
+
 ```go
 type ArgonParams struct {
     Memory  uint32  // Memory usage in KB
@@ -66,35 +71,39 @@ type ArgonParams struct {
 ```
 
 ### `response.go`
+
 Contains API response structures.
 
 **Standard Response:**
+
 ```go
 type APIResponse struct {
     Success   bool        `json:"success"`
     Message   string      `json:"message"`
-    Data      interface{} `json:"data,omitempty"`
+    Data      any `json:"data,omitempty"`
     Error     *ErrorInfo  `json:"error,omitempty"`
     Timestamp time.Time   `json:"timestamp"`
 }
 ```
 
 **Error Information:**
+
 ```go
 type ErrorInfo struct {
     Code    string                 `json:"code"`
     Message string                 `json:"message"`
-    Details map[string]interface{} `json:"details,omitempty"`
+    Details map[string]any `json:"details,omitempty"`
 }
 
 type ValidationError struct {
     Field   string      `json:"field"`
     Message string      `json:"message"`
-    Value   interface{} `json:"value,omitempty"`
+    Value   any `json:"value,omitempty"`
 }
 ```
 
 **Pagination:**
+
 ```go
 type PaginationMeta struct {
     Page       int  `json:"page"`
@@ -107,9 +116,11 @@ type PaginationMeta struct {
 ```
 
 ### `app.go`
+
 Contains application-specific types.
 
 **Health Check:**
+
 ```go
 type HealthResponse struct {
     Status            string            `json:"status"`
@@ -133,6 +144,7 @@ type DatabaseHealthResponse struct {
 ```
 
 **User Model:**
+
 ```go
 type User struct {
     Id        uuid.UUID `json:"id" db:"id"`
@@ -146,9 +158,11 @@ type User struct {
 ```
 
 ### `queries.go`
+
 Contains database query result types.
 
 **Query Results:**
+
 ```go
 type UserQueryResult struct {
     Users []User `json:"users"`
@@ -159,18 +173,20 @@ type UserQueryResult struct {
 ## How to Use Types
 
 ### In Request Handlers
+
 ```go
 func Login(c fiber.Ctx) error {
     var authRequest types.AuthRequest
     if err := c.Bind().Body(&authRequest); err != nil {
         return response.BadRequest(c, "Invalid request body")
     }
-    
+
     // Use authRequest.Email and authRequest.Password
 }
 ```
 
 ### In Service Functions
+
 ```go
 func (s *AuthService) Login(req *types.AuthRequest) (*types.User, error) {
     // Function accepts typed request
@@ -183,24 +199,26 @@ func (s *AuthService) Login(req *types.AuthRequest) (*types.User, error) {
 ```
 
 ### In Response Building
+
 ```go
 func Login(c fiber.Ctx) error {
     user, err := authService.Login(&authRequest)
     if err != nil {
         return response.Unauthorized(c, "Invalid credentials")
     }
-    
+
     authResponse := types.AuthResponse{
         User:         user,
         AccessToken:  accessToken,
         RefreshToken: refreshToken,
     }
-    
+
     return response.Success(c, authResponse)
 }
 ```
 
 ### Working with JWT Claims
+
 ```go
 func Me(c fiber.Ctx) error {
     claimsInterface := c.Locals("claims")
@@ -208,7 +226,7 @@ func Me(c fiber.Ctx) error {
     if !ok {
         return response.Unauthorized(c, "Invalid claims")
     }
-    
+
     userID := claims.Sub
     userEmail := claims.Email
     // Use claims data
@@ -228,6 +246,7 @@ type User struct {
 ```
 
 **Common JSON tags:**
+
 - `json:"field_name"` - Include with custom name
 - `json:"-"` - Exclude from JSON entirely
 - `json:"field,omitempty"` - Exclude if empty/zero value
@@ -278,6 +297,7 @@ When adding new types:
 6. **Consider validation needs** and document requirements
 
 Example new type:
+
 ```go
 // CreatePostRequest represents a request to create a new blog post
 type CreatePostRequest struct {

@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 type HealthResponse struct {
 	Status            string            `json:"status"`
 	Message           string            `json:"message"`
@@ -18,4 +20,11 @@ type DatabaseHealthResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`
 	Elapsed string `json:"elapsed,omitempty"`
+}
+
+type AuditLog struct {
+	Timestamp time.Time
+	Level     string
+	Message   string
+	Attrs     map[string]any
 }

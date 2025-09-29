@@ -10,6 +10,7 @@ import (
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
 	"github.com/MonkyMars/PWS/services"
+	"github.com/MonkyMars/PWS/workers"
 
 	"github.com/joho/godotenv"
 )
@@ -33,6 +34,9 @@ func main() {
 	// Setup centralized logger
 	logger := config.SetupLogger()
 	logger.ConfigLoaded()
+
+	// Initialize audit logging
+	initializeAuditLogging()
 
 	// Minimal config info in development mode
 	if cfg.IsDevelopment() {
@@ -66,7 +70,7 @@ func main() {
 	cacheService := &services.CacheService{}
 	err = cacheService.Ping()
 	if err != nil {
-		logger.Error("Redis connection error", "error", err)
+		logger.AuditError("Redis connection error", "error", err)
 		log.Fatalf("Redis connection error: %v", err)
 	}
 
@@ -76,11 +80,15 @@ func main() {
 	// Ensure database and Redis connections are closed on exit
 	defer func() {
 		logger.Shutdown("application_exit")
+
+		// Stop audit worker first to flush remaining logs
+		workers.StopAuditWorker()
+
 		if err := services.CloseDatabase(); err != nil {
 			logger.DatabaseError("close", err)
 		}
 		if err := services.CloseRedisConnection(); err != nil {
-			logger.Error("Redis close error", "error", err)
+			logger.AuditError("Redis close error", "error", err)
 		}
 	}()
 
@@ -88,6 +96,7 @@ func main() {
 	err = api.App()
 	if err != nil {
 		logger.ServerError(err)
+		// Fatal here to ensure the application exits if the server fails to start
 		log.Fatal(err)
 	}
 }
@@ -101,6 +110,9 @@ func setupGracefulShutdown(logger *config.Logger) {
 		<-c
 		logger.Shutdown("signal_received")
 
+		// Stop audit worker gracefully first
+		workers.StopAuditWorker()
+
 		// Close database connection
 		if err := services.CloseDatabase(); err != nil {
 			logger.DatabaseError("shutdown_close", err)
@@ -108,9 +120,17 @@ func setupGracefulShutdown(logger *config.Logger) {
 
 		// Close Redis connection
 		if err := services.CloseRedisConnection(); err != nil {
-			logger.Error("Redis shutdown close error", "error", err)
+			logger.AuditError("Redis shutdown close error", "error", err)
 		}
 
 		os.Exit(0)
 	}()
+}
+
+func initializeAuditLogging() {
+	// Start the audit worker first
+	workers.StartAuditWorker()
+
+	// Wire up the audit logging function to avoid circular dependencies
+	config.SetAuditLogFunc(workers.AddAuditLog)
 }

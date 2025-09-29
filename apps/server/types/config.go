@@ -66,3 +66,13 @@ type CorsConfig struct {
 	AllowHeaders     []string
 	AllowCredentials bool
 }
+
+type AuditConfig struct {
+	BatchSize     int           `json:"batch_size"`
+	FlushTime     time.Duration `json:"flush_time"`
+	ChannelSize   int           `json:"channel_size"`
+	MaxRetries    int           `json:"max_retries"`
+	MaxFailures   int           `json:"max_failures"`
+	RetentionDays int           `json:"retention_days"`
+	Enabled       bool          `json:"enabled"`
+}

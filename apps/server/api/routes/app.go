@@ -11,6 +11,7 @@ func SetupAppRoutes(app *fiber.App) {
 	if cfg.Environment == "development" {
 		app.Get("/health", internal.GetSystemHealth)
 		app.Get("/health/database", internal.GetDatabaseHealth)
+		app.Get("/health/audit", internal.GetAuditHealth)
 	}
 	app.Use(internal.NotFoundHandler)
 }

@@ -66,13 +66,13 @@ func Login(c fiber.Ctx) error {
 	// Generate tokens
 	accessToken, err := authService.GenerateAccessToken(user)
 	if err != nil {
-		logger.Error("Failed to generate access token", "user_id", user.Id, "error", err)
+		logger.AuditError("Failed to generate access token", "user_id", user.Id, "error", err)
 		return response.InternalServerError(c, "Failed to generate access token")
 	}
 
 	refreshToken, err := authService.GenerateRefreshToken(user)
 	if err != nil {
-		logger.Error("Failed to generate refresh token", "user_id", user.Id, "error", err)
+		logger.AuditError("Failed to generate refresh token", "user_id", user.Id, "error", err)
 		return response.InternalServerError(c, "Failed to generate refresh token")
 	}
 
@@ -155,13 +155,13 @@ func Register(c fiber.Ctx) error {
 	// Generate tokens for the new user
 	accessToken, err := authService.GenerateAccessToken(user)
 	if err != nil {
-		logger.Error("Failed to generate access token", "user_id", user.Id, "error", err)
+		logger.AuditError("Failed to generate access token", "user_id", user.Id, "error", err)
 		return response.InternalServerError(c, "Failed to generate access token")
 	}
 
 	refreshToken, err := authService.GenerateRefreshToken(user)
 	if err != nil {
-		logger.Error("Failed to generate refresh token", "user_id", user.Id, "error", err)
+		logger.AuditError("Failed to generate refresh token", "user_id", user.Id, "error", err)
 		return response.InternalServerError(c, "Failed to generate refresh token")
 	}
 
@@ -217,7 +217,7 @@ func Me(c fiber.Ctx) error {
 
 	claims, ok := claimsInterface.(*types.AuthClaims)
 	if !ok {
-		logger.Error("Invalid claims type in context", "type", fmt.Sprintf("%T", claimsInterface))
+		logger.AuditError("Invalid claims type in context", "type", fmt.Sprintf("%T", claimsInterface))
 		return response.Unauthorized(c, "Unauthorized")
 	}
 
@@ -227,7 +227,7 @@ func Me(c fiber.Ctx) error {
 	// Fetch user info
 	user, err := authService.GetUserByID(claims.Sub)
 	if err != nil {
-		logger.Error("Failed to retrieve user info", "user_id", claims.Sub, "error", err)
+		logger.AuditError("Failed to retrieve user info", "user_id", claims.Sub, "error", err)
 		return response.InternalServerError(c, "Failed to retrieve user info")
 	}
 
@@ -259,7 +259,7 @@ func Logout(c fiber.Ctx) error {
 		} else {
 			// Token is valid, blacklist it
 			if err := authService.BlacklistToken(accessToken, true); err != nil {
-				logger.Error("Failed to blacklist access token", "error", err)
+				logger.AuditError("Failed to blacklist access token", "error", err)
 				// Don't return error, continue with logout process
 			}
 		}

@@ -8,6 +8,7 @@ import (
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
+	"github.com/MonkyMars/PWS/workers"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -47,6 +48,30 @@ func GetSystemHealth(c fiber.Ctx) error {
 			GoRoutines:    runtime.NumGoroutine(),
 			RequestCount:  requestCount,
 		},
+	})
+}
+
+// GetAuditHealth returns the health status of the audit logging system
+func GetAuditHealth(c fiber.Ctx) error {
+	healthStatus := workers.HealthStatus()
+
+	status := "ok"
+	message := "Audit system operational"
+
+	if !healthStatus["is_healthy"].(bool) {
+		status = "degraded"
+		message = "Audit system experiencing issues"
+	}
+
+	if !healthStatus["worker_running"].(bool) {
+		status = "error"
+		message = "Audit worker not running"
+	}
+
+	return response.Success(c, map[string]any{
+		"status":  status,
+		"message": message,
+		"details": healthStatus,
 	})
 }
 
