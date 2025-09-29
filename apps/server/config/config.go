@@ -44,7 +44,6 @@ type Config struct {
 	Cors types.CorsConfig
 }
 
-
 var (
 	configInstance *Config
 	configOnce     sync.Once
