@@ -28,7 +28,7 @@ func AuthMiddleware() fiber.Handler {
 		}
 
 		// Initialize Cache service
-		cacheService := services.CacheService{}
+		cacheService := services.NewCacheService()
 
 		// Check if token is blacklisted with graceful Redis failure handling
 		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())

@@ -15,7 +15,7 @@ func GetSingleFile(c fiber.Ctx) error {
 	}
 
 	// Retrieve file metadata from database
-	fileService := &services.FileService{}
+	fileService := services.NewFileService()
 	file, err := fileService.GetFileByID(fileID)
 	if err != nil {
 		return response.InternalServerError(c, "Failed to retrieve file: "+err.Error())

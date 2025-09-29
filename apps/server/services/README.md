@@ -28,7 +28,7 @@ Handles all authentication operations.
 **How to use:**
 ```go
 logger := config.SetupLogger()
-authService := &services.AuthService{Logger: logger}
+authService := services.NewAuthService()
 
 // Login user
 user, err := authService.Login(&types.AuthRequest{
@@ -59,7 +59,7 @@ Handles Redis caching operations.
 
 **How to use:**
 ```go
-cacheService := &services.CacheService{}
+cacheService := services.NewCacheService()
 
 // Store in cache
 err := cacheService.Set("user:123", userData, time.Hour)
@@ -82,7 +82,7 @@ Manages secure HTTP cookies for authentication.
 
 **How to use:**
 ```go
-cookieService := &services.CookieService{}
+cookieService := services.NewCookieService()
 
 // Set cookies after login
 cookieService.SetAuthCookies(c, accessToken, refreshToken)

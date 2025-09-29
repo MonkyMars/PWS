@@ -7,6 +7,10 @@ import (
 
 type FileService struct{}
 
+func NewFileService() *FileService {
+	return &FileService{}
+}
+
 func (fs *FileService) GetFileByID(fileID string) (*types.File, error) {
 	query := Query().SetOperation("select").SetTable("files").SetLimit(1)
 	query.Where["file_id"] = fileID

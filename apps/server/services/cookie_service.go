@@ -13,6 +13,10 @@ type CookieService struct {
 	RefreshTokenExpiry time.Duration
 }
 
+func NewCookieService() *CookieService {
+	return &CookieService{}
+}
+
 func (co *CookieService) GetCookieOptions() *CookieService {
 	cfg := config.Get()
 	return &CookieService{

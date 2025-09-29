@@ -70,7 +70,7 @@ func main() {
 	}
 
 	// Initialize and test Redis connection
-	cacheService := &services.CacheService{}
+	cacheService := services.NewCacheService()
 	err = cacheService.Ping()
 	if err != nil {
 		logger.AuditError("Redis connection error", "error", err)
