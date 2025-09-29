@@ -1,9 +1,9 @@
 package tests
 
 import (
+	"github.com/MonkyMars/PWS/lib"
 	"testing"
 	"time"
-	"github.com/MonkyMars/PWS/lib"
 )
 
 func TestTimeHandling(t *testing.T) {
