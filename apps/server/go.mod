@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/go-pg/pg/v10 v10.15.0
 	github.com/goccy/go-json v0.10.5
-	github.com/gofiber/fiber/v3 v3.0.0-rc.1
+	github.com/gofiber/fiber/v3 v3.0.0-rc.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
