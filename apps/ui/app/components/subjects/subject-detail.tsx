@@ -132,10 +132,6 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
               </p>
             </div>
           </div>
-
-          {subject.description && (
-            <p className="text-neutral-700 max-w-3xl">{subject.description}</p>
-          )}
         </div>
 
         {/* Tabs */}

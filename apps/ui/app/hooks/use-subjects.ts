@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '~/lib/api-client';
 import type {
   Subject,
-  SubjectWithDetails,
   Announcement,
   SubjectFile,
   PaginatedResponse,
@@ -17,8 +16,8 @@ import type {
 export function useSubjects(filters?: SubjectFilters) {
   return useQuery({
     queryKey: ['subjects', filters],
-    queryFn: async (): Promise<SubjectWithDetails[]> => {
-      const response = await apiClient.get<SubjectWithDetails[]>('/subjects', filters);
+    queryFn: async (): Promise<Subject[]> => {
+      const response = await apiClient.get<Subject[]>('/subjects/me', filters);
 
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Fout bij ophalen vakken');
@@ -76,7 +75,8 @@ export function useSubjectFiles(filters?: FileFilters) {
   return useQuery({
     queryKey: ['files', filters],
     queryFn: async (): Promise<PaginatedResponse<SubjectFile>> => {
-      const response = await apiClient.get<PaginatedResponse<SubjectFile>>('/files', filters);
+      const path = `/files/subject/${filters?.subjectId}`;
+      const response = await apiClient.get<PaginatedResponse<SubjectFile>>(path);
 
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Fout bij ophalen bestanden');

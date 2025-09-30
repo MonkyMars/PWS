@@ -62,6 +62,9 @@ func SetupRoutes(app *fiber.App, logger *config.Logger) {
 	// Files routes
 	routes.SetupFileRoutes(app)
 
+	// Subjects routes
+	routes.SetupSubjectRoutes(app)
+
 	// Health check and fallback route - Must be last to avoid conflicts
 	routes.SetupAppRoutes(app)
 }

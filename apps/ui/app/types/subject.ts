@@ -4,7 +4,6 @@
 export interface Subject {
   id: string;
   name: string;
-  description: string;
   code: string; // e.g., "WISK", "NATK", "NEDD"
   color: string; // Hex color for visual identification
   teacherId: string;
@@ -49,15 +48,6 @@ export interface SubjectFile {
   downloadCount: number;
   createdAt: string;
   updatedAt: string;
-}
-
-/**
- * Subject with related data for dashboard display
- */
-export interface SubjectWithDetails extends Subject {
-  recentAnnouncements: Announcement[];
-  fileCount: number;
-  lastActivity: string;
 }
 
 /**
