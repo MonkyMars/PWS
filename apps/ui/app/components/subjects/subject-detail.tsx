@@ -9,6 +9,7 @@ import {
   User,
   Download,
   ExternalLink,
+  FileImageIcon,
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { FileViewer } from '~/components/files/file-viewer';
@@ -24,20 +25,12 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
   const [selectedFile, setSelectedFile] = useState<SubjectFile | null>(null);
 
   const { data: subject, isLoading: subjectLoading } = useSubject(subjectId);
-  const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
-    subjectId,
-  });
+  // const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
+  //   subjectId,
+  // });
   const { data: filesData, isLoading: filesLoading } = useSubjectFiles({
     subjectId,
   });
-
-  if (subjectLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
 
   if (!subject) {
     return (
@@ -55,17 +48,8 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
     );
   }
 
-  const getSubjectColor = (code: string) => {
-    const colorMap: Record<string, string> = {
-      WISK: 'var(--color-subject-math)',
-      NATK: 'var(--color-subject-science)',
-      NEDD: 'var(--color-subject-language)',
-      GESCH: 'var(--color-subject-history)',
-      KUNST: 'var(--color-subject-arts)',
-      SPORT: 'var(--color-subject-sports)',
-    };
-
-    return colorMap[code] || 'var(--color-subject-default)';
+  const getSubjectColor = () => {
+    return subject.color || 'var(--color-subject-default)';
   };
 
   const formatDate = (dateString: string) => {
@@ -104,7 +88,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
     setSelectedFile(file);
   };
 
-  const announcements = announcementsData?.items || [];
+  // const announcements = announcementsData?.items || [];
   const files = filesData?.items || [];
 
   return (
@@ -121,10 +105,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
           </Link>
 
           <div className="flex items-center space-x-4 mb-4">
-            <div
-              className="w-6 h-6 rounded-full"
-              style={{ backgroundColor: getSubjectColor(subject.code) }}
-            />
+            <div className="w-6 h-6 rounded-full" style={{ backgroundColor: getSubjectColor() }} />
             <div>
               <h1 className="text-3xl font-bold text-neutral-900">{subject.name}</h1>
               <p className="text-neutral-600">
@@ -147,7 +128,8 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                 }`}
               >
                 <Bell className="h-4 w-4 inline mr-2" />
-                Mededelingen ({announcements.length})
+                Mededelingen
+                {/*({announcements.length})*/}
               </button>
               <button
                 onClick={() => setActiveTab('files')}
@@ -165,7 +147,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
         </div>
 
         {/* Content */}
-        {activeTab === 'announcements' && (
+        {/*{activeTab === 'announcements' && (
           <div className="space-y-6">
             {announcementsLoading ? (
               <div className="flex justify-center py-12">
@@ -220,7 +202,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
               </div>
             )}
           </div>
-        )}
+        )}*/}
 
         {activeTab === 'files' && (
           <div className="space-y-6">
@@ -229,55 +211,65 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
               </div>
             ) : files.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="bg-white rounded-lg border border-neutral-200 p-6 hover:border-neutral-300 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <FileText className="h-5 w-5 text-neutral-400" />
-                        <span className="text-sm font-medium text-neutral-500 uppercase">
-                          {file.category}
-                        </span>
+              <div className="grid grid-cols-1">
+                {files.map((file) => {
+                  const isImage = file.mimeType.startsWith('image/');
+                  const isPdf = file.mimeType === 'application/pdf';
+                  const isText = file.mimeType.startsWith('text/');
+
+                  const className: string = 'w-8 h-8 text-secondary-500';
+                  let icon: React.ReactNode;
+                  if (isImage) {
+                    icon = <FileImageIcon className={className} />;
+                  } else if (isPdf) {
+                    icon = <FileText className={className} />;
+                  } else if (isText) {
+                    icon = <FileText className={className} />;
+                  } else {
+                    icon = <FileText className={className} />;
+                  }
+
+                  return (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between py-4 px-6 border-b border-neutral-200 hover:bg-neutral-50 transition-colors cursor-pointer"
+                      onClick={() => handleFileClick(file)}
+                    >
+                      <div className="flex items-center space-x-4 flex-1 min-w-0">
+                        <div className="flex-shrink-0 ">{icon}</div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-neutral-900 truncate">{file.name}</h4>
+                          <div className="flex items-center space-x-4 mt-1 text-sm text-neutral-500">
+                            {file.createdAt && (
+                              <div className="flex items-center space-x-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatDate(file.createdAt)}</span>
+                              </div>
+                            )}
+                            {file.uploaderId && (
+                              <div className="flex items-center space-x-1">
+                                <User className="h-3 w-3" />
+                                <span>{file.uploaderId}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs text-neutral-500">{formatFileSize(file.size)}</span>
+                      <div className="flex items-center space-x-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFileClick(file);
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-
-                    <h4 className="font-medium text-neutral-900 mb-2 truncate">{file.name}</h4>
-
-                    {file.description && (
-                      <p className="text-sm text-neutral-600 mb-4 line-clamp-2">
-                        {file.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between text-xs text-neutral-500 mb-4">
-                      <span>Door {file.uploaderName}</span>
-                      <span>{formatDate(file.createdAt)}</span>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleFileClick(file)}
-                        className="flex-1"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        Bekijken
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => window.open(file.url, '_blank')}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">

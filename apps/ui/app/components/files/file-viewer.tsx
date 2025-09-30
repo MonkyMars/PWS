@@ -63,9 +63,9 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           <div className="flex items-center justify-between p-4 border-b border-neutral-200">
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-semibold text-neutral-900 truncate">{file.name}</h3>
-              <p className="text-sm text-neutral-500">
-                {formatFileSize(file.size)} • {file.mimeType}
-              </p>
+              <span className="inline-flex uppercase items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {file.mimeType}
+              </span>
             </div>
 
             <div className="flex items-center space-x-2 ml-4">
@@ -99,9 +99,8 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           <div className="p-4 overflow-auto max-h-[calc(100vh-8rem)]">
             {isImage && (
               <div className="flex justify-center">
-                <img
+                <iframe
                   src={file.url}
-                  alt={file.name}
                   className="max-w-full h-auto"
                   style={{
                     transform: `scale(${zoom / 100})`,

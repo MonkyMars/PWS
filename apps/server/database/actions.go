@@ -93,6 +93,9 @@ func executeSelect[T any](ctx context.Context, db *DB, query *types.QueryParams,
 		pgQuery = pgQuery.Table(query.Table)
 	}
 
+	// DEFAULT to DISTINCT to avoid duplicates
+	pgQuery = pgQuery.Distinct()
+
 	// Apply SELECT columns
 	if len(query.Select) > 0 {
 		for _, col := range query.Select {
@@ -103,9 +106,12 @@ func executeSelect[T any](ctx context.Context, db *DB, query *types.QueryParams,
 	// Apply WHERE conditions
 	pgQuery = applyWhereConditions(pgQuery, query)
 
-	// Apply JOINs
-	for _, join := range query.Join {
-		pgQuery = pgQuery.Join(join)
+	// Apply JOINs - use DISTINCT to prevent duplicates when JOINs are present
+	if len(query.Join) > 0 {
+		pgQuery = pgQuery.Distinct()
+		for _, join := range query.Join {
+			pgQuery = pgQuery.Join(join)
+		}
 	}
 
 	// Apply GROUP BY

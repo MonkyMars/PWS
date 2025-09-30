@@ -20,7 +20,9 @@ func NewSubjectService() *SubjectService {
 }
 
 func (ss *SubjectService) GetSubjectByID(subjectID string) (any, error) {
-	query := Query().SetOperation("select").SetTable("subjects").SetLimit(1)
+	query := Query().SetOperation("select").SetTable("subjects").SetLimit(1).SetSelect(database.PrefixQuery(lib.TableSubjects, []string{
+		"id", "name", "code", "color", "created_at", "updated_at", "teacher_id", "teacher_name",
+	}))
 	query.Where[fmt.Sprintf("public.%s.id", lib.TableSubjects)] = subjectID
 
 	data, err := database.ExecuteQuery[types.Subject](query)
@@ -37,7 +39,9 @@ func (ss *SubjectService) GetSubjectByID(subjectID string) (any, error) {
 }
 
 func (ss *SubjectService) GetAllSubjects() ([]types.Subject, error) {
-	query := Query().SetOperation("select").SetTable("subjects")
+	query := Query().SetOperation("select").SetTable(lib.TableSubjects).SetSelect(database.PrefixQuery(lib.TableSubjects, []string{
+		"id", "name", "code", "color", "created_at", "updated_at", "teacher_id", "teacher_name",
+	}))
 
 	data, err := database.ExecuteQuery[types.Subject](query)
 	if err != nil {
@@ -48,37 +52,8 @@ func (ss *SubjectService) GetAllSubjects() ([]types.Subject, error) {
 	return data.Data, nil
 }
 
-func (ss *SubjectService) GetSubjectsByIDs(subjectIDs []string) ([]types.Subject, error) {
-	if len(subjectIDs) == 0 {
-		return []types.Subject{}, nil
-	}
-
-	query := Query().SetOperation("select").SetTable("subjects")
-	query.Where[fmt.Sprintf("public.%s.subject_id", lib.TableSubjects)] = subjectIDs
-
-	data, err := database.ExecuteQuery[types.Subject](query)
-	if err != nil {
-		ss.Logger.Error("Failed to retrieve subjects", "subject_ids", subjectIDs, "error", err)
-		return nil, err
-	}
-
-	return data.Data, nil
-}
-
-func (ss *SubjectService) GetSubjectsByTeacherID(teacherID string) ([]types.Subject, error) {
-	query := Query().SetOperation("select").SetTable(lib.TableSubjects)
-	query.Where[fmt.Sprintf("public.%s.teacher_id", lib.TableSubjects)] = teacherID
-
-	data, err := database.ExecuteQuery[types.Subject](query)
-	if err != nil {
-		ss.Logger.Error("Failed to retrieve subjects", "teacher_id", teacherID, "error", err)
-		return nil, err
-	}
-
-	return data.Data, nil
-}
-
 func (ss *SubjectService) GetUserSubjects(userID string) ([]types.Subject, error) {
+	// Raw SQL query to join subjects and user_subjects tables - Avoids complex joins in the query builder
 	query := Query().SetRawSQL(`
 			SELECT s.id, s.name, s.code, s.color, s.created_at, s.updated_at, s.teacher_id, s.teacher_name
 			FROM subjects s
@@ -86,7 +61,6 @@ func (ss *SubjectService) GetUserSubjects(userID string) ([]types.Subject, error
 			WHERE us.user_id = ? AND s.is_active = true
 			ORDER BY s.name ASC
 		`, userID)
-	query.Where[fmt.Sprintf("public.%s.user_id", lib.TableUserSubjects)] = userID
 
 	userSubjects, err := database.ExecuteQuery[types.Subject](query)
 	if err != nil {

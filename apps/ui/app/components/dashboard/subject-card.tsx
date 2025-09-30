@@ -4,21 +4,12 @@ import type { Subject } from '~/types';
 
 interface SubjectCardProps {
   subject: Subject;
+  searchTerm?: string;
 }
 
-export function SubjectCard({ subject }: SubjectCardProps) {
-  const getSubjectColor = (code: string) => {
-    // Map subject codes to colors
-    const colorMap: Record<string, string> = {
-      WISK: 'var(--color-subject-math)',
-      NATK: 'var(--color-subject-science)',
-      NEDD: 'var(--color-subject-language)',
-      GESCH: 'var(--color-subject-history)',
-      KUNST: 'var(--color-subject-arts)',
-      SPORT: 'var(--color-subject-sports)',
-    };
-
-    return colorMap[code] || 'var(--color-subject-default)';
+export function SubjectCard({ subject, searchTerm }: SubjectCardProps) {
+  const getSubjectColor = () => {
+    return subject.color;
   };
 
   const formatDate = (dateString: string) => {
@@ -31,6 +22,21 @@ export function SubjectCard({ subject }: SubjectCardProps) {
     });
   };
 
+  const highlightText = (text: string, highlight?: string) => {
+    if (!highlight || !highlight.trim()) return text;
+
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return parts.map((part, index) =>
+      part.toLowerCase() === highlight.toLowerCase() ? (
+        <mark key={index} className="bg-yellow-200 text-yellow-900 rounded">
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  };
+
   return (
     <Link
       to={`/subjects/${subject.id}`}
@@ -40,15 +46,12 @@ export function SubjectCard({ subject }: SubjectCardProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: getSubjectColor(subject.code) }}
-            />
+            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: getSubjectColor() }} />
             <div>
               <h3 className="font-semibold text-neutral-900 group-hover:text-primary-600 transition-colors">
-                {subject.name}
+                {highlightText(subject.name, searchTerm)}
               </h3>
-              <p className="text-sm text-neutral-500">{subject.code}</p>
+              <p className="text-sm text-neutral-500">{highlightText(subject.code, searchTerm)}</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 text-neutral-400 group-hover:text-primary-600 transition-colors" />
@@ -57,7 +60,8 @@ export function SubjectCard({ subject }: SubjectCardProps) {
         {/* Teacher */}
         <div className="mb-4">
           <p className="text-sm text-neutral-600">
-            Docent: <span className="font-medium">{subject.teacherName}</span>
+            Docent:{' '}
+            <span className="font-medium">{highlightText(subject.teacherName, searchTerm)}</span>
           </p>
         </div>
       </div>

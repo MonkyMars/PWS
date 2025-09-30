@@ -35,17 +35,13 @@ export interface Announcement {
 export interface SubjectFile {
   id: string;
   subjectId: string;
+  folderId: string;
   name: string;
   originalName: string;
   description?: string;
   mimeType: string;
-  size: number; // in bytes
   url: string;
-  category: 'presentation' | 'document' | 'assignment' | 'resource' | 'other';
   uploaderId: string;
-  uploaderName: string;
-  isPublic: boolean;
-  downloadCount: number;
   createdAt: string;
   updatedAt: string;
 }

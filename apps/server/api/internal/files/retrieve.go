@@ -1,6 +1,8 @@
 package files
 
 import (
+	"fmt"
+
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/gofiber/fiber/v3"
@@ -43,6 +45,16 @@ func GetFilesBySubject(c fiber.Ctx) error {
 		return response.InternalServerError(c, "Failed to retrieve files: "+err.Error())
 	}
 
+	items := []any{}
+	for _, file := range files {
+		items = append(items, file)
+	}
+
+	// Set pagination headers
+	c.Set("X-Total-Count", fmt.Sprintf("%d", len(items)))
+	c.Set("X-Total-Pages", fmt.Sprintf("%s", "1"))
+	c.Set("X-Page-Size", fmt.Sprintf("%d", len(items)))
+
 	// Return list of files
-	return response.Success(c, files)
+	return response.Paginated(c, items, len(files), 1, len(files))
 }

@@ -1,12 +1,76 @@
-import { BookOpen, Bell, FileText, Calendar, TrendingUp } from 'lucide-react';
+import {
+  BookOpen,
+  Bell,
+  FileText,
+  Calendar,
+  TrendingUp,
+  X,
+  Search,
+  CornerDownLeft,
+  Command,
+} from 'lucide-react';
 import { SubjectCard } from './subject-card';
-import { RecentActivity } from './recent-activity';
 import { QuickActions } from './quick-actions';
-import { useCurrentUser, useSubjects } from '~/hooks';
+import { useCurrentUser, useSubjects, useDebounce } from '~/hooks';
+import { Input } from '../ui/input';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router';
 
 export function Dashboard() {
   const { data: user } = useCurrentUser();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
+  const [searchValue, setSearchValue] = useState<string>('');
+  const navigate = useNavigate();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search value for better performance
+  const debouncedSearchValue = useDebounce(searchValue, 200);
+
+  // Filter and sort subjects based on debounced search with prioritized scoring
+  const filteredSubjects = (() => {
+    if (!subjects) return [];
+    if (!debouncedSearchValue.trim()) return subjects;
+
+    const searchTerm = debouncedSearchValue.toLowerCase();
+
+    // Score subjects based on match quality
+    const scoredSubjects = subjects
+      .map((subject) => {
+        const name = subject.name.toLowerCase();
+        const code = subject.code.toLowerCase();
+        const teacher = subject.teacherName.toLowerCase();
+
+        let score = 0;
+
+        // Name field (highest priority)
+        if (name.startsWith(searchTerm)) {
+          score += 100;
+        } else if (name.includes(searchTerm)) {
+          score += 10;
+        }
+
+        // Code field (medium priority)
+        if (code.startsWith(searchTerm)) {
+          score += 50;
+        } else if (code.includes(searchTerm)) {
+          score += 5;
+        }
+
+        // Teacher name (lower priority)
+        if (teacher.startsWith(searchTerm)) {
+          score += 20;
+        } else if (teacher.includes(searchTerm)) {
+          score += 2;
+        }
+
+        return { subject, score };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ subject }) => subject);
+
+    return scoredSubjects;
+  })();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -14,6 +78,50 @@ export function Dashboard() {
     if (hour < 17) return 'Goedemiddag';
     return 'Goedenavond';
   };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setSearchValue('');
+      searchInputRef.current?.blur();
+    } else if (e.key === 'Enter' && filteredSubjects.length > 0) {
+      // Navigate to the first subject in the filtered results
+      navigate(`/subjects/${filteredSubjects[0].id}`);
+    }
+  };
+
+  // Global keyboard shortcut to focus search and navigate to subjects
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInInput = ['INPUT', 'TEXTAREA'].includes(target?.tagName);
+
+      // Focus search with 'S'
+      if (e.key.toLowerCase() === 's' && !isInInput && searchInputRef.current) {
+        e.preventDefault();
+        searchInputRef.current.focus();
+        return;
+      }
+
+      // Navigate to subjects with number keys (1-9)
+      const keyNumber = parseInt(e.key);
+      if (
+        !isNaN(keyNumber) &&
+        keyNumber >= 1 &&
+        keyNumber <= 9 &&
+        !isInInput &&
+        filteredSubjects.length > 0
+      ) {
+        const subjectIndex = keyNumber - 1;
+        if (filteredSubjects[subjectIndex]) {
+          e.preventDefault();
+          navigate(`/subjects/${filteredSubjects[subjectIndex].id}`);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [filteredSubjects, navigate]);
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -41,42 +149,6 @@ export function Dashboard() {
               </div>
             </div>
           </div>
-
-          <div className="bg-white rounded-lg p-6 border border-neutral-200">
-            <div className="flex items-center">
-              <div className="p-2 bg-warning-100 rounded-lg">
-                <Bell className="h-6 w-6 text-warning-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-neutral-600">Nieuwe Mededelingen</p>
-                <p className="text-2xl font-bold text-neutral-900">3</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 border border-neutral-200">
-            <div className="flex items-center">
-              <div className="p-2 bg-success-100 rounded-lg">
-                <FileText className="h-6 w-6 text-success-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-neutral-600">Nieuwe Bestanden</p>
-                <p className="text-2xl font-bold text-neutral-900">7</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 border border-neutral-200">
-            <div className="flex items-center">
-              <div className="p-2 bg-secondary-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-secondary-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-neutral-600">Voortgang</p>
-                <p className="text-2xl font-bold text-neutral-900">89%</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -84,17 +156,133 @@ export function Dashboard() {
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-neutral-900">Mijn Vakken</h2>
-              <div className="text-sm text-neutral-500">
-                {subjects?.length} {subjects?.length === 1 ? 'vak' : 'vakken'}
+              <div className="text-sm text-neutral-500" aria-live="polite">
+                {debouncedSearchValue.trim() ? (
+                  <>
+                    {filteredSubjects.length} van {subjects?.length}{' '}
+                    {subjects?.length === 1 ? 'vak' : 'vakken'}
+                  </>
+                ) : (
+                  <>
+                    {subjects?.length} {subjects?.length === 1 ? 'vak' : 'vakken'}
+                  </>
+                )}
               </div>
             </div>
 
-            {subjects && subjects.length > 0 ? (
+            {/* Filter and search bar */}
+            <div className="flex items-center mb-6 space-x-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                <Input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Zoek vakken op naam, code of docent..."
+                  className="w-full border border-neutral-300 rounded-lg pl-10 pr-20 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  disabled={subjectsLoading}
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  aria-label="Zoek vakken"
+                  aria-describedby="search-shortcuts"
+                />
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+                  {searchValue && filteredSubjects.length > 0 && (
+                    <div
+                      className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
+                      title="Druk Enter om naar eerste resultaat te gaan"
+                    >
+                      <CornerDownLeft className="h-3 w-3" />
+                    </div>
+                  )}
+                  {!searchValue && (
+                    <div
+                      className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
+                      title="Druk S om te zoeken"
+                    >
+                      <Command className="h-3 w-3 mr-0.5" />
+                      <span>S</span>
+                    </div>
+                  )}
+                  {searchValue && filteredSubjects.length > 1 && (
+                    <div
+                      className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
+                      title={`Druk 1-${Math.min(filteredSubjects.length, 9)} om naar specifiek vak te gaan`}
+                    >
+                      <span>1-{Math.min(filteredSubjects.length, 9)}</span>
+                    </div>
+                  )}
+                  {searchValue && (
+                    <button
+                      onClick={() => setSearchValue('')}
+                      className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors rounded"
+                      title="Zoekterm wissen en unfocus (Esc)"
+                      aria-label="Zoekterm wissen"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div id="search-shortcuts" className="sr-only" aria-live="polite">
+                {searchValue && filteredSubjects.length > 0
+                  ? `Druk Enter om naar het eerste resultaat te gaan, of druk 1-${Math.min(filteredSubjects.length, 9)} om naar een specifiek vak te gaan. Escape om te wissen en unfocus.`
+                  : 'Druk S om te zoeken'}
+              </div>
+            </div>
+
+            {subjectsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {subjects.map((subject) => (
-                  <SubjectCard key={subject.id} subject={subject} />
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-lg border border-neutral-200 p-6 animate-pulse"
+                  >
+                    <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-neutral-200 rounded w-1/2 mb-4"></div>
+                    <div className="h-3 bg-neutral-200 rounded w-full"></div>
+                  </div>
                 ))}
               </div>
+            ) : subjects && subjects.length > 0 ? (
+              filteredSubjects.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredSubjects.map((subject, index) => (
+                    <div
+                      key={subject.id}
+                      className={
+                        index === 0 && debouncedSearchValue.trim()
+                          ? 'ring-2 ring-primary-200 rounded-lg relative'
+                          : 'relative'
+                      }
+                    >
+                      {index < 9 && (
+                        <div className="absolute bottom-2 right-2 z-10 flex items-center justify-center w-5 h-5 bg-neutral-400/90 text-white text-xs rounded font-medium shadow-sm">
+                          {index + 1}
+                        </div>
+                      )}
+                      <SubjectCard subject={subject} searchTerm={debouncedSearchValue} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
+                  <Search className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                    Geen vakken gevonden
+                  </h3>
+                  <p className="text-neutral-600 mb-4">
+                    Er zijn geen vakken gevonden die overeenkomen met "{debouncedSearchValue}".
+                  </p>
+                  <button
+                    onClick={() => setSearchValue('')}
+                    className="text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1"
+                    aria-label="Zoekterm wissen"
+                  >
+                    Zoekterm wissen
+                  </button>
+                </div>
+              )
             ) : (
               <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
                 <BookOpen className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
@@ -110,7 +298,6 @@ export function Dashboard() {
           {/* Sidebar */}
           <div className="space-y-6">
             <QuickActions />
-            <RecentActivity />
           </div>
         </div>
       </div>
