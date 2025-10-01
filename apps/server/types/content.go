@@ -34,3 +34,11 @@ type File struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 	FolderId   uuid.UUID `json:"folder_id"`
 }
+
+type Folder struct {
+	Id        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	ParentId  uuid.UUID `json:"parent_id"`
+	SubjectId uuid.UUID `json:"subject_id"`
+}

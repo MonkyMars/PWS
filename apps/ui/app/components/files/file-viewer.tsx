@@ -54,7 +54,7 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black bg-opacity-75" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 bg-opacity-50" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative flex items-center justify-center min-h-screen p-4">

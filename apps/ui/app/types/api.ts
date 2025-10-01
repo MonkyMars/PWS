@@ -75,6 +75,7 @@ export interface AnnouncementFilters {
  */
 export interface FileFilters {
   subjectId?: string;
+  folderId?: string;
   category?: string;
   mimeType?: string;
   uploaderId?: string;

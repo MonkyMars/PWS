@@ -47,6 +47,19 @@ export interface SubjectFile {
 }
 
 /**
+ * Folder interface for organizing files within subjects
+ */
+export interface SubjectFolder {
+  id: string;
+  name: string;
+  parentId: string;
+  subjectId: string;
+  createdAt: string;
+  updatedAt: string;
+  uploaderId: string;
+}
+
+/**
  * Subject enrollment interface linking users to subjects
  */
 export interface SubjectEnrollment {

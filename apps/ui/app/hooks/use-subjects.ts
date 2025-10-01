@@ -8,6 +8,7 @@ import type {
   SubjectFilters,
   AnnouncementFilters,
   FileFilters,
+  SubjectFolder,
 } from '~/types';
 
 /**
@@ -107,7 +108,13 @@ export function useSubjectFiles(filters?: FileFilters) {
   return useQuery({
     queryKey: ['files', filters],
     queryFn: async (): Promise<PaginatedResponse<SubjectFile>> => {
-      const path = `/files/subject/${filters?.subjectId}`;
+      if (!filters?.subjectId) {
+        throw new Error('subjectId is required to fetch files');
+      }
+      if (!filters.folderId) {
+        filters.folderId = filters.subjectId;
+      }
+      const path = `/files/subject/${filters?.subjectId}/folder/${filters?.folderId}`;
       const response = await apiClient.get<PaginatedResponse<SubjectFile>>(path);
 
       if (!response.success || !response.data) {
@@ -130,7 +137,50 @@ export function useSubjectFiles(filters?: FileFilters) {
         };
       });
 
-      const sortedData = data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const sortedData: SubjectFile[] = data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      return { ...response.data, items: sortedData };
+    },
+  });
+}
+/**
+ * Hook to get folders for a subject
+ */
+export function useSubjectFolders(filters?: FileFilters) {
+  return useQuery({
+    queryKey: ['folders', filters],
+    queryFn: async (): Promise<PaginatedResponse<SubjectFolder>> => {
+      if (!filters?.subjectId) {
+        throw new Error('subjectId is required to fetch files');
+      }
+      if (!filters.folderId) {
+        filters.folderId = filters.subjectId;
+      }
+      const path = `/folders/subject/${filters?.subjectId}/folder/${filters?.folderId}`;
+      const response = await apiClient.get<PaginatedResponse<SubjectFolder>>(path);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Fout bij ophalen bestanden');
+      }
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Fout bij ophalen bestanden');
+      }
+
+      const data = response.data.items.map((folder: any) => {
+        return {
+          createdAt: new Date(folder.created_at).toISOString(),
+          subjectId: folder.subject_id,
+          updatedAt: new Date(folder.updated_at).toISOString(),
+          parentId: folder.parent_id,
+          uploaderId: folder.uploader_id,
+          ...folder,
+        };
+      });
+
+      const sortedData: SubjectFolder[] = data.sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt)
+      );
 
       return { ...response.data, items: sortedData };
     },

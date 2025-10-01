@@ -10,10 +10,11 @@ import {
   Download,
   ExternalLink,
   FileImageIcon,
+  Folder,
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { FileViewer } from '~/components/files/file-viewer';
-import { useSubject, useAnnouncements, useSubjectFiles } from '~/hooks';
+import { useSubject, useAnnouncements, useSubjectFiles, useSubjectFolders } from '~/hooks';
 import type { SubjectFile } from '~/types';
 
 interface SubjectDetailProps {
@@ -23,13 +24,18 @@ interface SubjectDetailProps {
 export function SubjectDetail({ subjectId }: SubjectDetailProps) {
   const [activeTab, setActiveTab] = useState<'announcements' | 'files'>('announcements');
   const [selectedFile, setSelectedFile] = useState<SubjectFile | null>(null);
-
+  const [selectedFolder, setSelectedFolder] = useState<string>(subjectId);
   const { data: subject, isLoading: subjectLoading } = useSubject(subjectId);
   // const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
   //   subjectId,
   // });
   const { data: filesData, isLoading: filesLoading } = useSubjectFiles({
     subjectId,
+    folderId: selectedFolder,
+  });
+  const { data: folderData, isLoading: foldersLoading } = useSubjectFolders({
+    subjectId,
+    folderId: selectedFolder,
   });
 
   if (!subject) {
@@ -90,6 +96,13 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
 
   // const announcements = announcementsData?.items || [];
   const files = filesData?.items || [];
+  const folders = folderData?.items || [];
+
+  // Combine folders and files, with folders first
+  const combinedItems = [
+    ...folders.map((folder) => ({ ...folder, type: 'folder' as const })),
+    ...files.map((file) => ({ ...file, type: 'file' as const })),
+  ];
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -140,7 +153,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                 }`}
               >
                 <FileText className="h-4 w-4 inline mr-2" />
-                Bestanden ({files.length})
+                Bestanden ({combinedItems.length})
               </button>
             </nav>
           </div>
@@ -206,67 +219,83 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
 
         {activeTab === 'files' && (
           <div className="space-y-6">
-            {filesLoading ? (
+            {filesLoading || foldersLoading ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
               </div>
-            ) : files.length > 0 ? (
-              <div className="grid grid-cols-1">
-                {files.map((file) => {
-                  const isImage = file.mimeType.startsWith('image/');
-                  const isPdf = file.mimeType === 'application/pdf';
-                  const isText = file.mimeType.startsWith('text/');
-
+            ) : combinedItems.length > 0 ? (
+              <div className="grid grid-cols-1 p-1 w-full overflow-y-auto rounded-lg border-neutral-200">
+                {combinedItems.map((item) => {
+                  const isFolder = item.type === 'folder';
                   const className: string = 'w-8 h-8 text-secondary-500';
                   let icon: React.ReactNode;
-                  if (isImage) {
-                    icon = <FileImageIcon className={className} />;
-                  } else if (isPdf) {
-                    icon = <FileText className={className} />;
-                  } else if (isText) {
-                    icon = <FileText className={className} />;
+
+                  if (isFolder) {
+                    icon = <Folder className={className} />;
                   } else {
-                    icon = <FileText className={className} />;
+                    const isImage = item.mimeType?.startsWith('image/');
+                    const isPdf = item.mimeType === 'application/pdf';
+                    const isText = item.mimeType?.startsWith('text/');
+
+                    if (isImage) {
+                      icon = <FileImageIcon className={className} />;
+                    } else if (isPdf) {
+                      icon = <FileText className={className} />;
+                    } else if (isText) {
+                      icon = <FileText className={className} />;
+                    } else {
+                      icon = <FileText className={className} />;
+                    }
                   }
+
+                  const handleItemClick = () => {
+                    if (isFolder) {
+                      setSelectedFolder(item.id);
+                    } else {
+                      handleFileClick(item);
+                    }
+                  };
 
                   return (
                     <div
-                      key={file.id}
-                      className="flex items-center justify-between py-4 px-6 border-b border-neutral-200 hover:bg-neutral-50 transition-colors cursor-pointer"
-                      onClick={() => handleFileClick(file)}
+                      key={`${item.type}-${item.id}`}
+                      className="flex items-center justify-between bg-white rounded-lg p-2 border-b border-neutral-200 hover:bg-neutral-50 transition-colors cursor-pointer"
+                      onClick={handleItemClick}
                     >
                       <div className="flex items-center space-x-4 flex-1 min-w-0">
-                        <div className="flex-shrink-0 ">{icon}</div>
+                        <div className="flex-shrink-0">{icon}</div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-neutral-900 truncate">{file.name}</h4>
+                          <h4 className="font-medium text-neutral-900 truncate">{item.name}</h4>
                           <div className="flex items-center space-x-4 mt-1 text-sm text-neutral-500">
-                            {file.createdAt && (
+                            {item.createdAt && (
                               <div className="flex items-center space-x-1">
                                 <Calendar className="h-3 w-3" />
-                                <span>{formatDate(file.createdAt)}</span>
+                                <span>{formatDate(item.createdAt)}</span>
                               </div>
                             )}
-                            {file.uploaderId && (
+                            {item.uploaderId && (
                               <div className="flex items-center space-x-1">
                                 <User className="h-3 w-3" />
-                                <span>{file.uploaderId}</span>
+                                <span>{item.uploaderId}</span>
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFileClick(file);
-                          }}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {!isFolder && (
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFileClick(item);
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
