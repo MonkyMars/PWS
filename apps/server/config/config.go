@@ -24,18 +24,13 @@ type Config struct {
 	Environment string
 	Port        string
 	LogLevel    string
+	FrontendURL string
 
 	// Auth Settings
 	Auth types.AuthConfig
 
-	// API Settings
-	Supabase types.SupabaseConfig
-
 	// Google OAuth Settings
 	Google GoogleConfig
-
-	// Frontend Settings
-	FrontendURL string
 
 	// Database Settings
 	Database types.DatabaseConfig
@@ -78,13 +73,6 @@ func Load() *Config {
 			Port:        getEnv("PORT", "8082"),
 			LogLevel:    getEnv("LOG_LEVEL", "info"),
 
-			// API Settings
-			Supabase: types.SupabaseConfig{
-				Url:        getEnv("SUPABASE_URL", ""),
-				AnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
-				ServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
-			},
-
 			Auth: types.AuthConfig{
 				AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", ""),
 				AccessTokenExpiry:  getEnvDuration("ACCESS_TOKEN_EXPIRY", 15*time.Minute),
@@ -104,19 +92,17 @@ func Load() *Config {
 
 			// Database Settings
 			Database: types.DatabaseConfig{
-				Host:             getEnv("DB_HOST", "localhost"),
-				Port:             getEnvInt("DB_PORT", 5432),
-				User:             getEnv("DB_USER", "postgres"),
-				Password:         getEnv("DB_PASSWORD", ""),
-				Name:             getEnv("DB_NAME", "postgres"),
-				SSLMode:          getEnv("DB_SSLMODE", "disable"),
-				MaxConns:         getEnvInt("DB_MAX_CONNS", 25),
-				MinConns:         getEnvInt("DB_MIN_CONNS", 5),
-				MaxIdleTime:      getEnvDuration("DB_MAX_IDLE_TIME", 15*time.Minute),
-				MaxLifetime:      getEnvDuration("DB_MAX_LIFETIME", 1*time.Hour),
-				ReadTimeout:      getEnvDuration("DB_READ_TIMEOUT", 30*time.Second),
-				WriteTimeout:     getEnvDuration("DB_WRITE_TIMEOUT", 30*time.Second),
-				ConnectionString: getEnv("DB_CONNECTION_STRING", ""),
+				Host:         getEnv("DB_HOST", "localhost"),
+				Port:         getEnvInt("DB_PORT", 5432),
+				User:         getEnv("DB_USER", "postgres"),
+				Password:     getEnv("DB_PASSWORD", ""),
+				Name:         getEnv("DB_NAME", "postgres"),
+				SSLMode:      getEnv("DB_SSLMODE", "disable"),
+				MaxConns:     getEnvInt("DB_MAX_CONNS", 25),
+				MinConns:     getEnvInt("DB_MIN_CONNS", 5),
+				MaxLifetime:  getEnvDuration("DB_MAX_LIFETIME", 1*time.Hour),
+				ReadTimeout:  getEnvDuration("DB_READ_TIMEOUT", 30*time.Second),
+				WriteTimeout: getEnvDuration("DB_WRITE_TIMEOUT", 30*time.Second),
 			},
 
 			// Server Settings
@@ -124,7 +110,6 @@ func Load() *Config {
 				ReadTimeout:    getEnvDuration("SERVER_READ_TIMEOUT", 30*time.Second),
 				WriteTimeout:   getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
 				IdleTimeout:    getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
-				MaxHeaderBytes: getEnvInt("SERVER_MAX_HEADER_BYTES", 1<<20), // 1MB
 			},
 
 			// Cache Settings
@@ -197,17 +182,15 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("PORT is required")
 	}
 
-	// Validate database configuration only if no connection string is provided
-	if c.Database.ConnectionString == "" {
-		if c.Database.Host == "" {
-			return fmt.Errorf("DB_HOST is required when DB_CONNECTION_STRING is not provided")
-		}
-		if c.Database.User == "" {
-			return fmt.Errorf("DB_USER is required when DB_CONNECTION_STRING is not provided")
-		}
-		if c.Database.Name == "" {
-			return fmt.Errorf("DB_NAME is required when DB_CONNECTION_STRING is not provided")
-		}
+	// Validate database configuration
+	if c.Database.Host == "" {
+		return fmt.Errorf("DB_HOST is required")
+	}
+	if c.Database.User == "" {
+		return fmt.Errorf("DB_USER is required")
+	}
+	if c.Database.Name == "" {
+		return fmt.Errorf("DB_NAME is required")
 	}
 
 	// Validate auth secrets - required in all environments
@@ -296,17 +279,8 @@ func (c *Config) IsDevelopment() bool {
 	return c.Environment == "development"
 }
 
-// IsStaging returns true if the application is running in staging environment
-func (c *Config) IsStaging() bool {
-	return c.Environment == "staging"
-}
-
 // GetDatabaseDSN returns a formatted database connection string
 func (c *Config) GetDatabaseDSN() string {
-	if c.Database.ConnectionString != "" {
-		return c.Database.ConnectionString
-	}
-
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		c.Database.User,
 		c.Database.Password,

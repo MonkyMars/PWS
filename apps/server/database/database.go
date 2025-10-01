@@ -22,22 +22,11 @@ func Connect() (*DB, error) {
 	cfg := config.Get()
 	dbCfg := cfg.Database
 
-	var opts *pg.Options
-	var err error
-
-	// Use connection string if provided, otherwise build from individual settings
-	if dbCfg.ConnectionString != "" {
-		opts, err = pg.ParseURL(dbCfg.ConnectionString)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse connection string: %w", err)
-		}
-	} else {
-		opts = &pg.Options{
-			Addr:     fmt.Sprintf("%s:%d", dbCfg.Host, dbCfg.Port),
-			User:     dbCfg.User,
-			Password: dbCfg.Password,
-			Database: dbCfg.Name,
-		}
+	opts := &pg.Options{
+		Addr:     fmt.Sprintf("%s:%d", dbCfg.Host, dbCfg.Port),
+		User:     dbCfg.User,
+		Password: dbCfg.Password,
+		Database: dbCfg.Name,
 	}
 
 	// Apply pool settings from configuration
