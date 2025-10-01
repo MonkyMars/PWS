@@ -37,9 +37,8 @@ func getGoogleOAuthConfig() *oauth2.Config {
 		ClientID:     cfg.Google.ClientID,
 		ClientSecret: cfg.Google.ClientSecret,
 		Scopes: []string{
-			// minimal scope for picker & downloading file metadata
-			"https://www.googleapis.com/auth/drive.readonly",
-			// change permissions: "https://www.googleapis.com/auth/drive"
+			// Full drive access for changing permissions and viewing.
+			"https://www.googleapis.com/auth/drive",
 		},
 		Endpoint:    google.Endpoint,
 		RedirectURL: cfg.Google.RedirectURL,

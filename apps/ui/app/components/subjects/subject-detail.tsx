@@ -69,26 +69,18 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
     });
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'bg-error-100 text-error-800';
-      case 'high':
-        return 'bg-warning-100 text-warning-800';
-      case 'normal':
-        return 'bg-primary-100 text-primary-800';
-      default:
-        return 'bg-neutral-100 text-neutral-800';
-    }
-  };
+  // const getPriorityColor = (priority: string) => {
+  //   switch (priority) {
+  //     case 'urgent':
+  //       return 'bg-error-100 text-error-800';
+  //     case 'high':
+  //       return 'bg-warning-100 text-warning-800';
+  //     case 'normal':
+  //       return 'bg-primary-100 text-primary-800';
+  //     default:
+  //       return 'bg-neutral-100 text-neutral-800';
+  //   }
+  // };
 
   const handleFileClick = (file: SubjectFile) => {
     setSelectedFile(file);
