@@ -12,13 +12,9 @@ type DatabaseConfig struct {
 	SSLMode      string
 	MaxConns     int
 	MinConns     int
-	MaxIdleTime  time.Duration
 	MaxLifetime  time.Duration
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
-
-	// Alternative: Full connection string
-	ConnectionString string
 }
 
 // ServerConfig holds server-related configuration
@@ -27,12 +23,6 @@ type ServerConfig struct {
 	WriteTimeout   time.Duration
 	IdleTimeout    time.Duration
 	MaxHeaderBytes int
-}
-
-type SupabaseConfig struct {
-	Url        string
-	AnonKey    string
-	ServiceKey string
 }
 
 type AuthConfig struct {
