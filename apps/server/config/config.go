@@ -107,9 +107,9 @@ func Load() *Config {
 
 			// Server Settings
 			Server: types.ServerConfig{
-				ReadTimeout:    getEnvDuration("SERVER_READ_TIMEOUT", 30*time.Second),
-				WriteTimeout:   getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
-				IdleTimeout:    getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
+				ReadTimeout:  getEnvDuration("SERVER_READ_TIMEOUT", 30*time.Second),
+				WriteTimeout: getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
+				IdleTimeout:  getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
 			},
 
 			// Cache Settings
