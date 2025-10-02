@@ -151,7 +151,7 @@ export function useSubjectFolders(filters?: FileFilters) {
     queryKey: ['folders', filters],
     queryFn: async (): Promise<PaginatedResponse<SubjectFolder>> => {
       if (!filters?.subjectId) {
-        throw new Error('subjectId is required to fetch files');
+        throw new Error('subjectId is required to fetch folders');
       }
       if (!filters.folderId) {
         filters.folderId = filters.subjectId;
@@ -160,22 +160,31 @@ export function useSubjectFolders(filters?: FileFilters) {
       const response = await apiClient.get<PaginatedResponse<SubjectFolder>>(path);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || 'Fout bij ophalen bestanden');
+        throw new Error(response.message || 'Fout bij ophalen mappen');
       }
 
-      if (!response.success || !response.data) {
-        throw new Error(response.message || 'Fout bij ophalen bestanden');
+      // Check if items exist and is an array
+      if (!response.data.items || !Array.isArray(response.data.items)) {
+        return { ...response.data, items: [] };
       }
 
       const data = response.data.items.map((folder: any) => {
-        return {
-          createdAt: new Date(folder.created_at).toISOString(),
-          subjectId: folder.subject_id,
-          updatedAt: new Date(folder.updated_at).toISOString(),
-          parentId: folder.parent_id,
-          uploaderId: folder.uploader_id,
-          ...folder,
+        const mappedFolder = {
+          id: folder.id,
+          name: folder.name,
+          createdAt: folder.created_at
+            ? new Date(folder.created_at).toISOString()
+            : new Date().toISOString(),
+          subjectId: folder.subject_id || folder.subjectId,
+          updatedAt: folder.updated_at
+            ? new Date(folder.updated_at).toISOString()
+            : folder.created_at
+              ? new Date(folder.created_at).toISOString()
+              : new Date().toISOString(),
+          parentId: folder.parent_id || folder.parentId,
+          uploaderId: folder.uploaded_by || folder.uploaderId || 'unknown',
         };
+        return mappedFolder;
       });
 
       const sortedData: SubjectFolder[] = data.sort((a, b) =>
