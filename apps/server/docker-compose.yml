@@ -1,9 +1,20 @@
 services:
   fiber-app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: fiber_app
     env_file:
       - .env
+    volumes:
+      - .env:/app/.env:ro
+      # Cache Go build + module deps
+      - go-build-cache:/root/.cache/go-build
+      - go-mod-cache:/go/pkg/mod
     ports:
       - "8082:8082"
     restart: unless-stopped
+
+volumes:
+  go-build-cache:
+  go-mod-cache:

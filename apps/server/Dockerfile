@@ -6,29 +6,29 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 
-# Cache modules first
-COPY go.mod go.sum ./
-RUN go mod download
+# Cache dependencies separately
+COPY go.mod .
+COPY go.sum .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Copy source
+# Copy source code
 COPY . .
 
-# Build with optimizations
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o server ./main.go
+# Build binary with cache
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o server ./main.go
 
 # --- Stage 2: Minimal runtime image ---
 FROM alpine:3.20
 
 WORKDIR /app
 
-# Copy binary
+# Copy binary from builder stage
 COPY --from=builder /app/server .
-
-# Copy env file (or mount with docker-compose)
-COPY .env .env
 
 # Fiber runs on port 8082
 EXPOSE 8082
 
-# Run
 CMD ["./server"]
