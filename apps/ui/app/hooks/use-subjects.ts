@@ -133,6 +133,7 @@ export function useSubjectFiles(filters?: FileFilters) {
           subjectName: file.subject_name,
           updatedAt: new Date(file.updated_at).toISOString(),
           folderId: file.folder_id,
+          fileId: file.file_id,
           ...file,
         };
       });

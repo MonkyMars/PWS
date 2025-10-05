@@ -4,10 +4,8 @@ import {
   ArrowLeft,
   Bell,
   FileText,
-  Pin,
   Calendar,
   User,
-  Download,
   ExternalLink,
   FileImageIcon,
   Folder,
@@ -17,11 +15,12 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
+  Printer,
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { FileViewer } from '~/components/files/file-viewer';
-import { useSubject, useAnnouncements, useSubjectFiles, useSubjectFolders } from '~/hooks';
-import type { SubjectFile } from '~/types';
+import { useSubject, useSubjectFiles, useSubjectFolders } from '~/hooks';
+import type { Subject, SubjectFile } from '~/types';
 
 interface SubjectDetailProps {
   subjectId: string;
@@ -34,7 +33,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
   const [folderHistory, setFolderHistory] = useState<string[]>([subjectId]);
   const [folderNames, setFolderNames] = useState<{ [key: string]: string }>({});
   const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
-  const { data: subject, isLoading: subjectLoading } = useSubject(subjectId);
+  const { data: subject } = useSubject(subjectId);
   // const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
   //   subjectId,
   // });
@@ -182,6 +181,19 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
       const newHistory = folderHistory.slice(0, index + 1);
       setFolderHistory(newHistory);
       setSelectedFolder(folderId);
+    }
+  };
+
+  const handlePrint = async (item: SubjectFile) => {
+    const file = await fetch(`https://drive.usercontent.google.com/download?id=${item.fileId}`);
+    const blob = await file.blob();
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, '_blank');
+    if (printWindow) {
+      printWindow.focus();
+      printWindow.print();
+    } else {
+      alert('Pop-up geblokkeerd. Sta pop-ups toe om te kunnen printen.');
     }
   };
 
@@ -341,10 +353,10 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                   )}
 
                   {combinedItems.length > 0 && (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center">
                       <button
                         onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                        className="flex items-center space-x-2 text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+                        className="flex items-center gap-1.5 px-2 py-1 text-xs text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50 rounded transition-colors"
                       >
                         <Keyboard className="h-3 w-3" />
                         <span>Sneltoetsen</span>
@@ -362,31 +374,25 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
 
             {/* Keyboard shortcuts help */}
             {showKeyboardHelp && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <HelpCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 animate-slide-down">
+                <div className="flex items-start gap-2.5">
+                  <HelpCircle className="h-4 w-4 text-neutral-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <h4 className="font-medium text-blue-800 mb-2">Sneltoetsen</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <kbd className="px-2 py-1 bg-white border text-neutral-700 border-blue-300 rounded text-xs font-mono">
+                    <h4 className="font-medium text-neutral-700 mb-2 text-sm">Sneltoetsen</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <kbd className="px-1.5 py-0.5 bg-white border border-neutral-300 text-neutral-600 rounded text-xs font-mono min-w-[1.5rem] text-center">
                             1-9
                           </kbd>
-                          <span className="text-blue-800">Open map/bestand (in volgorde)</span>
+                          <span className="text-neutral-600">Open map/bestand (in volgorde)</span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <kbd className="px-2 py-1 bg-white border text-neutral-700 border-blue-300 rounded text-xs font-mono">
+                        <div className="flex items-center gap-2">
+                          <kbd className="px-1.5 py-0.5 bg-white border border-neutral-300 text-neutral-600 rounded text-xs font-mono min-w-[1.5rem] text-center">
                             ESC
                           </kbd>
-                          <span className="text-blue-800">Ga terug naar vorige map</span>
+                          <span className="text-neutral-600">Ga terug naar vorige map</span>
                         </div>
-                      </div>
-                      <div className="text-xs text-blue-700">
-                        <p className="mb-1">
-                          • Grijze nummervakjes in rechterhoek tonen sneltoetsen
-                        </p>
-                        <p>• Sneltoetsen werken alleen op de Bestanden tab</p>
                       </div>
                     </div>
                   </div>
@@ -437,7 +443,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                   return (
                     <div
                       key={`${item.type}-${item.id}`}
-                      className="flex items-center justify-between bg-white rounded-lg p-2 border-b border-neutral-200 hover:bg-neutral-50 transition-colors cursor-pointer relative"
+                      className="group flex items-center justify-between bg-white rounded-lg p-2 border-b border-neutral-200 hover:bg-neutral-50 transition-colors cursor-pointer relative"
                       onClick={handleItemClick}
                     >
                       <div className="flex items-center space-x-4 flex-1 min-w-0">
@@ -460,25 +466,38 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                           </div>
                         </div>
                       </div>
-                      {!isFolder && (
-                        <div className="flex mr-6 items-center space-x-2 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleFileClick(item);
-                            }}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                      {showShortcut && (
-                        <div className="absolute bottom-2 right-2 z-10 flex items-center justify-center w-5 h-5 bg-neutral-400/90 text-white text-xs rounded font-medium shadow-sm">
-                          {shortcutNumber}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {!isFolder && (
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button
+                              title="Printen"
+                              className="p-1 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePrint(item);
+                              }}
+                            >
+                              <Printer className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              title="Openen"
+                              className="p-1 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleFileClick(item);
+                              }}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        {showShortcut && (
+                          <div className="ml-1 w-5 h-5 flex items-center justify-center bg-neutral-50 border border-neutral-200 rounded text-xs font-mono text-neutral-500">
+                            <span className="sr-only">Sneltoets {shortcutNumber}</span>
+                            <span>{shortcutNumber}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

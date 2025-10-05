@@ -43,14 +43,6 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
     setZoom((prev) => Math.max(prev - 25, 25));
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
@@ -68,30 +60,50 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
               </span>
             </div>
 
-            <div className="flex items-center space-x-2 ml-4">
+            <div className="flex items-center gap-2 ml-4">
               {(isImage || isPdf) && (
                 <>
-                  <Button variant="ghost" size="sm" onClick={handleZoomOut}>
+                  <button
+                    onClick={handleZoomOut}
+                    className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                    title="Uitzoomen"
+                  >
                     <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium text-neutral-600 min-w-0">{zoom}%</span>
-                  <Button variant="ghost" size="sm" onClick={handleZoomIn}>
+                  </button>
+                  <span className="text-sm font-medium text-neutral-600 min-w-0 px-2">{zoom}%</span>
+                  <button
+                    onClick={handleZoomIn}
+                    className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                    title="Inzoomen"
+                  >
                     <ZoomIn className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </>
               )}
 
-              <Button variant="ghost" size="sm" onClick={handleOpenInNewTab}>
+              <button
+                onClick={handleOpenInNewTab}
+                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                title="Openen in nieuw tabblad"
+              >
                 <ExternalLink className="h-4 w-4" />
-              </Button>
+              </button>
 
-              <Button variant="ghost" size="sm" onClick={handleDownload}>
+              <button
+                onClick={handleDownload}
+                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                title="Downloaden"
+              >
                 <Download className="h-4 w-4" />
-              </Button>
+              </button>
 
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                title="Sluiten"
+              >
                 <X className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
           </div>
 

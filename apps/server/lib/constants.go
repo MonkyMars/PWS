@@ -29,7 +29,7 @@ var (
 )
 
 const (
-	TableUsers           = "users"
+	TableUsers           = "public.users"
 	TableFiles           = "files"
 	TableFolders         = "folders"
 	TableSubjects        = "subjects"

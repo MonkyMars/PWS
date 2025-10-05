@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/types"
 )
 
@@ -135,7 +136,7 @@ func TestQueryValidation(t *testing.T) {
 	// Test valid bulk insert
 	query := types.NewQuery().
 		SetOperation("insert").
-		SetTable("users").
+		SetTable(lib.TableUsers).
 		SetEntries([]any{
 			map[string]any{"id": "1", "name": "test"},
 		})
@@ -148,7 +149,7 @@ func TestQueryValidation(t *testing.T) {
 	// Test valid single insert
 	query2 := types.NewQuery().
 		SetOperation("insert").
-		SetTable("users").
+		SetTable(lib.TableUsers).
 		SetData(map[string]any{"id": "1", "name": "test"})
 
 	err = query2.Validate()
@@ -159,7 +160,7 @@ func TestQueryValidation(t *testing.T) {
 	// Test invalid query with both Data and Entries
 	query3 := types.NewQuery().
 		SetOperation("insert").
-		SetTable("users").
+		SetTable(lib.TableUsers).
 		SetData(map[string]any{"id": "1", "name": "test"}).
 		SetEntries([]any{map[string]any{"id": "2", "name": "test2"}})
 
@@ -171,7 +172,7 @@ func TestQueryValidation(t *testing.T) {
 	// Test invalid query with neither Data nor Entries
 	query4 := types.NewQuery().
 		SetOperation("insert").
-		SetTable("users")
+		SetTable(lib.TableUsers)
 
 	err = query4.Validate()
 	if err == nil {

@@ -36,6 +36,7 @@ export interface SubjectFile {
   id: string;
   subjectId: string;
   folderId: string;
+  fileId: string;
   name: string;
   originalName: string;
   description?: string;
