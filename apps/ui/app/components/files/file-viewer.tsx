@@ -43,18 +43,10 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
     setZoom((prev) => Math.max(prev - 25, 25));
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black bg-opacity-75" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 bg-opacity-50" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative flex items-center justify-center min-h-screen p-4">
@@ -63,35 +55,55 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           <div className="flex items-center justify-between p-4 border-b border-neutral-200">
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-semibold text-neutral-900 truncate">{file.name}</h3>
-              <p className="text-sm text-neutral-500">
-                {formatFileSize(file.size)} • {file.mimeType}
-              </p>
+              <span className="inline-flex uppercase items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {file.mimeType}
+              </span>
             </div>
 
-            <div className="flex items-center space-x-2 ml-4">
+            <div className="flex items-center gap-2 ml-4">
               {(isImage || isPdf) && (
                 <>
-                  <Button variant="ghost" size="sm" onClick={handleZoomOut}>
+                  <button
+                    onClick={handleZoomOut}
+                    className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                    title="Uitzoomen"
+                  >
                     <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium text-neutral-600 min-w-0">{zoom}%</span>
-                  <Button variant="ghost" size="sm" onClick={handleZoomIn}>
+                  </button>
+                  <span className="text-sm font-medium text-neutral-600 min-w-0 px-2">{zoom}%</span>
+                  <button
+                    onClick={handleZoomIn}
+                    className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                    title="Inzoomen"
+                  >
                     <ZoomIn className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </>
               )}
 
-              <Button variant="ghost" size="sm" onClick={handleOpenInNewTab}>
+              <button
+                onClick={handleOpenInNewTab}
+                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                title="Openen in nieuw tabblad"
+              >
                 <ExternalLink className="h-4 w-4" />
-              </Button>
+              </button>
 
-              <Button variant="ghost" size="sm" onClick={handleDownload}>
+              <button
+                onClick={handleDownload}
+                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                title="Downloaden"
+              >
                 <Download className="h-4 w-4" />
-              </Button>
+              </button>
 
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                title="Sluiten"
+              >
                 <X className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -99,9 +111,8 @@ export function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           <div className="p-4 overflow-auto max-h-[calc(100vh-8rem)]">
             {isImage && (
               <div className="flex justify-center">
-                <img
+                <iframe
                   src={file.url}
-                  alt={file.name}
                   className="max-w-full h-auto"
                   style={{
                     transform: `scale(${zoom / 100})`,

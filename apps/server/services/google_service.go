@@ -13,8 +13,11 @@ import (
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/google/uuid"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/option"
 )
 
 type GoogleService struct {
@@ -34,9 +37,8 @@ func getGoogleOAuthConfig() *oauth2.Config {
 		ClientID:     cfg.Google.ClientID,
 		ClientSecret: cfg.Google.ClientSecret,
 		Scopes: []string{
-			// minimal scope for picker & downloading file metadata
-			"https://www.googleapis.com/auth/drive.readonly",
-			// change permissions: "https://www.googleapis.com/auth/drive"
+			// Full drive access for changing permissions and viewing.
+			"https://www.googleapis.com/auth/drive",
 		},
 		Endpoint:    google.Endpoint,
 		RedirectURL: cfg.Google.RedirectURL,
@@ -223,6 +225,40 @@ func (gs *GoogleService) DeleteUserRefreshToken(userID uuid.UUID) error {
 
 	if err != nil {
 		return lib.ErrFailedToDeleteToken
+	}
+
+	return nil
+}
+
+func (gs *GoogleService) MakeFilePublic(userID uuid.UUID, fileID string) error {
+	ctx := context.Background()
+
+	// Get access token for this teacher
+	tokenData, err := gs.GetGoogleAccessToken(userID)
+	if err != nil {
+		return fmt.Errorf("failed to get access token: %w", err)
+	}
+
+	// Build oauth2 client with access token
+	oauthCfg := getGoogleOAuthConfig()
+	token := &oauth2.Token{AccessToken: tokenData["access_token"].(string)}
+	client := oauthCfg.Client(ctx, token)
+
+	// Create Drive service
+	srv, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return fmt.Errorf("failed to create drive client: %w", err)
+	}
+
+	// Add permission: anyone with link can read
+	perm := &drive.Permission{
+		Role: "reader",
+		Type: "anyone",
+	}
+
+	_, err = srv.Permissions.Create(fileID, perm).Do()
+	if err != nil {
+		return fmt.Errorf("failed to set public permission: %w", err)
 	}
 
 	return nil

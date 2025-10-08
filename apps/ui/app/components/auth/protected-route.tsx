@@ -1,5 +1,5 @@
-import { type ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router';
+import { type ReactNode, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '~/hooks/use-auth-context';
 
 interface ProtectedRouteProps {
@@ -15,6 +15,14 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle navigation when authentication state changes
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate(redirectTo, { state: { from: location }, replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate, redirectTo, location]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -25,9 +33,13 @@ export function ProtectedRoute({
     );
   }
 
-  // Redirect to login if not authenticated
+  // Don't render children if not authenticated (navigation will happen via useEffect)
   if (!isAuthenticated) {
-    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   // Check role-based access if required
