@@ -335,7 +335,7 @@ func loadHealthConfig() *HealthConfig {
 	return &HealthConfig{
 		BatchSize:      getEnvInt("HEALTH_BATCH_SIZE", 50),
 		ChannelSize:    getEnvInt("HEALTH_CHANNEL_SIZE", 1000),
-		Enabled:        getEnvBool("HEALTH_ENABLED", false),
+		Enabled:        getEnvBool("HEALTH_ENABLED", true),
 		FlushTime:      getEnvDuration("HEALTH_FLUSH_INTERVAL", 15*time.Minute),
 		ReportInterval: getEnvDuration("HEALTH_REPORT_INTERVAL", 5*time.Minute),
 		MaxFailures:    getEnvInt("HEALTH_MAX_FAILURES", 10),
