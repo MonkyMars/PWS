@@ -14,7 +14,7 @@ import (
 )
 
 // /files/upload/single
-func UploadSingleFile(c fiber.Ctx) error {
+func (fr *FileRoutes) UploadSingleFile(c fiber.Ctx) error {
 	claimsInterface := c.Locals("claims")
 
 	if claimsInterface == nil {
@@ -65,7 +65,7 @@ func UploadSingleFile(c fiber.Ctx) error {
 	return response.Created(c, data.Single)
 }
 
-func UploadMultipleFiles(c fiber.Ctx) error {
+func (fr *FileRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 	claimsInterface := c.Locals("claims")
 
 	if claimsInterface == nil {

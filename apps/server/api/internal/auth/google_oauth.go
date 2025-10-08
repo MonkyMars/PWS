@@ -1,4 +1,4 @@
-package internal
+package auth
 
 import (
 	"github.com/MonkyMars/PWS/api/response"
@@ -10,7 +10,7 @@ import (
 
 // GoogleAuthURL handles getting the Google OAuth authorization URL
 // GET /auth/google/url
-func GoogleAuthURL(c fiber.Ctx) error {
+func (ar *AuthRoutes) GoogleAuthURL(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	// Get user from auth middleware
@@ -43,7 +43,7 @@ func GoogleAuthURL(c fiber.Ctx) error {
 
 // GoogleAuthCallback handles the OAuth callback from Google
 // GET /auth/google/callback
-func GoogleAuthCallback(c fiber.Ctx) error {
+func (ar *AuthRoutes) GoogleAuthCallback(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	state := c.Query("state")
@@ -70,7 +70,7 @@ func GoogleAuthCallback(c fiber.Ctx) error {
 
 // GoogleAccessToken handles getting a fresh Google access token
 // GET /auth/google/access-token
-func GoogleAccessToken(c fiber.Ctx) error {
+func (ar *AuthRoutes) GoogleAccessToken(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	// Get user from auth middleware
@@ -107,7 +107,7 @@ func GoogleAccessToken(c fiber.Ctx) error {
 
 // GoogleUnlink handles unlinking a user's Google account
 // DELETE /auth/google/unlink
-func GoogleUnlink(c fiber.Ctx) error {
+func (ar *AuthRoutes) GoogleUnlink(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	// Get user from auth middleware
@@ -138,7 +138,7 @@ func GoogleUnlink(c fiber.Ctx) error {
 
 // GoogleLinkStatus checks if user has linked their Google account
 // GET /auth/google/status
-func GoogleLinkStatus(c fiber.Ctx) error {
+func (ar *AuthRoutes) GoogleLinkStatus(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	// Get user from auth middleware

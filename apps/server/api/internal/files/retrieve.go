@@ -7,7 +7,7 @@ import (
 )
 
 // /files/:fileId
-func GetSingleFile(c fiber.Ctx) error {
+func (fr *FileRoutes) GetSingleFile(c fiber.Ctx) error {
 	// Get fileId from URL parameters
 	fileID := c.Params("fileId")
 	if fileID == "" {
@@ -29,7 +29,7 @@ func GetSingleFile(c fiber.Ctx) error {
 }
 
 // /files/subject/:subjectId
-func GetFilesBySubject(c fiber.Ctx) error {
+func (fr *FileRoutes) GetFilesBySubject(c fiber.Ctx) error {
 	// Get subjectId from URL parameters
 	subjectID := c.Params("subjectId")
 	if subjectID == "" {

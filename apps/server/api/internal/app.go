@@ -8,7 +8,6 @@ import (
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
-	"github.com/MonkyMars/PWS/workers"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -17,7 +16,13 @@ var (
 	requestCount int64
 )
 
-func GetSystemHealth(c fiber.Ctx) error {
+type AppRoutes struct{}
+
+func NewAppRoutes() *AppRoutes {
+	return &AppRoutes{}
+}
+
+func (ar *AppRoutes) GetSystemHealth(c fiber.Ctx) error {
 	// Memory stats
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
@@ -39,10 +44,7 @@ func GetSystemHealth(c fiber.Ctx) error {
 		Status:            status,
 		Message:           message,
 		ApplicationUptime: lib.GetUptimeString(appStartTime),
-		Services: map[string]string{
-			"database": dbStatus,
-			"api":      "ok",
-		},
+		DatabaseStatus:    dbStatus,
 		Metrics: types.HealthMetrics{
 			MemoryUsageMB: float64(memStats.Alloc) / 1024 / 1024,
 			GoRoutines:    runtime.NumGoroutine(),
@@ -51,34 +53,10 @@ func GetSystemHealth(c fiber.Ctx) error {
 	})
 }
 
-// GetAuditHealth returns the health status of the audit logging system
-func GetAuditHealth(c fiber.Ctx) error {
-	healthStatus := workers.HealthStatus()
-
-	status := "ok"
-	message := "Audit system operational"
-
-	if !healthStatus["is_healthy"].(bool) {
-		status = "degraded"
-		message = "Audit system experiencing issues"
-	}
-
-	if !healthStatus["worker_running"].(bool) {
-		status = "error"
-		message = "Audit worker not running"
-	}
-
-	return response.Success(c, map[string]any{
-		"status":  status,
-		"message": message,
-		"details": healthStatus,
-	})
-}
-
 // TODO: Add authentication middleware to protect this endpoint in production
 // Thus making sure only authorized admins can access it
 // Currently it's only available in development mode because of this issue
-func GetDatabaseHealth(c fiber.Ctx) error {
+func (ar *AppRoutes) GetDatabaseHealth(c fiber.Ctx) error {
 	now := time.Now()
 	if err := services.Ping(); err != nil {
 		return response.ServiceUnavailable(c, "Database connection error: "+err.Error())
@@ -91,6 +69,11 @@ func GetDatabaseHealth(c fiber.Ctx) error {
 	})
 }
 
-func NotFoundHandler(c fiber.Ctx) error {
-	return response.NotFound(c, "The requested resource was not found.")
+func (ar *AppRoutes) GetLogs(c fiber.Ctx) error {
+	auditService := services.NewAuditService()
+	logs, err := auditService.GetLogs()
+	if err != nil {
+		return response.InternalServerError(c, "Failed to retrieve audit logs")
+	}
+	return response.Success(c, logs)
 }

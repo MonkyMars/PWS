@@ -1,4 +1,4 @@
-package internal
+package auth
 
 import (
 	"errors"
@@ -13,8 +13,14 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+type AuthRoutes struct{}
+
+func NewAuthRoutes() *AuthRoutes {
+	return &AuthRoutes{}
+}
+
 // Login handles user authentication and returns JWT tokens
-func Login(c fiber.Ctx) error {
+func (ar *AuthRoutes) Login(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	var authRequest types.AuthRequest
@@ -81,7 +87,7 @@ func Login(c fiber.Ctx) error {
 }
 
 // Register handles user registration and returns JWT tokens
-func Register(c fiber.Ctx) error {
+func (ar *AuthRoutes) Register(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	var registerRequest types.RegisterRequest
@@ -169,7 +175,7 @@ func Register(c fiber.Ctx) error {
 }
 
 // RefreshToken handles token refresh using refresh tokens
-func RefreshToken(c fiber.Ctx) error {
+func (ar *AuthRoutes) RefreshToken(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	token := c.Cookies(lib.RefreshTokenCookieName)
@@ -203,7 +209,7 @@ func RefreshToken(c fiber.Ctx) error {
 }
 
 // Me returns the current authenticated user's information
-func Me(c fiber.Ctx) error {
+func (ar *AuthRoutes) Me(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	claimsInterface := c.Locals("claims")
@@ -238,7 +244,7 @@ func Me(c fiber.Ctx) error {
 }
 
 // Logout handles user logout with graceful handling of missing/invalid tokens
-func Logout(c fiber.Ctx) error {
+func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	accessToken := c.Cookies(lib.AccessTokenCookieName)

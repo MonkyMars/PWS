@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/MonkyMars/PWS/api"
 	"github.com/MonkyMars/PWS/config"
@@ -35,11 +37,17 @@ func main() {
 	logger := config.SetupLogger()
 	logger.ConfigLoaded()
 
-	// Initialize audit logging
-	initializeAuditLogging()
+	// Initialize worker manager with dependency injection
+	workerManager := workers.NewWorkerManager(cfg, logger)
 
-	// Start cleanup scheduler for audit logs
-	workers.StartCleanupScheduler()
+	// Initialize audit logging with the new manager
+	initializeAuditLogging(workerManager)
+
+	// Start all background workers
+	if err := workerManager.Start(); err != nil {
+		logger.Error("Failed to start worker manager", "error", err)
+		log.Fatalf("Worker manager start error: %v", err)
+	}
 
 	// Minimal config info in development mode
 	if cfg.IsDevelopment() {
@@ -70,25 +78,26 @@ func main() {
 	}
 
 	// Initialize and test Redis connection
-	cacheService := services.NewCacheService()
-	err = cacheService.Ping()
+	err = services.NewCacheService().Ping()
 	if err != nil {
 		logger.AuditError("Redis connection error", "error", err)
 		log.Fatalf("Redis connection error: %v", err)
 	}
 
-	// Setup graceful shutdown
-	setupGracefulShutdown(logger)
+	// Setup graceful shutdown with coordinated worker manager
+	setupGracefulShutdown(logger, workerManager)
 
 	// Ensure database and Redis connections are closed on exit
 	defer func() {
 		logger.Shutdown("application_exit")
 
-		// Stop audit worker first to flush remaining logs
-		workers.StopAuditWorker()
+		// Stop worker manager with timeout
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
 
-		// Stop cleanup scheduler
-		workers.StopCleanupScheduler()
+		if err := workerManager.Stop(shutdownCtx); err != nil {
+			logger.Error("Worker manager shutdown error", "error", err)
+		}
 
 		if err := services.CloseDatabase(); err != nil {
 			logger.DatabaseError("close", err)
@@ -108,7 +117,7 @@ func main() {
 }
 
 // setupGracefulShutdown sets up signal handling for graceful application shutdown
-func setupGracefulShutdown(logger *config.Logger) {
+func setupGracefulShutdown(logger *config.Logger, workerManager *workers.WorkerManager) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
@@ -116,11 +125,13 @@ func setupGracefulShutdown(logger *config.Logger) {
 		<-c
 		logger.Shutdown("signal_received")
 
-		// Stop audit worker gracefully first
-		workers.StopAuditWorker()
+		// Stop worker manager with timeout
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
 
-		// Stop cleanup scheduler
-		workers.StopCleanupScheduler()
+		if err := workerManager.Stop(shutdownCtx); err != nil {
+			logger.Error("Worker manager shutdown error", "error", err)
+		}
 
 		// Close database connection
 		if err := services.CloseDatabase(); err != nil {
@@ -136,10 +147,7 @@ func setupGracefulShutdown(logger *config.Logger) {
 	}()
 }
 
-func initializeAuditLogging() {
-	// Start the audit worker first
-	workers.StartAuditWorker()
-
+func initializeAuditLogging(workerManager *workers.WorkerManager) {
 	// Wire up the audit logging function to avoid circular dependencies
-	config.SetAuditLogFunc(workers.AddAuditLog)
+	config.SetAuditLogFunc(workerManager.AddAuditLog)
 }

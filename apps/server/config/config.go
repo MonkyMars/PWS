@@ -18,6 +18,8 @@ import (
 // Config holds all application configuration values loaded from environment variables.
 // This struct centralizes all configuration management and provides type-safe access
 // to both API and database configuration values with appropriate defaults.
+//
+// Note: This is maintained for backward compatibility. New code should use DomainConfigs.
 type Config struct {
 	// Application Settings
 	AppName     string
@@ -30,7 +32,7 @@ type Config struct {
 	Auth types.AuthConfig
 
 	// Google OAuth Settings
-	Google GoogleConfig
+	Google types.GoogleConfig
 
 	// Database Settings
 	Database types.DatabaseConfig
@@ -46,17 +48,19 @@ type Config struct {
 
 	// Audit Settings
 	Audit types.AuditConfig
-}
 
-type GoogleConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
+	// Health Check Settings
+	Health types.HealthConfig
+
+	// Domain configs for better organization
+	domains *DomainConfigs
 }
 
 var (
-	configInstance *Config
-	configOnce     sync.Once
+	configInstance   *Config
+	domainConfigs    *DomainConfigs
+	configOnce       sync.Once
+	domainConfigOnce sync.Once
 )
 
 // Load loads the configuration only once using singleton pattern.
@@ -66,97 +70,43 @@ var (
 // Returns a pointer to the loaded Config struct containing all application settings.
 func Load() *Config {
 	configOnce.Do(func() {
-		configInstance = &Config{
-			// Application Settings
-			AppName:     getEnv("APP_NAME", "PWS"),
-			Environment: getEnv("ENVIRONMENT", "development"),
-			Port:        getEnv("PORT", "8082"),
-			LogLevel:    getEnv("LOG_LEVEL", "info"),
+		// Load domain configs first
+		domainConfigs = LoadDomainConfigs()
 
-			Auth: types.AuthConfig{
-				AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", ""),
-				AccessTokenExpiry:  getEnvDuration("ACCESS_TOKEN_EXPIRY", 15*time.Minute),
-				RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
-				RefreshTokenExpiry: getEnvDuration("REFRESH_TOKEN_EXPIRY", 7*24*time.Hour),
-			},
-
-			// Google OAuth Settings
-			Google: GoogleConfig{
-				ClientID:     getEnv("GOOGLE_OAUTH_CLIENT_ID", ""),
-				ClientSecret: getEnv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
-				RedirectURL:  getEnv("GOOGLE_OAUTH_REDIRECT_URL", ""),
-			},
-
-			// Frontend Settings
-			FrontendURL: getEnv("FRONTEND_URL", ""),
-
-			// Database Settings
-			Database: types.DatabaseConfig{
-				Host:         getEnv("DB_HOST", "localhost"),
-				Port:         getEnvInt("DB_PORT", 5432),
-				User:         getEnv("DB_USER", "postgres"),
-				Password:     getEnv("DB_PASSWORD", ""),
-				Name:         getEnv("DB_NAME", "postgres"),
-				SSLMode:      getEnv("DB_SSLMODE", "disable"),
-				MaxConns:     getEnvInt("DB_MAX_CONNS", 25),
-				MinConns:     getEnvInt("DB_MIN_CONNS", 5),
-				MaxLifetime:  getEnvDuration("DB_MAX_LIFETIME", 1*time.Hour),
-				ReadTimeout:  getEnvDuration("DB_READ_TIMEOUT", 30*time.Second),
-				WriteTimeout: getEnvDuration("DB_WRITE_TIMEOUT", 30*time.Second),
-			},
-
-			// Server Settings
-			Server: types.ServerConfig{
-				ReadTimeout:  getEnvDuration("SERVER_READ_TIMEOUT", 30*time.Second),
-				WriteTimeout: getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
-				IdleTimeout:  getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
-			},
-
-			// Cache Settings
-			Cache: types.CacheConfig{
-				Address:         getEnv("CACHE_ADDRESS", "localhost:6379"),
-				Username:        getEnv("CACHE_USERNAME", ""),
-				Password:        getEnv("CACHE_PASSWORD", ""),
-				DB:              getEnvInt("CACHE_DB", 0),
-				PoolSize:        getEnvInt("CACHE_POOL_SIZE", 10),
-				MinIdleConns:    getEnvInt("CACHE_MIN_IDLE_CONNS", 2),
-				MaxIdleConns:    getEnvInt("CACHE_MAX_IDLE_CONNS", 5),
-				PoolTimeout:     getEnvDuration("CACHE_POOL_TIMEOUT", 30*time.Second),
-				IdleTimeout:     getEnvDuration("CACHE_IDLE_TIMEOUT", 5*time.Minute),
-				DialTimeout:     getEnvDuration("CACHE_DIAL_TIMEOUT", 5*time.Second),
-				ReadTimeout:     getEnvDuration("CACHE_READ_TIMEOUT", 3*time.Second),
-				WriteTimeout:    getEnvDuration("CACHE_WRITE_TIMEOUT", 3*time.Second),
-				MaxRetries:      getEnvInt("CACHE_MAX_RETRIES", 3),
-				MinRetryBackoff: getEnvDuration("CACHE_MIN_RETRY_BACKOFF", 8*time.Millisecond),
-				MaxRetryBackoff: getEnvDuration("CACHE_MAX_RETRY_BACKOFF", 512*time.Millisecond),
-			},
-
-			// CORS Settings
-			Cors: types.CorsConfig{
-				AllowOrigins:     getEnvSlice("CORS_ALLOW_ORIGINS", []string{"http://localhost:5173", "http://localhost:3000"}),
-				AllowMethods:     getEnvSlice("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
-				AllowHeaders:     getEnvSlice("CORS_ALLOW_HEADERS", []string{"Origin", "Content-Type", "Accept", "Authorization"}),
-				AllowCredentials: getEnvBool("CORS_ALLOW_CREDENTIALS", true),
-			},
-
-			// Audit Settings
-			Audit: types.AuditConfig{
-				BatchSize:     getEnvInt("AUDIT_BATCH_SIZE", 10),
-				FlushTime:     getEnvDuration("AUDIT_FLUSH_TIME", 2*time.Second),
-				ChannelSize:   getEnvInt("AUDIT_CHANNEL_SIZE", 100),
-				MaxRetries:    getEnvInt("AUDIT_MAX_RETRIES", 3),
-				MaxFailures:   getEnvInt("AUDIT_MAX_FAILURES", 5),
-				RetentionDays: getEnvInt("AUDIT_RETENTION_DAYS", 90),
-				Enabled:       getEnvBool("AUDIT_ENABLED", true),
-			},
+		// Validate domain configs
+		if err := domainConfigs.Validate(); err != nil {
+			log.Fatalf("Domain configuration validation failed: %v", err)
 		}
 
-		// Validate configuration
+		// Convert to legacy config for backward compatibility
+		configInstance = domainConfigs.ToLegacyConfig()
+		configInstance.domains = domainConfigs
+
+		// Validate legacy config for additional checks
 		if err := configInstance.Validate(); err != nil {
 			log.Fatalf("Configuration validation failed: %v", err)
 		}
 	})
 	return configInstance
+}
+
+// LoadDomains loads domain-specific configurations
+func LoadDomains() *DomainConfigs {
+	domainConfigOnce.Do(func() {
+		domainConfigs = LoadDomainConfigs()
+		if err := domainConfigs.Validate(); err != nil {
+			log.Fatalf("Domain configuration validation failed: %v", err)
+		}
+	})
+	return domainConfigs
+}
+
+// GetDomains returns the domain configurations
+func GetDomains() *DomainConfigs {
+	if domainConfigs == nil {
+		return LoadDomains()
+	}
+	return domainConfigs
 }
 
 // Get returns the already loaded configuration instance.
@@ -362,4 +312,64 @@ func ValidateConfig() bool {
 		return false
 	}
 	return true
+}
+
+// ValidateDomainConfigs validates domain-specific configurations
+func ValidateDomainConfigs() bool {
+	domains := LoadDomains()
+	if err := domains.Validate(); err != nil {
+		log.Printf("Domain configuration validation error: %v", err)
+		return false
+	}
+	return true
+}
+
+// GetAppConfig returns the application configuration domain
+func GetAppConfig() *AppConfig {
+	return GetDomains().App
+}
+
+// GetAuthConfig returns the authentication configuration domain
+func GetAuthConfig() *AuthConfig {
+	return GetDomains().Auth
+}
+
+// GetDatabaseConfig returns the database configuration domain
+func GetDatabaseConfig() *DatabaseConfig {
+	return GetDomains().Database
+}
+
+// GetServerConfig returns the server configuration domain
+func GetServerConfig() *ServerConfig {
+	return GetDomains().Server
+}
+
+// GetCacheConfig returns the cache configuration domain
+func GetCacheConfig() *CacheConfig {
+	return GetDomains().Cache
+}
+
+// GetCorsConfig returns the CORS configuration domain
+func GetCorsConfig() *CorsConfig {
+	return GetDomains().Cors
+}
+
+// GetAuditConfig returns the audit configuration domain
+func GetAuditConfig() *AuditConfig {
+	return GetDomains().Audit
+}
+
+// GetHealthConfig returns the health configuration domain
+func GetHealthConfig() *HealthConfig {
+	return GetDomains().Health
+}
+
+// GetGoogleConfig returns the Google OAuth configuration domain
+func GetGoogleConfig() *types.GoogleConfig {
+	google := GetDomains().Google
+	return &types.GoogleConfig{
+		ClientID:     google.ClientID,
+		ClientSecret: google.ClientSecret,
+		RedirectURL:  google.RedirectURL,
+	}
 }

@@ -1,16 +1,21 @@
 package routes
 
 import (
-	internal_files "github.com/MonkyMars/PWS/api/internal/files"
 	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/gofiber/fiber/v3"
 )
 
-func SetupFileRoutes(app *fiber.App) {
+type FileRoutes struct{}
+
+func NewFileRoutes() *FileRoutes {
+	return &FileRoutes{}
+}
+
+func (r *Router) SetupFileRoutes(app *fiber.App) {
 	files := app.Group("/files", middleware.AuthMiddleware())
 
-	files.Post("/upload/single", internal_files.UploadSingleFile)
-	files.Post("/upload/multiple", internal_files.UploadMultipleFiles)
-	files.Get("/:fileId", internal_files.GetSingleFile)
-	files.Get("/subject/:subjectId", internal_files.GetFilesBySubject)
+	files.Post("/upload/single", r.FilesRoutes.UploadSingleFile)
+	files.Post("/upload/multiple", r.FilesRoutes.UploadMultipleFiles)
+	files.Get("/:fileId", r.FilesRoutes.GetSingleFile)
+	files.Get("/subject/:subjectId", r.FilesRoutes.GetFilesBySubject)
 }

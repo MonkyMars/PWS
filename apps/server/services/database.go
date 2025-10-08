@@ -7,19 +7,75 @@
 package services
 
 import (
+	"context"
+	"sync"
+	"time"
+
 	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/types"
 )
 
-// Ping tests the database connection
+var (
+	dbCircuitBreaker *lib.DatabaseCircuitBreaker
+	cbOnce           sync.Once
+)
+
+// initCircuitBreaker initializes the database circuit breaker
+func initCircuitBreaker() {
+	cbOnce.Do(func() {
+		config := lib.CircuitBreakerConfig{
+			MaxFailures:      5,
+			Timeout:          30 * time.Second,
+			MaxRequests:      3,
+			SuccessThreshold: 2,
+		}
+		dbCircuitBreaker = lib.NewDatabaseCircuitBreaker("database", config)
+	})
+}
+
+// GetCircuitBreaker returns the database circuit breaker instance
+func GetCircuitBreaker() *lib.DatabaseCircuitBreaker {
+	initCircuitBreaker()
+	return dbCircuitBreaker
+}
+
+// Ping tests the database connection with circuit breaker protection
 func Ping() error {
-	db := database.GetInstance()
-	return db.Health()
+	cb := GetCircuitBreaker()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	return cb.ExecuteQuery(ctx, func() error {
+		db := database.GetInstance()
+		return db.Health()
+	})
+}
+
+// PingWithContext tests the database connection with circuit breaker protection and custom context
+func PingWithContext(ctx context.Context) error {
+	cb := GetCircuitBreaker()
+	return cb.ExecuteQuery(ctx, func() error {
+		db := database.GetInstance()
+		return db.Health()
+	})
 }
 
 // CloseDatabase closes the database connection
 func CloseDatabase() error {
 	return database.CloseInstance()
+}
+
+// ExecuteWithCircuitBreaker executes a database operation with circuit breaker protection
+func ExecuteWithCircuitBreaker(ctx context.Context, operation func() error) error {
+	cb := GetCircuitBreaker()
+	return cb.ExecuteQuery(ctx, operation)
+}
+
+// GetCircuitBreakerStats returns statistics about the database circuit breaker
+func GetCircuitBreakerStats() map[string]any {
+	cb := GetCircuitBreaker()
+	return cb.Stats()
 }
 
 // GetDatabaseConfig returns the current database configuration

@@ -246,6 +246,37 @@ func (l *Logger) AuditError(message string, attrs ...any) {
 	}
 }
 
+func (l *Logger) AuditWarn(message string, attrs ...any) {
+	// Log to standard logger first
+	l.Warn(message, attrs...)
+
+	// Create audit log entry with validation
+	auditAttrs := make(map[string]any)
+
+	// Process attrs in pairs (key, value)
+	for i := 0; i < len(attrs)-1; i += 2 {
+		if key, ok := attrs[i].(string); ok && key != "" {
+			auditAttrs[key] = attrs[i+1]
+		}
+	}
+
+	auditLog := types.AuditLog{
+		Timestamp: time.Now(),
+		Level:     "WARN",
+		Message:   message,
+		Attrs:     auditAttrs,
+	}
+
+	entryHash := generateEntryHash(auditLog)
+	auditLog.EntryHash = entryHash
+
+	// Send to audit worker (non-blocking)
+	addAuditLogFunc := getAddAuditLogFunc()
+	if addAuditLogFunc != nil {
+		addAuditLogFunc(auditLog)
+	}
+}
+
 // getAddAuditLogFunc returns the AddAuditLog function to avoid circular imports
 // This uses a lazy loading approach to access the workers.AddAuditLog function
 func getAddAuditLogFunc() func(types.AuditLog) {
