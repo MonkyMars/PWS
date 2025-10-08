@@ -322,7 +322,7 @@ func loadAuditConfig() *AuditConfig {
 	return &AuditConfig{
 		BatchSize:     getEnvInt("AUDIT_BATCH_SIZE", 50),
 		ChannelSize:   getEnvInt("AUDIT_CHANNEL_SIZE", 1000),
-		Enabled:       getEnvBool("AUDIT_ENABLED", false),
+		Enabled:       getEnvBool("AUDIT_ENABLED", true),
 		FlushTime:     getEnvDuration("AUDIT_FLUSH_TIME", 30*time.Second),
 		MaxFailures:   getEnvInt("AUDIT_MAX_FAILURES", 10),
 		MaxRetries:    getEnvInt("AUDIT_MAX_RETRIES", 3),
