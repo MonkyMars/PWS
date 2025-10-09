@@ -1,4 +1,4 @@
-package files
+package content
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 )
 
 // /files/upload/single
-func (fr *FileRoutes) UploadSingleFile(c fiber.Ctx) error {
+func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 	claimsInterface := c.Locals("claims")
 
 	if claimsInterface == nil {
@@ -65,7 +65,7 @@ func (fr *FileRoutes) UploadSingleFile(c fiber.Ctx) error {
 	return response.Created(c, data.Single)
 }
 
-func (fr *FileRoutes) UploadMultipleFiles(c fiber.Ctx) error {
+func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 	claimsInterface := c.Locals("claims")
 
 	if claimsInterface == nil {

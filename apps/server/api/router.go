@@ -79,11 +79,17 @@ func SetupRoutes(app *fiber.App, logger *config.Logger) {
 	// Authentication routes
 	router.SetupAuthRoutes(app)
 
-	// Files routes
-	router.SetupFileRoutes(app)
+	// Content routes
+	router.SetupContentRoutes(app)
 
 	// Health check
 	router.SetupHealthRoutes(app)
+
+	// Subject routes
+	router.SetupSubjectRoutes(app)
+
+	// Worker monitoring routes
+	router.SetupWorkerRoutes(app)
 
 	// Catch-all for undefined routes
 	app.Use(func(c fiber.Ctx) error {

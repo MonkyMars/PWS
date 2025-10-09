@@ -9,8 +9,14 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+type SubjectRoutes struct{}
+
+func NewSubjectRoutes() *SubjectRoutes {
+	return &SubjectRoutes{}
+}
+
 // GetSubjectByID retrieves a subject by its ID
-func GetSubjectByID(c fiber.Ctx) error {
+func (sr *SubjectRoutes) GetSubjectByID(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 	subjectID := c.Params("subjectId")
 
@@ -32,7 +38,7 @@ func GetSubjectByID(c fiber.Ctx) error {
 	return response.Success(c, subject)
 }
 
-func GetAllSubjects(c fiber.Ctx) error {
+func (sr *SubjectRoutes) GetAllSubjects(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
 	subjectService := services.NewSubjectService()
@@ -45,7 +51,7 @@ func GetAllSubjects(c fiber.Ctx) error {
 	return response.Success(c, subjects)
 }
 
-func GetUserSubjects(c fiber.Ctx) error {
+func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 	claimsInterface := c.Locals("claims")
 
