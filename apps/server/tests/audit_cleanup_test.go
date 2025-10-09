@@ -89,7 +89,7 @@ func TestCleanupOldLogs(t *testing.T) {
 	}
 
 	// Run cleanup
-	if err := workers.CleanupOldLogs(); err != nil {
+	if err := workers.CleanupOldAuditLogs(); err != nil {
 		t.Logf("Cleanup failed but test can continue: %v", err)
 	}
 
@@ -114,7 +114,7 @@ func TestCleanupWithDisabledAudit(t *testing.T) {
 	// This test verifies the function handles disabled state gracefully
 	// Since we can't easily modify the singleton config, we just verify
 	// that CleanupOldLogs doesn't panic and returns without error when called
-	err := workers.CleanupOldLogs()
+	err := workers.CleanupOldAuditLogs()
 	if err != nil {
 		t.Logf("Cleanup returned error (may be expected): %v", err)
 	}
@@ -162,19 +162,19 @@ func TestSchedulerStartStop(t *testing.T) {
 	workers.StartCleanupScheduler()
 
 	// Check health status to verify scheduler is running
-	health := workers.HealthStatus()
+	health := workers.AuditHealthStatus()
 	if cleanupRunning, ok := health["cleanup_running"].(bool); !ok || !cleanupRunning {
 		t.Error("Expected cleanup scheduler to be running")
 	}
 
 	// Stop scheduler
-	workers.StopCleanupScheduler()
+	workers.StopAuditCleanupScheduler()
 
 	// Give it a moment to stop
 	time.Sleep(100 * time.Millisecond)
 
 	// Check health status again
-	health = workers.HealthStatus()
+	health = workers.AuditHealthStatus()
 	if cleanupRunning, ok := health["cleanup_running"].(bool); ok && cleanupRunning {
 		t.Error("Expected cleanup scheduler to be stopped")
 	}
@@ -192,7 +192,7 @@ func TestSchedulerMultipleStarts(t *testing.T) {
 	}
 
 	// Stop any existing scheduler first
-	workers.StopCleanupScheduler()
+	workers.StopAuditCleanupScheduler()
 	time.Sleep(100 * time.Millisecond)
 
 	// Start scheduler multiple times (should only start once due to sync.Once)
@@ -204,11 +204,11 @@ func TestSchedulerMultipleStarts(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Check health status
-	health := workers.HealthStatus()
+	health := workers.AuditHealthStatus()
 	if cleanupRunning, ok := health["cleanup_running"].(bool); !ok || !cleanupRunning {
 		t.Error("Expected cleanup scheduler to be running after multiple starts")
 	}
 
 	// Stop scheduler
-	workers.StopCleanupScheduler()
+	workers.StopAuditCleanupScheduler()
 }

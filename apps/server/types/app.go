@@ -7,11 +7,11 @@ import (
 )
 
 type HealthResponse struct {
-	Status            string            `json:"status"`
-	Message           string            `json:"message"`
-	ApplicationUptime string            `json:"application_uptime"`
-	Services          map[string]string `json:"services"`
-	Metrics           HealthMetrics     `json:"metrics"`
+	Status            string        `json:"status"`
+	Message           string        `json:"message"`
+	ApplicationUptime string        `json:"application_uptime"`
+	DatabaseStatus    string        `json:"database_status"`
+	Metrics           HealthMetrics `json:"metrics"`
 }
 
 type HealthMetrics struct {
@@ -33,4 +33,14 @@ type AuditLog struct {
 	Message   string         `json:"message"`
 	Attrs     map[string]any `json:"attrs,omitempty"`
 	EntryHash string         `json:"entry_hash,omitempty"`
+}
+
+type HealthLog struct {
+	Timestamp      time.Time     `json:"timestamp"`
+	Service        string        `json:"service"`
+	StatusCode     int           `json:"status_code"`
+	RequestCount   int64         `json:"request_count"`
+	ErrorCount     int64         `json:"error_count"`
+	AverageLatency time.Duration `json:"average_latency"`
+	TimeSpan       time.Duration `json:"time_span"`
 }

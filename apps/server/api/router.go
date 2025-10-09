@@ -10,8 +10,10 @@ package api
 
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
+	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/api/routes"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/workers"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -35,11 +37,23 @@ func App() error {
 	// Add logging middleware
 	app.Use(logger.HTTPMiddleware())
 
+	// Add health monitoring middleware
+	app.Use(middleware.CreateHealthMiddleware())
+
 	// Log server startup
 	logger.ServerStart()
 
 	// Setup routes
 	SetupRoutes(app, logger)
+
+	// Auto-discover routes for health monitoring
+	workers.DiscoverRoutes(app)
+
+	// Start audit logging system
+	workers.StartAuditWorker()
+
+	// Start health logging system
+	workers.StartHealthLogWorker()
 
 	// Log server ready
 	logger.ServerReady()
@@ -56,15 +70,29 @@ func App() error {
 //   - app: The Fiber application instance to register routes on
 //   - logger: The centralized logger instance for route logging
 func SetupRoutes(app *fiber.App, logger *config.Logger) {
+	app.Get("/favicon.ico", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNotFound)
+	})
+
+	router := routes.NewRouter()
+
 	// Authentication routes
-	routes.SetupAuthRoutes(app)
+	router.SetupAuthRoutes(app)
 
-	// Files routes
-	routes.SetupFileRoutes(app)
+	// Content routes
+	router.SetupContentRoutes(app)
 
-	// Subjects routes
-	routes.SetupSubjectRoutes(app)
+	// Health check
+	router.SetupHealthRoutes(app)
 
-	// Health check and fallback route - Must be last to avoid conflicts
-	routes.SetupAppRoutes(app)
+	// Subject routes
+	router.SetupSubjectRoutes(app)
+
+	// Worker monitoring routes
+	router.SetupWorkerRoutes(app)
+
+	// Catch-all for undefined routes
+	app.Use(func(c fiber.Ctx) error {
+		return response.NotFound(c, "The requested resource was not found.")
+	})
 }

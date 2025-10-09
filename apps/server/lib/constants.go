@@ -36,4 +36,5 @@ const (
 	TableUserOAuthTokens = "user_oauth_tokens"
 	TableUserSubjects    = "user_subjects"
 	TableAuditLogs       = "audit_logs"
+	TableHealthLogs      = "health_logs"
 )

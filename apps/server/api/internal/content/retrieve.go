@@ -1,4 +1,4 @@
-package files
+package content
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 // /files/:fileId
-func GetSingleFile(c fiber.Ctx) error {
+func (cr *ContentRoutes) GetSingleFile(c fiber.Ctx) error {
 	// Get fileId from URL parameters
 	fileID := c.Params("fileId")
 	if fileID == "" {
@@ -31,7 +31,7 @@ func GetSingleFile(c fiber.Ctx) error {
 }
 
 // /files/subject/:subjectId/folder/:folderId
-func GetFilesBySubject(c fiber.Ctx) error {
+func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 	// Get subjectId from URL parameters
 	subjectId := c.Params("subjectId")
 	if subjectId == "" {
@@ -64,7 +64,7 @@ func GetFilesBySubject(c fiber.Ctx) error {
 	return response.Paginated(c, items, len(files), 1, len(files))
 }
 
-func GetFoldersBySubjectParent(c fiber.Ctx) error {
+func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
 	subjectId := c.Params("subjectId")
 	if subjectId == "" {
 		return response.BadRequest(c, "subjectId parameter is required")

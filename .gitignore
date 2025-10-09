@@ -23,3 +23,6 @@ bin/
 # Exclude coverage reports
 *.out
 
+# Exclude IDE specific files
+.vscode/
+.idea/
