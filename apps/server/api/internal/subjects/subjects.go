@@ -1,4 +1,4 @@
-package internal
+package subjects
 
 import (
 	"github.com/MonkyMars/PWS/api/response"
@@ -8,12 +8,6 @@ import (
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
-
-type SubjectRoutes struct{}
-
-func NewSubjectRoutes() *SubjectRoutes {
-	return &SubjectRoutes{}
-}
 
 // GetSubjectByID retrieves a subject by its ID
 func (sr *SubjectRoutes) GetSubjectByID(c fiber.Ctx) error {

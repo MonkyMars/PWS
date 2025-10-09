@@ -1,24 +1,27 @@
 package routes
 
 import (
-	"github.com/MonkyMars/PWS/api/internal"
+	"github.com/MonkyMars/PWS/api/internal/health"
 	"github.com/MonkyMars/PWS/api/internal/auth"
 	"github.com/MonkyMars/PWS/api/internal/content"
+	"github.com/MonkyMars/PWS/api/internal/subjects"
+	"github.com/MonkyMars/PWS/api/internal/workers"
 )
 
 type Router struct {
-	AppRoutes     *internal.AppRoutes
+	AppRoutes     *health.HealthRoutes
 	AuthRoutes    *auth.AuthRoutes
 	ContentRoutes *content.ContentRoutes
-	WorkerRoutes  *internal.WorkerRoutes
-	SubjectRoutes *internal.SubjectRoutes
+	WorkerRoutes  *workers.WorkerRoutes
+	SubjectRoutes *subjects.SubjectRoutes
 }
 
 func NewRouter() *Router {
 	return &Router{
-		AppRoutes:     internal.NewAppRoutes(),
+		AppRoutes:     health.NewHealthRoutes(),
 		AuthRoutes:    auth.NewAuthRoutes(),
 		ContentRoutes: content.NewContentRoutes(),
-		WorkerRoutes:  internal.NewWorkerRoutes(),
+		WorkerRoutes:  workers.NewWorkerRoutes(),
+		SubjectRoutes: subjects.NewSubjectRoutes(),
 	}
 }

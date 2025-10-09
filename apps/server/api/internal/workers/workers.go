@@ -1,18 +1,10 @@
-package internal
+package workers
 
 import (
-	"time"
-
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/workers"
 	"github.com/gofiber/fiber/v3"
 )
-
-type WorkerRoutes struct{}
-
-func NewWorkerRoutes() *WorkerRoutes {
-	return &WorkerRoutes{}
-}
 
 func (wr *WorkerRoutes) GetWorkerHealth(c fiber.Ctx) error {
 	manager := workers.GetGlobalManager()
@@ -124,76 +116,6 @@ func (wr *WorkerRoutes) GetCleanupWorkerHealth(c fiber.Ctx) error {
 	return response.SuccessWithMessage(c, "Cleanup worker health status retrieved", cleanupStatus)
 }
 
-// getWorkerMetrics returns comprehensive metrics for all workers
-func (wr *WorkerRoutes) GetWorkerMetrics(c fiber.Ctx) error {
-	manager := workers.GetGlobalManager()
-	if manager == nil {
-		return response.ServiceUnavailable(c, "Worker manager not available")
-	}
-
-	healthStatus := manager.HealthStatus()
-	if healthStatus == nil {
-		return response.ServiceUnavailable(c, "Unable to retrieve worker metrics")
-	}
-
-	// Extract metrics from health status with null checks
-	timestamp := time.Now()
-	if ts, exists := healthStatus["timestamp"]; exists && ts != nil {
-		timestamp = ts.(time.Time)
-	}
-
-	isHealthy := false
-	if healthVal, exists := healthStatus["is_healthy"]; exists && healthVal != nil {
-		if healthy, ok := healthVal.(bool); ok {
-			isHealthy = healthy
-		}
-	}
-
-	metrics := map[string]any{
-		"timestamp": timestamp,
-		"workers": map[string]any{
-			"audit":   wr.ExtractWorkerMetrics(healthStatus["audit"]),
-			"health":  wr.ExtractWorkerMetrics(healthStatus["health"]),
-			"cleanup": wr.ExtractWorkerMetrics(healthStatus["cleanup"]),
-		},
-		"overall_healthy": isHealthy,
-	}
-
-	return response.SuccessWithMessage(c, "Worker metrics retrieved", metrics)
-}
-
-// getAuditWorkerMetrics returns detailed metrics for the audit worker
-func (wr *WorkerRoutes) GetAuditWorkerMetrics(c fiber.Ctx) error {
-	healthStatus := workers.AuditHealthStatus()
-
-	metrics := map[string]any{
-		"processed_total": healthStatus["total_processed"],
-		"dropped_total":   healthStatus["total_dropped"],
-		"failure_count":   healthStatus["failure_count"],
-		"queue_size":      healthStatus["queue_size"],
-		"queue_capacity":  healthStatus["queue_capacity"],
-		"last_flush_time": healthStatus["last_flush_time"],
-		"configuration":   healthStatus["configuration"],
-	}
-
-	return response.SuccessWithMessage(c, "Audit worker metrics retrieved", metrics)
-}
-
-// getHealthWorkerMetrics returns detailed metrics for the health monitoring worker
-func (wr *WorkerRoutes) GetHealthWorkerMetrics(c fiber.Ctx) error {
-	healthStatus := workers.ServiceHealthStatus()
-
-	metrics := map[string]any{
-		"service_count":   healthStatus["service_count"],
-		"queue_size":      healthStatus["queue_size"],
-		"queue_capacity":  healthStatus["queue_capacity"],
-		"last_flush_time": healthStatus["last_flush_time"],
-		"configuration":   healthStatus["configuration"],
-	}
-
-	return response.SuccessWithMessage(c, "Health worker metrics retrieved", metrics)
-}
-
 // getMonitoredServices returns a list of all services being monitored
 func (wr *WorkerRoutes) GetMonitoredServices(c fiber.Ctx) error {
 	services := workers.GetAllServices()
@@ -253,56 +175,4 @@ func (wr *WorkerRoutes) TriggerCleanup(c fiber.Ctx) error {
 	}
 
 	return response.Accepted(c, "Cleanup triggered successfully")
-}
-
-// extractWorkerMetrics extracts relevant metrics from worker health status
-func (wr *WorkerRoutes) ExtractWorkerMetrics(workerHealth any) map[string]any {
-	if workerHealth == nil {
-		return map[string]any{
-			"enabled":        false,
-			"worker_running": false,
-			"is_healthy":     false,
-		}
-	}
-
-	health, ok := workerHealth.(map[string]any)
-	if !ok {
-		return map[string]any{
-			"enabled":        false,
-			"worker_running": false,
-			"is_healthy":     false,
-			"error":          "invalid health data format",
-		}
-	}
-
-	metrics := map[string]any{
-		"enabled":        false,
-		"worker_running": false,
-		"is_healthy":     false,
-	}
-
-	if health != nil {
-		if enabled, ok := health["enabled"]; ok {
-			metrics["enabled"] = enabled
-		}
-		if running, ok := health["worker_running"]; ok {
-			metrics["worker_running"] = running
-		}
-		if healthy, ok := health["is_healthy"]; ok {
-			metrics["is_healthy"] = healthy
-		}
-	}
-
-	// Add optional metrics if they exist
-	if queueSize, ok := health["queue_size"]; ok {
-		metrics["queue_size"] = queueSize
-	}
-	if queueCapacity, ok := health["queue_capacity"]; ok {
-		metrics["queue_capacity"] = queueCapacity
-	}
-	if lastFlush, ok := health["last_flush_time"]; ok {
-		metrics["last_flush_time"] = lastFlush
-	}
-
-	return metrics
 }
