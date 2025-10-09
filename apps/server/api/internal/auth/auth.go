@@ -13,12 +13,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type AuthRoutes struct{}
-
-func NewAuthRoutes() *AuthRoutes {
-	return &AuthRoutes{}
-}
-
 // Login handles user authentication and returns JWT tokens
 func (ar *AuthRoutes) Login(c fiber.Ctx) error {
 	logger := config.SetupLogger()
