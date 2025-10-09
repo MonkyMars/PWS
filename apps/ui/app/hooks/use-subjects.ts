@@ -2,13 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '~/lib/api-client';
 import type {
   Subject,
-  SubjectWithDetails,
   Announcement,
   SubjectFile,
   PaginatedResponse,
   SubjectFilters,
   AnnouncementFilters,
   FileFilters,
+  SubjectFolder,
 } from '~/types';
 
 /**
@@ -17,14 +17,27 @@ import type {
 export function useSubjects(filters?: SubjectFilters) {
   return useQuery({
     queryKey: ['subjects', filters],
-    queryFn: async (): Promise<SubjectWithDetails[]> => {
-      const response = await apiClient.get<SubjectWithDetails[]>('/subjects', filters);
+    queryFn: async (): Promise<Subject[]> => {
+      const response = await apiClient.get<Subject[]>('/subjects/me', filters);
 
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Fout bij ophalen vakken');
       }
 
-      return response.data;
+      const data = response.data.map((file: any) => {
+        return {
+          createdAt: new Date(file.created_at).toISOString(),
+          mimeType: file.mime_type,
+          teacherId: file.teacher_id,
+          teacherName: file.teacher_name,
+          updatedAt: new Date(file.updated_at).toISOString(),
+          ...file,
+        };
+      });
+
+      const sortedData = data.sort((a, b) => a.name.localeCompare(b.name));
+
+      return sortedData;
     },
   });
 }
@@ -36,13 +49,32 @@ export function useSubject(subjectId: string) {
   return useQuery({
     queryKey: ['subjects', subjectId],
     queryFn: async (): Promise<Subject> => {
-      const response = await apiClient.get<Subject>(`/subjects/${subjectId}`);
+      const response = await apiClient.get<{
+        id: string;
+        name: string;
+        code: string;
+        color: string;
+        created_at: string;
+        updated_at: string;
+        teacher_id: string;
+        teacher_name: string;
+        is_active: boolean;
+      }>(`/subjects/${subjectId}`);
 
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Fout bij ophalen vak');
       }
 
-      return response.data;
+      const data: Subject = {
+        ...response.data,
+        createdAt: new Date(response.data.created_at).toISOString(),
+        updatedAt: new Date(response.data.updated_at).toISOString(),
+        teacherId: response.data.teacher_id,
+        teacherName: response.data.teacher_name,
+        isActive: response.data.is_active,
+      };
+
+      return data;
     },
     enabled: !!subjectId,
   });
@@ -76,13 +108,91 @@ export function useSubjectFiles(filters?: FileFilters) {
   return useQuery({
     queryKey: ['files', filters],
     queryFn: async (): Promise<PaginatedResponse<SubjectFile>> => {
-      const response = await apiClient.get<PaginatedResponse<SubjectFile>>('/files', filters);
+      if (!filters?.subjectId) {
+        throw new Error('subjectId is required to fetch files');
+      }
+      if (!filters.folderId) {
+        filters.folderId = filters.subjectId;
+      }
+      const path = `/files/subject/${filters?.subjectId}/folder/${filters?.folderId}`;
+      const response = await apiClient.get<PaginatedResponse<SubjectFile>>(path);
 
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Fout bij ophalen bestanden');
       }
 
-      return response.data;
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Fout bij ophalen bestanden');
+      }
+
+      const data = response.data.items.map((file: any) => {
+        return {
+          createdAt: new Date(file.created_at).toISOString(),
+          mimeType: file.mime_type,
+          subjectId: file.subject_id,
+          subjectName: file.subject_name,
+          updatedAt: new Date(file.updated_at).toISOString(),
+          folderId: file.folder_id,
+          fileId: file.file_id,
+          ...file,
+        };
+      });
+
+      const sortedData: SubjectFile[] = data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      return { ...response.data, items: sortedData };
+    },
+  });
+}
+/**
+ * Hook to get folders for a subject
+ */
+export function useSubjectFolders(filters?: FileFilters) {
+  return useQuery({
+    queryKey: ['folders', filters],
+    queryFn: async (): Promise<PaginatedResponse<SubjectFolder>> => {
+      if (!filters?.subjectId) {
+        throw new Error('subjectId is required to fetch folders');
+      }
+      if (!filters.folderId) {
+        filters.folderId = filters.subjectId;
+      }
+      const path = `/folders/subject/${filters?.subjectId}/folder/${filters?.folderId}`;
+      const response = await apiClient.get<PaginatedResponse<SubjectFolder>>(path);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Fout bij ophalen mappen');
+      }
+
+      // Check if items exist and is an array
+      if (!response.data.items || !Array.isArray(response.data.items)) {
+        return { ...response.data, items: [] };
+      }
+
+      const data = response.data.items.map((folder: any) => {
+        const mappedFolder = {
+          id: folder.id,
+          name: folder.name,
+          createdAt: folder.created_at
+            ? new Date(folder.created_at).toISOString()
+            : new Date().toISOString(),
+          subjectId: folder.subject_id || folder.subjectId,
+          updatedAt: folder.updated_at
+            ? new Date(folder.updated_at).toISOString()
+            : folder.created_at
+              ? new Date(folder.created_at).toISOString()
+              : new Date().toISOString(),
+          parentId: folder.parent_id || folder.parentId,
+          uploaderId: folder.uploaded_by || folder.uploaderId || 'unknown',
+        };
+        return mappedFolder;
+      });
+
+      const sortedData: SubjectFolder[] = data.sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt)
+      );
+
+      return { ...response.data, items: sortedData };
     },
   });
 }

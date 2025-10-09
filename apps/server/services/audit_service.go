@@ -27,7 +27,12 @@ func (as *AuditService) GetLogs() (*[]types.AuditLog, error) {
 	result, err := database.ExecuteQuery[types.AuditLog](query)
 	if err != nil {
 		as.Logger.AuditError("Failed to retrieve audit logs", "error", err)
-		return nil, err
+		return &[]types.AuditLog{}, err
+	}
+
+	if len(result.Data) == 0 {
+		as.Logger.AuditError("No audit logs found")
+		return &[]types.AuditLog{}, nil
 	}
 
 	return &result.Data, nil

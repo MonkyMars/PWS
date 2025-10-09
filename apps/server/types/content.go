@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -21,10 +23,22 @@ type UploadMultipleFilesRequest struct {
 }
 
 type File struct {
+	Id         uuid.UUID `json:"id"`
 	FileID     string    `json:"file_id"`
 	Name       string    `json:"name"`
 	MimeType   string    `json:"mime_type"`
 	SubjectID  uuid.UUID `json:"subject_id"`
 	UploadedBy uuid.UUID `json:"uploaded_by"`
-	Url        string    `json:"url,omitempty"`
+	Url        string    `json:"url"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	FolderId   uuid.UUID `json:"folder_id"`
+}
+
+type Folder struct {
+	Id        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	ParentId  uuid.UUID `json:"parent_id"`
+	SubjectId uuid.UUID `json:"subject_id"`
 }

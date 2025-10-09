@@ -82,9 +82,6 @@ func SetupRoutes(app *fiber.App, logger *config.Logger) {
 	// Files routes
 	router.SetupFileRoutes(app)
 
-	// Worker monitoring routes
-	router.SetupWorkerRoutes(app)
-
 	// Health check
 	router.SetupHealthRoutes(app)
 

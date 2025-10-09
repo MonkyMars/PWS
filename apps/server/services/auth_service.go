@@ -279,7 +279,7 @@ func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.Au
 func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error) {
 	a.Logger.Info("Attempting login for user", "email", authRequest.Email)
 	columns := []string{"id", "username", "email", "password_hash", "role"}
-	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
 	query.Where["public.users.email"] = authRequest.Email
 
 	// Execute the query and get the user
@@ -310,7 +310,7 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 // Register creates a new user account and returns the user object if successful
 func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.User, error) {
 	// Check if user already exists
-	query := Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"public.users.id"}).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"public.users.id"}).SetLimit(1)
 	query.Where["public.users.email"] = registerRequest.Email
 
 	existingUser, err := database.ExecuteQuery[types.User](query)
@@ -319,7 +319,7 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 	}
 
 	// Also check username
-	query = Query().SetOperation("SELECT").SetTable("users").SetSelect([]string{"public.users.id"}).SetLimit(1)
+	query = Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"public.users.id"}).SetLimit(1)
 	query.Where["public.users.username"] = registerRequest.Username
 
 	existingUser, err = database.ExecuteQuery[types.User](query)
@@ -336,7 +336,7 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 
 	// Create user
 	newUserID := uuid.New()
-	insertQuery := Query().SetOperation("INSERT").SetTable("users")
+	insertQuery := Query().SetOperation("INSERT").SetTable(lib.TableUsers)
 	insertQuery.Data = map[string]any{
 		"id":            newUserID,
 		"username":      registerRequest.Username,
@@ -391,7 +391,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 
 	// Get user from database to ensure they still exist
 	columns := []string{"id", "username", "email", "role"}
-	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
 	query.Where["public.users.id"] = claims.Sub.String()
 
 	user, err := database.ExecuteQuery[types.User](query)
@@ -444,7 +444,7 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 
 	// Get user from database
 	columns := []string{"id", "username", "email", "password_hash", "role"}
-	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
 	query.Where["public.users.id"] = claims.Sub
 
 	user, err := database.ExecuteQuery[types.User](query)
@@ -458,7 +458,7 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 func (a *AuthService) GetUserByID(userID uuid.UUID) (*types.User, error) {
 	// Get user from database
 	columns := []string{"id", "username", "email", "role"}
-	query := Query().SetOperation("SELECT").SetTable("public.users").SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
 	query.Where["public.users.id"] = userID
 
 	user, err := database.ExecuteQuery[types.User](query)

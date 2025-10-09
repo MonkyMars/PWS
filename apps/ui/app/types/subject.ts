@@ -4,7 +4,6 @@
 export interface Subject {
   id: string;
   name: string;
-  description: string;
   code: string; // e.g., "WISK", "NATK", "NEDD"
   color: string; // Hex color for visual identification
   teacherId: string;
@@ -36,28 +35,29 @@ export interface Announcement {
 export interface SubjectFile {
   id: string;
   subjectId: string;
+  folderId: string;
+  fileId: string;
   name: string;
   originalName: string;
   description?: string;
   mimeType: string;
-  size: number; // in bytes
   url: string;
-  category: 'presentation' | 'document' | 'assignment' | 'resource' | 'other';
   uploaderId: string;
-  uploaderName: string;
-  isPublic: boolean;
-  downloadCount: number;
   createdAt: string;
   updatedAt: string;
 }
 
 /**
- * Subject with related data for dashboard display
+ * Folder interface for organizing files within subjects
  */
-export interface SubjectWithDetails extends Subject {
-  recentAnnouncements: Announcement[];
-  fileCount: number;
-  lastActivity: string;
+export interface SubjectFolder {
+  id: string;
+  name: string;
+  parentId: string;
+  subjectId: string;
+  createdAt: string;
+  updatedAt: string;
+  uploaderId: string;
 }
 
 /**
