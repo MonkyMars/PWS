@@ -94,6 +94,4 @@ type DatabaseServiceInterface interface {
 	CloseDatabase() error
 	ExecuteWithCircuitBreaker(ctx context.Context, operation func() error) error
 	GetCircuitBreakerStats() map[string]any
-	GetDatabaseConfig() types.DatabaseConfig
-	Query() *types.QueryParams
 }
