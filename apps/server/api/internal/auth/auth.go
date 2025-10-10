@@ -1,14 +1,13 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/lib"
-	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
@@ -17,65 +16,34 @@ import (
 func (ar *AuthRoutes) Login(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	var authRequest types.AuthRequest
-	if err := c.Bind().Body(&authRequest); err != nil {
-		logger.Error("Failed to parse login request", "error", err)
-		return response.BadRequest(c, "Invalid request body")
+	// Get validated request from context (validation middleware has already processed it)
+	authRequest, err := middleware.GetValidatedRequest[types.AuthRequest](c)
+	if err != nil {
+		logger.Error("Failed to get validated request", "error", err)
+		return lib.HandleValidationError(c, err, "request")
 	}
 
-	// Validate email
-	if strings.TrimSpace(authRequest.Email) == "" {
-		return response.SendValidationError(c, []types.ValidationError{
-			{
-				Field:   "email",
-				Message: "Email is required",
-				Value:   authRequest.Email,
-			},
-		})
-	}
-
-	// Validate password
-	if strings.TrimSpace(authRequest.Password) == "" {
-		return response.SendValidationError(c, []types.ValidationError{
-			{
-				Field:   "password",
-				Message: "Password is required",
-				Value:   authRequest.Password,
-			},
-		})
-	}
-
-	// Initialize auth service
-	authService := services.NewAuthService()
-
-	// Initialize cookie service
-	cookieService := services.NewCookieService()
-
-	// Attempt login
-	user, err := authService.Login(&authRequest)
+	// Attempt login using injected service
+	user, err := ar.authService.Login(authRequest)
 	if err != nil {
 		logger.AuditError("Login failed", "email", authRequest.Email, "error", err.Error())
-		if errors.Is(err, lib.ErrInvalidCredentials) {
-			return response.Unauthorized(c, "Invalid email or password")
-		}
-
-		return response.InternalServerError(c, "An error occurred during login")
+		return lib.HandleAuthError(c, err, "login")
 	}
 
-	// Generate tokens
-	accessToken, err := authService.GenerateAccessToken(user)
+	// Generate tokens using injected service
+	accessToken, err := ar.authService.GenerateAccessToken(user)
 	if err != nil {
 		logger.AuditError("Failed to generate access token", "user_id", user.Id, "error", err)
-		return response.InternalServerError(c, "Failed to generate access token")
+		return lib.HandleServiceError(c, lib.ErrTokenGeneration)
 	}
 
-	refreshToken, err := authService.GenerateRefreshToken(user)
+	refreshToken, err := ar.authService.GenerateRefreshToken(user)
 	if err != nil {
 		logger.AuditError("Failed to generate refresh token", "user_id", user.Id, "error", err)
-		return response.InternalServerError(c, "Failed to generate refresh token")
+		return lib.HandleServiceError(c, lib.ErrTokenGeneration)
 	}
 
-	cookieService.SetAuthCookies(c, accessToken, refreshToken)
+	ar.cookieService.SetAuthCookies(c, accessToken, refreshToken)
 
 	return response.Success(c, user)
 }
@@ -84,86 +52,34 @@ func (ar *AuthRoutes) Login(c fiber.Ctx) error {
 func (ar *AuthRoutes) Register(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	var registerRequest types.RegisterRequest
-	if err := c.Bind().Body(&registerRequest); err != nil {
-		logger.Error("Failed to parse register request", "error", err)
-		return response.BadRequest(c, "Invalid request body")
-	}
-
-	// Validate username
-	if strings.TrimSpace(registerRequest.Username) == "" {
-		return response.SendValidationError(c, []types.ValidationError{
-			{
-				Field:   "username",
-				Message: "Username is required",
-				Value:   registerRequest.Username,
-			},
-		})
-	}
-
-	// Validate email
-	if strings.TrimSpace(registerRequest.Email) == "" {
-		return response.SendValidationError(c, []types.ValidationError{
-			{
-				Field:   "email",
-				Message: "Email is required",
-				Value:   registerRequest.Email,
-			},
-		})
-	}
-
-	// Validate password
-	if strings.TrimSpace(registerRequest.Password) == "" {
-		return response.SendValidationError(c, []types.ValidationError{
-			{
-				Field:   "password",
-				Message: "Password is required",
-				Value:   registerRequest.Password,
-			},
-		})
-	}
-
-	// Basic password validation
-	if len(registerRequest.Password) < 6 {
-		return response.SendValidationError(c, []types.ValidationError{
-			{
-				Field:   "password",
-				Message: "Password must be at least 6 characters long",
-				Value:   registerRequest.Password,
-			},
-		})
-	}
-
-	// Initialize auth service
-	authService := services.NewAuthService()
-	// Initialize cookie service
-	cookieService := services.NewCookieService()
-
-	// Attempt registration
-	user, err := authService.Register(&registerRequest)
+	// Get validated request from context (validation middleware has already processed it)
+	registerRequest, err := middleware.GetValidatedRequest[types.RegisterRequest](c)
 	if err != nil {
-		if errors.Is(err, lib.ErrUserAlreadyExists) || errors.Is(err, lib.ErrUsernameTaken) {
-			return response.Conflict(c, "User with this email or username already exists")
-		}
-
-		logger.AuditError("Registration failed", "email", registerRequest.Email, "username", registerRequest.Username, "error", err.Error())
-		return response.InternalServerError(c, "An error occurred during registration")
+		logger.Error("Failed to get validated request", "error", err)
+		return lib.HandleValidationError(c, err, "request")
 	}
 
-	// Generate tokens for the new user
-	accessToken, err := authService.GenerateAccessToken(user)
+	// Attempt registration using injected service
+	user, err := ar.authService.Register(registerRequest)
+	if err != nil {
+		logger.AuditError("Registration failed", "email", registerRequest.Email, "username", registerRequest.Username, "error", err.Error())
+		return lib.HandleServiceError(c, err)
+	}
+
+	// Generate tokens for the new user using injected service
+	accessToken, err := ar.authService.GenerateAccessToken(user)
 	if err != nil {
 		logger.AuditError("Failed to generate access token", "user_id", user.Id, "error", err)
 		return response.InternalServerError(c, "Failed to generate access token")
 	}
 
-	refreshToken, err := authService.GenerateRefreshToken(user)
+	refreshToken, err := ar.authService.GenerateRefreshToken(user)
 	if err != nil {
 		logger.AuditError("Failed to generate refresh token", "user_id", user.Id, "error", err)
 		return response.InternalServerError(c, "Failed to generate refresh token")
 	}
 
-	cookieService.SetAuthCookies(c, accessToken, refreshToken)
+	ar.cookieService.SetAuthCookies(c, accessToken, refreshToken)
 
 	return response.Success(c, user)
 }
@@ -174,14 +90,8 @@ func (ar *AuthRoutes) RefreshToken(c fiber.Ctx) error {
 
 	token := c.Cookies(lib.RefreshTokenCookieName)
 
-	// Initialize auth service
-	authService := services.NewAuthService()
-
-	// Initialize cookie service for setting new cookies
-	cookieService := services.NewCookieService()
-
-	// Refresh tokens with rotation
-	authResponse, err := authService.RefreshToken(token)
+	// Refresh tokens with rotation using injected service
+	authResponse, err := ar.authService.RefreshToken(token)
 	if err != nil {
 		logger.Error("Token refresh failed", "error", err)
 
@@ -196,8 +106,8 @@ func (ar *AuthRoutes) RefreshToken(c fiber.Ctx) error {
 		return response.Unauthorized(c, "Invalid or expired refresh token")
 	}
 
-	// Set new rotated tokens in secure cookies
-	cookieService.SetAuthCookies(c, authResponse.AccessToken, authResponse.RefreshToken)
+	// Set new rotated tokens in secure cookies using injected service
+	ar.cookieService.SetAuthCookies(c, authResponse.AccessToken, authResponse.RefreshToken)
 
 	return response.Success(c, authResponse)
 }
@@ -219,11 +129,8 @@ func (ar *AuthRoutes) Me(c fiber.Ctx) error {
 		return response.Unauthorized(c, "Unauthorized")
 	}
 
-	// Initialize auth service
-	authService := services.NewAuthService()
-
-	// Fetch user info
-	user, err := authService.GetUserByID(claims.Sub)
+	// Fetch user info using injected service
+	user, err := ar.authService.GetUserByID(claims.Sub)
 	if err != nil {
 		logger.AuditError("Failed to retrieve user info", "user_id", claims.Sub, "error", err)
 		return response.InternalServerError(c, "Failed to retrieve user info")
@@ -244,36 +151,32 @@ func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
 	accessToken := c.Cookies(lib.AccessTokenCookieName)
 	refreshToken := c.Cookies(lib.RefreshTokenCookieName)
 
-	// Initialize services
-	authService := services.NewAuthService()
-	cookieService := services.NewCookieService()
-
-	// Blacklist access token if present
+	// Blacklist access token if present using injected service
 	if strings.TrimSpace(accessToken) != "" {
 		// Validate and blacklist access token
-		_, err := authService.GetUserFromToken(accessToken)
+		_, err := ar.authService.GetUserFromToken(accessToken)
 		if err != nil {
 			logger.Warn("Invalid access token during logout, clearing anyway", "error", err)
 		} else {
 			// Token is valid, blacklist it
-			if err := authService.BlacklistToken(accessToken, true); err != nil {
+			if err := ar.authService.BlacklistToken(accessToken, true); err != nil {
 				logger.AuditError("Failed to blacklist access token", "error", err)
 				// Don't return error, continue with logout process
 			}
 		}
 	}
 
-	// Process refresh token if present
+	// Process refresh token if present using injected service
 	if strings.TrimSpace(refreshToken) != "" {
 		// Try to blacklist refresh token (may be invalid, but that's okay)
-		if err := authService.BlacklistToken(refreshToken, false); err != nil {
+		if err := ar.authService.BlacklistToken(refreshToken, false); err != nil {
 			logger.Warn("Failed to blacklist refresh token, may already be invalid", "error", err)
 			// Don't return error, continue with logout process
 		}
 	}
 
-	// Always clear auth cookies regardless of token validity
-	cookieService.ClearAuthCookies(c)
+	// Always clear auth cookies regardless of token validity using injected service
+	ar.cookieService.ClearAuthCookies(c)
 
 	return response.Success(c, types.LogoutResponse{
 		Message: "Logged out successfully",

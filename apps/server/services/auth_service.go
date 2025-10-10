@@ -375,7 +375,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 
 	// Check if token is already blacklisted (detects token reuse/replay attacks)
 	cacheService := CacheService{}
-	blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
+	blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
 	if err != nil {
 		a.Logger.AuditError("Failed to check token blacklist during refresh", "error", err, "jti", claims.Jti.String())
 		return nil, lib.ErrValidatingToken
@@ -479,4 +479,28 @@ func (a *AuthService) BlacklistToken(tokenStr string, isAccessToken bool) error 
 
 	// Store the token's JTI in Redis until it expires
 	return cacheService.BlacklistToken(claims.Jti.String(), claims.Exp)
+}
+
+// AuthServiceInterface defines the methods that any auth service implementation must provide.
+type AuthServiceInterface interface {
+	// Authentication methods
+	Login(authRequest *types.AuthRequest) (*types.User, error)
+	Register(regRequest *types.RegisterRequest) (*types.User, error)
+	RefreshToken(refreshTokenStr string) (*types.AuthResponse, error)
+
+	// Token generation and management
+	GenerateAccessToken(user *types.User) (string, error)
+	GenerateRefreshToken(user *types.User) (string, error)
+	ParseToken(tokenStr string, isAccessToken bool) (*types.AuthClaims, error)
+	BlacklistToken(tokenStr string, isAccessToken bool) error
+	GetAccessTokenExpiration() time.Time
+	GetRefreshTokenExpiration() time.Time
+
+	// User management
+	GetUserByID(userID uuid.UUID) (*types.User, error)
+	GetUserFromToken(tokenStr string) (*types.User, error)
+
+	// Password management
+	HashPassword(password string, p *types.ArgonParams) (string, error)
+	ComparePasswordAndHash(password, encoded string) (bool, error)
 }

@@ -37,3 +37,7 @@ func (as *AuditService) GetLogs() (*[]types.AuditLog, error) {
 
 	return &result.Data, nil
 }
+
+type AuditServiceInterface interface {
+	GetLogs() (*[]types.AuditLog, error)
+}

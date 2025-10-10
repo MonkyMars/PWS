@@ -74,3 +74,9 @@ func (ss *SubjectService) GetUserSubjects(userID string) ([]types.Subject, error
 
 	return userSubjects.Data, nil
 }
+
+type SubjectServiceInterface interface {
+	GetSubjectByID(subjectID string) (any, error)
+	GetAllSubjects() ([]types.Subject, error)
+	GetUserSubjects(userID string) ([]types.Subject, error)
+}
