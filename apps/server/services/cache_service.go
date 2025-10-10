@@ -506,8 +506,8 @@ type CacheServiceInterface interface {
 	Delete(key string) error
 	Exists(key string) (bool, error)
 
-	BlacklistToken(jti string, exp time.Time) error
-	IsTokenBlacklisted(jti string) (bool, error)
+	BlacklistToken(jti uuid.UUID, exp time.Time) error
+	IsTokenBlacklisted(jti uuid.UUID) (bool, error)
 
 	SetUserSession(userID, sessionID string, ttl time.Duration) error
 	GetUserSession(userID, sessionID string) (bool, error)
