@@ -87,3 +87,10 @@ func (co *CookieService) ClearAuthCookies(c fiber.Ctx) {
 	c.Cookie(&accessCookie)
 	c.Cookie(&refreshCookie)
 }
+
+// CookieServiceInterface defines the methods for cookie management
+type CookieServiceInterface interface {
+	SetAuthCookies(c fiber.Ctx, accessToken, refreshToken string)
+	ClearAuthCookies(c fiber.Ctx)
+	GetCookieOptions() *CookieService
+}

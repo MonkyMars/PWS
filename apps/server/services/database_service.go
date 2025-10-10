@@ -87,3 +87,13 @@ func GetDatabaseConfig() types.DatabaseConfig {
 func Query() *types.QueryParams {
 	return types.NewQuery()
 }
+
+type DatabaseServiceInterface interface {
+	Ping() error
+	PingWithContext(ctx context.Context) error
+	CloseDatabase() error
+	ExecuteWithCircuitBreaker(ctx context.Context, operation func() error) error
+	GetCircuitBreakerStats() map[string]any
+	GetDatabaseConfig() types.DatabaseConfig
+	Query() *types.QueryParams
+}

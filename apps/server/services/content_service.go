@@ -68,3 +68,64 @@ func (cs *ContentService) GetFoldersByParentID(subjectId string, parentId string
 
 	return data.Data, nil
 }
+
+// CreateFile creates a new file record in the database
+func (cs *ContentService) CreateFile(fileData map[string]any) (*types.File, error) {
+	query := Query().SetOperation("insert").SetTable("files")
+	query.Data = fileData
+
+	data, err := database.ExecuteQuery[types.File](query)
+	if err != nil {
+		return nil, err
+	}
+
+	return data.Single, nil
+}
+
+// CreateFolder creates a new folder record in the database
+func (cs *ContentService) CreateFolder(folderData map[string]any) (*types.Folder, error) {
+	query := Query().SetOperation("insert").SetTable("folders")
+	query.Data = folderData
+
+	data, err := database.ExecuteQuery[types.Folder](query)
+	if err != nil {
+		return nil, err
+	}
+
+	return data.Single, nil
+}
+
+// CreateMultipleFiles creates multiple file records in the database using batch insert
+func (cs *ContentService) CreateMultipleFiles(filesData []map[string]any) ([]*types.File, error) {
+	if len(filesData) == 0 {
+		return []*types.File{}, nil
+	}
+
+	// For batch operations, we need to use the database actions
+	files := make([]*types.File, 0, len(filesData))
+
+	for _, fileData := range filesData {
+		file, err := cs.CreateFile(fileData)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+
+	return files, nil
+}
+
+// ContentServiceInterface defines the methods that any content service implementation must provide.
+type ContentServiceInterface interface {
+	// File operations
+	GetFileByID(fileID string) (*types.File, error)
+	GetFilesBySubjectID(subjectID, folderID string) ([]types.File, error)
+	CreateFile(fileData map[string]any) (*types.File, error)
+
+	// Folder operations
+	GetFoldersByParentID(subjectID, parentID string) ([]types.Folder, error)
+	CreateFolder(folderData map[string]any) (*types.Folder, error)
+
+	// Batch operations for multiple file uploads
+	CreateMultipleFiles(filesData []map[string]any) ([]*types.File, error)
+}

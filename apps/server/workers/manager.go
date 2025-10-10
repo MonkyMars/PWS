@@ -506,3 +506,13 @@ func ServiceHealthStatus() map[string]any {
 		"error":          "health worker not initialized",
 	}
 }
+
+type WorkerManagerInterface interface {
+	Start() error
+	Stop(ctx context.Context) error
+	DiscoverRoutes(app *fiber.App)
+	AddAuditLog(entry types.AuditLog)
+	RecordHealthMetric(serviceName string, statusCode int, latency time.Duration)
+	HealthStatus() map[string]any
+	TriggerCleanup() error
+}

@@ -263,3 +263,13 @@ func (gs *GoogleService) MakeFilePublic(userID uuid.UUID, fileID string) error {
 
 	return nil
 }
+
+type GoogleServiceInterface interface {
+	GenerateGoogleAuthURL(userID uuid.UUID) (string, error)
+	HandleGoogleCallback(state, code string) (string, error)
+	GetGoogleAccessToken(userID uuid.UUID) (map[string]any, error)
+	SaveUserRefreshToken(userID uuid.UUID, refreshToken string) error
+	LoadUserRefreshToken(userID uuid.UUID) (string, error)
+	DeleteUserRefreshToken(userID uuid.UUID) error
+	MakeFilePublic(userID uuid.UUID, fileID string) error
+}

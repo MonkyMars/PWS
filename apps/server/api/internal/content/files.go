@@ -3,15 +3,55 @@ package content
 import (
 	"fmt"
 	"log"
-	"sync"
 
 	"github.com/MonkyMars/PWS/api/response"
-	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/lib"
-	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
+
+func (cr *ContentRoutes) GetSingleFile(c fiber.Ctx) error {
+	// Get fileId from URL parameters (already validated by middleware)
+	fileID := c.Params("fileId")
+
+	// Retrieve file metadata using injected service
+	file, err := cr.contentService.GetFileByID(fileID)
+	if err != nil {
+		return lib.HandleServiceError(c, err)
+	}
+	if file == nil {
+		return lib.HandleServiceError(c, lib.ErrFileNotFound)
+	}
+
+	// Return file metadata
+	return response.Success(c, file)
+}
+
+func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
+	// Get parameters from URL (already validated by middleware)
+	subjectId := c.Params("subjectId")
+	folderId := c.Params("folderId")
+
+	// Retrieve files for the subject using injected service
+	files, err := cr.contentService.GetFilesBySubjectID(subjectId, folderId)
+	if err != nil {
+		return lib.HandleServiceError(c, err)
+	}
+
+	items := []any{}
+	for _, file := range files {
+		items = append(items, file)
+	}
+
+	// Set pagination headers
+	c.Set("X-Total-Count", fmt.Sprintf("%d", len(items)))
+	c.Set("X-Total-Pages", fmt.Sprintf("%s", "1"))
+	c.Set("X-Page-Size", fmt.Sprintf("%d", len(items)))
+
+	// Return list of files
+	return response.Paginated(c, items, len(files), 1, len(files))
+}
 
 // /files/upload/single
 func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
@@ -43,7 +83,7 @@ func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 		return response.BadRequest(c, "Missing required file fields")
 	}
 
-	// Upload meta data to database
+	// Upload meta data using injected service
 	fileData := map[string]any{
 		"file_id":     req.File.FileID,
 		"name":        req.File.Name,
@@ -53,19 +93,17 @@ func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 		"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", req.File.FileID),
 	}
 
-	query := services.Query().SetOperation("insert").SetTable("files").SetData(fileData)
-	query.Returning = []string{"file_id", "name", "mime_type", "subject_id", "uploaded_by", "url"}
-
-	data, err := database.ExecuteQuery[types.File](query)
+	file, err := cr.contentService.CreateFile(fileData)
 	if err != nil {
-		log.Printf("UploadSingleFile: Database query failed - %v", err)
+		log.Printf("UploadSingleFile: Service failed - %v", err)
 		return response.InternalServerError(c, "Failed to upload file: "+err.Error())
 	}
 
-	return response.Created(c, data.Single)
+	return response.Created(c, file)
 }
 
 func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
+	logger := config.SetupLogger()
 	claimsInterface := c.Locals("claims")
 
 	if claimsInterface == nil {
@@ -79,12 +117,14 @@ func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 	}
 
 	if claims.Role != lib.RoleAdmin && claims.Role != lib.RoleTeacher {
+		logger.AuditError("UploadMultipleFiles: User does not have permission to upload files")
 		return response.Forbidden(c, "You do not have permission to upload files")
 	}
 
 	// Parse request body
 	var req types.UploadMultipleFilesRequest
 	if err := c.Bind().Body(&req); err != nil {
+		logger.AuditError("UploadMultipleFiles: Failed to parse request body - %v", err)
 		return response.BadRequest(c, "Invalid request body: "+err.Error())
 	}
 
@@ -92,75 +132,31 @@ func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 		return response.BadRequest(c, "No files to upload")
 	}
 
-	// Validate all files upfront before starting goroutines
+	// Validate and prepare file data
+	filesData := make([]map[string]any, 0, len(req.Files))
 	for _, file := range req.Files {
 		if file.FileID == "" || file.Name == "" || file.MimeType == "" {
+			logger.AuditError("UploadMultipleFiles: Missing required file fields for file: %s", file.Name)
 			return response.BadRequest(c, "Missing required file fields")
 		}
-	}
 
-	// Result structure for collecting goroutine results
-	type uploadResult struct {
-		file  *types.File
-		err   error
-		index int
-	}
-
-	// Create channels and sync primitives
-	results := make([]uploadResult, len(req.Files))
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-
-	// Start goroutines for concurrent uploads
-	for i, file := range req.Files {
-		wg.Add(1)
-		go func(file types.DriveFile, index int) {
-			defer wg.Done()
-
-			fileData := map[string]any{
-				"file_id":     file.FileID,
-				"name":        file.Name,
-				"mime_type":   file.MimeType,
-				"subject_id":  req.SubjectID,
-				"uploaded_by": claims.Sub,
-				"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", file.FileID),
-			}
-
-			query := services.Query().SetOperation("insert").SetTable("files").SetData(fileData)
-			query.Returning = []string{"file_id", "name", "mime_type", "subject_id", "uploaded_by", "url"}
-			result, err := database.ExecuteQuery[types.File](query)
-
-			// Safely store the result
-			mu.Lock()
-			if err != nil {
-				results[index] = uploadResult{nil, fmt.Errorf("failed to upload %s: %w", file.Name, err), index}
-			} else {
-				results[index] = uploadResult{result.Single, nil, index}
-			}
-			mu.Unlock()
-		}(file, i)
-	}
-
-	// Wait for all goroutines to complete
-	wg.Wait()
-
-	// Check for any errors and collect successful uploads
-	var uploadedFiles []*types.File
-	var firstError error
-
-	for _, result := range results {
-		if result.err != nil && firstError == nil {
-			firstError = result.err
-		} else if result.err == nil {
-			uploadedFiles = append(uploadedFiles, result.file)
+		fileData := map[string]any{
+			"file_id":     file.FileID,
+			"name":        file.Name,
+			"mime_type":   file.MimeType,
+			"subject_id":  req.SubjectID,
+			"uploaded_by": claims.Sub,
+			"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", file.FileID),
 		}
+		filesData = append(filesData, fileData)
 	}
 
-	// If any errors occurred, return the first one
-	if firstError != nil {
-		// TODO: Rollback logic can be added here to prevent dead files in DB
-		return response.InternalServerError(c, firstError.Error())
+	// Upload metadata using injected service
+	files, err := cr.contentService.CreateMultipleFiles(filesData)
+	if err != nil {
+		log.Printf("UploadMultipleFiles: Service failed - %v", err)
+		return response.InternalServerError(c, "Failed to upload files: "+err.Error())
 	}
 
-	return response.Created(c, uploadedFiles)
+	return response.Created(c, files)
 }

@@ -16,7 +16,7 @@ func AuthMiddleware() fiber.Handler {
 
 		if token == "" {
 			logger.Error("No access token found in cookies")
-			return response.Unauthorized(c, "Missing access token")
+			return lib.HandleAuthError(c, lib.ErrInvalidToken, "middleware authentication")
 		}
 
 		authService := services.NewAuthService()
@@ -24,14 +24,14 @@ func AuthMiddleware() fiber.Handler {
 		claims, err := authService.ParseToken(token, true)
 		if err != nil {
 			logger.AuditError("Failed to parse access token", "error", err)
-			return response.Unauthorized(c, "Invalid or expired access token")
+			return lib.HandleAuthError(c, err, "middleware authentication")
 		}
 
 		// Initialize Cache service
 		cacheService := services.NewCacheService()
 
 		// Check if token is blacklisted with graceful Redis failure handling
-		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
+		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
 		if err != nil {
 			logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down
@@ -46,7 +46,7 @@ func AuthMiddleware() fiber.Handler {
 
 			// TODO: Invalidate all tokens for this user as a precaution
 
-			return response.Unauthorized(c, "Token has been revoked")
+			return lib.HandleAuthError(c, lib.ErrTokenRevoked, "middleware authentication")
 		}
 
 		// Store user claims in context locals for downstream handlers
@@ -64,7 +64,7 @@ func AdminMiddleware() fiber.Handler {
 
 		if token == "" {
 			logger.Error("No access token found in cookies")
-			return response.Unauthorized(c, "Missing access token")
+			return lib.HandleAuthError(c, lib.ErrInvalidToken, "admin middleware authentication")
 		}
 
 		authService := services.NewAuthService()
@@ -72,14 +72,14 @@ func AdminMiddleware() fiber.Handler {
 		claims, err := authService.ParseToken(token, true)
 		if err != nil {
 			logger.AuditError("Failed to parse access token", "error", err)
-			return response.Unauthorized(c, "Invalid or expired access token")
+			return lib.HandleAuthError(c, err, "admin middleware authentication")
 		}
 
 		// Initialize Cache service
 		cacheService := services.NewCacheService()
 
 		// Check if token is blacklisted with graceful Redis failure handling
-		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti.String())
+		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
 		if err != nil {
 			logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down
