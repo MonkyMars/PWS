@@ -19,6 +19,7 @@ var instance *DB
 
 // Connect establishes a connection to the database using centralized configuration
 func Connect() (*DB, error) {
+	logger := config.SetupLogger()
 	cfg := config.Get()
 	dbCfg := cfg.Database
 
@@ -46,8 +47,7 @@ func Connect() (*DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Printf("Successfully connected to database: %s@%s:%d/%s",
-		dbCfg.User, dbCfg.Host, dbCfg.Port, dbCfg.Name)
+	logger.Info("Connected to database successfully")
 
 	return &DB{db}, nil
 }
