@@ -107,7 +107,10 @@ func TestWorkerManagerStart(t *testing.T) {
 	// Clean up
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	manager.Stop(ctx)
+	err = manager.Stop(ctx)
+	if err != nil {
+		t.Errorf("Failed to stop worker manager: %v", err)
+	}
 }
 
 func TestWorkerManagerStop(t *testing.T) {
@@ -165,7 +168,10 @@ func TestWorkerManagerStopTimeout(t *testing.T) {
 	// Clean up properly
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel2()
-	manager.Stop(ctx2)
+	err = manager.Stop(ctx2)
+	if err == nil {
+		t.Error("Stop with short timeout should return context deadline exceeded error")
+	}
 }
 
 func TestWorkerManagerAddAuditLog(t *testing.T) {
@@ -180,7 +186,10 @@ func TestWorkerManagerAddAuditLog(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		manager.Stop(ctx)
+		err = manager.Stop(ctx)
+		if err != nil {
+			t.Errorf("Failed to stop worker manager: %v", err)
+		}
 	}()
 
 	// Test adding audit log
@@ -216,7 +225,10 @@ func TestWorkerManagerRecordHealthMetric(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		manager.Stop(ctx)
+		err = manager.Stop(ctx)
+		if err != nil {
+			t.Errorf("Failed to stop worker manager: %v", err)
+		}
 	}()
 
 	// Register a service first
@@ -248,7 +260,10 @@ func TestWorkerManagerHealthStatus(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		manager.Stop(ctx)
+		err = manager.Stop(ctx)
+		if err != nil {
+			t.Errorf("Failed to stop worker manager: %v", err)
+		}
 	}()
 
 	status = manager.HealthStatus()
@@ -289,7 +304,10 @@ func TestWorkerManagerWithDisabledWorkers(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		manager.Stop(ctx)
+		err = manager.Stop(ctx)
+		if err != nil {
+			t.Errorf("Failed to stop worker manager: %v", err)
+		}
 	}()
 
 	// Adding audit log should be safe even when disabled
@@ -370,7 +388,10 @@ func TestWorkerManagerConcurrency(t *testing.T) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		manager.Stop(ctx)
+		err = manager.Stop(ctx)
+		if err != nil {
+			t.Errorf("Failed to stop worker manager: %v", err)
+		}
 	}()
 
 	// Test concurrent access to manager functions
@@ -380,11 +401,11 @@ func TestWorkerManagerConcurrency(t *testing.T) {
 	done := make(chan bool, numGoroutines)
 
 	// Start multiple goroutines doing concurrent operations
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(workerID int) {
 			defer func() { done <- true }()
 
-			for j := 0; j < numOperations; j++ {
+			for j := range numOperations {
 				// Add audit logs
 				auditLog := types.AuditLog{
 					Timestamp: time.Now(),
@@ -408,7 +429,7 @@ func TestWorkerManagerConcurrency(t *testing.T) {
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		select {
 		case <-done:
 			// Goroutine completed
@@ -430,7 +451,10 @@ func BenchmarkWorkerManagerAddAuditLog(b *testing.B) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		manager.Stop(ctx)
+		err = manager.Stop(ctx)
+		if err != nil {
+			b.Errorf("Failed to stop worker manager: %v", err)
+		}
 	}()
 
 	auditLog := types.AuditLog{
@@ -460,7 +484,10 @@ func BenchmarkWorkerManagerHealthStatus(b *testing.B) {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		manager.Stop(ctx)
+		err = manager.Stop(ctx)
+		if err != nil {
+			b.Errorf("Failed to stop worker manager: %v", err)
+		}
 	}()
 
 	b.ResetTimer()

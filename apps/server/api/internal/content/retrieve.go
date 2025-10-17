@@ -57,7 +57,7 @@ func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 
 	// Set pagination headers
 	c.Set("X-Total-Count", fmt.Sprintf("%d", len(items)))
-	c.Set("X-Total-Pages", fmt.Sprintf("%s", "1"))
+	c.Set("X-Total-Pages", "1")
 	c.Set("X-Page-Size", fmt.Sprintf("%d", len(items)))
 
 	// Return list of files
@@ -89,7 +89,7 @@ func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
 
 	// Set pagination headers
 	c.Set("X-Total-Count", fmt.Sprintf("%d", len(items)))
-	c.Set("X-Total-Pages", fmt.Sprintf("%s", "1"))
+	c.Set("X-Total-Pages", "1")
 	c.Set("X-Page-Size", fmt.Sprintf("%d", len(items)))
 
 	// Return list of folders
