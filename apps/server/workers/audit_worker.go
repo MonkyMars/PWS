@@ -270,18 +270,6 @@ func (aw *AuditWorker) flushBatch(entries []types.AuditLog) {
 		"batch_size", len(entries),
 		"max_retries", aw.cfg.Audit.MaxRetries,
 		"total_failures", aw.stats.FailureCount)
-
-	// Add failed batch to dead letter queue for later retry
-	if aw.dlq != nil {
-		if dlqErr := aw.dlq.AddFailedBatch(entries, "database_flush_failed", err); dlqErr != nil {
-			aw.logger.Error("Failed to add batch to dead letter queue",
-				"error", dlqErr,
-				"batch_size", len(entries))
-		} else {
-			aw.logger.Info("Added failed batch to dead letter queue",
-				"batch_size", len(entries))
-		}
-	}
 }
 
 // tryFlushBatchWithCount attempts to flush a batch and returns the count of successful inserts

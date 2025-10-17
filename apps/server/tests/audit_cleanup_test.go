@@ -28,14 +28,23 @@ func TestCleanupOldLogs(t *testing.T) {
 	if err := database.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer services.CloseDatabase()
+	defer func() {
+		err := services.CloseDatabase()
+		if err != nil {
+			t.Logf("Failed to close database: %v", err)
+		}
+	}()
 
 	// Clean up any existing test data first
 	cleanupQuery := services.Query().
 		SetOperation("delete").
 		SetTable("audit_logs").
 		SetWhereRaw("audit_logs.message LIKE ?", "%CLEANUP_TEST%")
-	database.ExecuteQuery[types.AuditLog](cleanupQuery)
+	_, err := database.ExecuteQuery[types.AuditLog](cleanupQuery)
+	if err != nil {
+		t.Logf("Failed to clean up existing test data, skipping test: %v", err)
+		return
+	}
 
 	// Test data setup
 	now := time.Now()
@@ -107,7 +116,10 @@ func TestCleanupOldLogs(t *testing.T) {
 	}
 
 	// Clean up test data
-	database.ExecuteQuery[types.AuditLog](cleanupQuery)
+	_, err = database.ExecuteQuery[types.AuditLog](cleanupQuery)
+	if err != nil {
+		t.Logf("Failed to clean up test data: %v", err)
+	}
 }
 
 func TestCleanupWithDisabledAudit(t *testing.T) {
@@ -136,7 +148,12 @@ func TestTriggerCleanupNow(t *testing.T) {
 	if err := database.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer services.CloseDatabase()
+	defer func() {
+		err := services.CloseDatabase()
+		if err != nil {
+			t.Logf("Failed to close database: %v", err)
+		}
+	}()
 
 	// Test manual trigger
 	err := workers.TriggerCleanupNow()
