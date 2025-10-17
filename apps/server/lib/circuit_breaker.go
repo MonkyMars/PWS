@@ -13,7 +13,7 @@ import (
 )
 
 // CircuitState represents the current state of the circuit breaker
-type CircuitState int
+type CircuitState int32
 
 const (
 	// StateClosed indicates the circuit is closed and requests are allowed

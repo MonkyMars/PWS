@@ -33,7 +33,7 @@ type AuditWorker struct {
 	stats     AuditStats
 	logger    *config.Logger
 	cfg       *config.Config
-	dlq       *DeadLetterQueue
+	// dlq       *DeadLetterQueue
 }
 
 // HealthWorker handles health monitoring
@@ -359,7 +359,6 @@ func (wm *WorkerManager) newAuditWorker() *AuditWorker {
 		auditChan: make(chan types.AuditLog, wm.cfg.Audit.ChannelSize),
 		logger:    wm.logger,
 		cfg:       wm.cfg,
-		dlq:       NewDeadLetterQueue(wm.cfg, wm.logger),
 		stats: AuditStats{
 			LastFlushTime: time.Now(),
 		},
@@ -394,7 +393,10 @@ func StartAuditWorker() {
 	manager := GetGlobalManager()
 	if manager.auditWorker == nil && manager.cfg.Audit.Enabled {
 		manager.auditWorker = manager.newAuditWorker()
-		manager.auditWorker.Start()
+		err := manager.auditWorker.Start()
+		if err != nil {
+			manager.logger.AuditError("Failed to start audit worker", err)
+		}
 	}
 }
 
@@ -403,7 +405,10 @@ func StopAuditWorker() {
 	if manager.auditWorker != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		manager.auditWorker.Stop(ctx)
+		err := manager.auditWorker.Stop(ctx)
+		if err != nil {
+			manager.logger.AuditError("Failed to stop audit worker", err)
+		}
 	}
 }
 
@@ -411,7 +416,10 @@ func StartHealthLogWorker() {
 	manager := GetGlobalManager()
 	if manager.healthWorker == nil && manager.cfg.Health.Enabled {
 		manager.healthWorker = manager.newHealthWorker()
-		manager.healthWorker.Start()
+		err := manager.healthWorker.Start()
+		if err != nil {
+			manager.logger.AuditError("Failed to start health worker", err)
+		}
 	}
 }
 
@@ -420,7 +428,10 @@ func StopHealthLogWorker() {
 	if manager.healthWorker != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		manager.healthWorker.Stop(ctx)
+		err := manager.healthWorker.Stop(ctx)
+		if err != nil {
+			manager.logger.AuditError("Failed to stop health worker", err)
+		}
 	}
 }
 
@@ -428,7 +439,10 @@ func StartCleanupScheduler() {
 	manager := GetGlobalManager()
 	if manager.cleanupWorker == nil && manager.cfg.Audit.Enabled {
 		manager.cleanupWorker = manager.newCleanupWorker()
-		manager.cleanupWorker.Start()
+		err := manager.cleanupWorker.Start()
+		if err != nil {
+			manager.logger.AuditError("Failed to start cleanup worker", err)
+		}
 	}
 }
 
@@ -437,7 +451,10 @@ func StopAuditCleanupScheduler() {
 	if manager.cleanupWorker != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		manager.cleanupWorker.Stop(ctx)
+		err := manager.cleanupWorker.Stop(ctx)
+		if err != nil {
+			manager.logger.AuditError("Failed to stop cleanup worker", err)
+		}
 	}
 }
 
