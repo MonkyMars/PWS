@@ -1,8 +1,3 @@
-// Package api provides the HTTP API layer for the PWS application.
-// This package contains the main application setup, route configuration, and middleware
-// integration. It serves as the orchestration layer that ties together configuration,
-// logging, routing, and other core application components.
-//
 // The api package follows a modular architecture where concerns are separated into
 // different sub-packages: config for application configuration, middleware for HTTP
 // middleware, response for standardized API responses, and routes for endpoint handlers.
@@ -11,7 +6,6 @@ package api
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/MonkyMars/PWS/api/response"
-	"github.com/MonkyMars/PWS/api/routes"
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/workers"
 	"github.com/gofiber/fiber/v3"
@@ -74,22 +68,22 @@ func SetupRoutes(app *fiber.App, logger *config.Logger) {
 		return c.SendStatus(fiber.StatusNotFound)
 	})
 
-	router := routes.NewRouter()
+	router := newRouter()
 
 	// Authentication routes
-	router.SetupAuthRoutes(app)
+	router.AuthRoutes.RegisterRoutes(app)
 
 	// Content routes
-	router.SetupContentRoutes(app)
+	router.ContentRoutes.RegisterRoutes(app)
 
 	// Health check
-	router.SetupHealthRoutes(app)
+	router.HealthRoutes.RegisterRoutes(app)
 
 	// Subject routes
-	router.SetupSubjectRoutes(app)
+	router.SubjectRoutes.RegisterRoutes(app)
 
 	// Worker monitoring routes
-	router.SetupWorkerRoutes(app)
+	router.WorkerRoutes.RegisterRoutes(app)
 
 	// Catch-all for undefined routes
 	app.Use(func(c fiber.Ctx) error {

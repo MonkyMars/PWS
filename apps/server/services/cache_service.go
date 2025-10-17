@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MonkyMars/PWS/config"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -222,8 +223,8 @@ func (cs *CacheService) BlacklistToken(jti string, exp time.Time) error {
 }
 
 // IsTokenBlacklisted checks if a JTI exists in Redis with retry logic
-func (cs *CacheService) IsTokenBlacklisted(jti string) (bool, error) {
-	key := fmt.Sprintf("blacklist:%s", jti)
+func (cs *CacheService) IsTokenBlacklisted(jti uuid.UUID) (bool, error) {
+	key := fmt.Sprintf("blacklist:%s", jti.String())
 	val, err := cs.Get(key)
 	if err != nil {
 		return false, err
@@ -497,4 +498,32 @@ func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]any,
 	}, 3)
 
 	return result, err
+}
+
+type CacheServiceInterface interface {
+	Set(key string, value any, ttl time.Duration) error
+	Get(key string) (string, error)
+	Delete(key string) error
+	Exists(key string) (bool, error)
+
+	BlacklistToken(jti uuid.UUID, exp time.Time) error
+	IsTokenBlacklisted(jti uuid.UUID) (bool, error)
+
+	SetUserSession(userID, sessionID string, ttl time.Duration) error
+	GetUserSession(userID, sessionID string) (bool, error)
+	DeleteUserSession(userID, sessionID string) error
+
+	SetRateLimit(ip, endpoint string, count int, ttl time.Duration) error
+	GetRateLimit(ip, endpoint string) (int, error)
+	IncrementRateLimit(ip, endpoint string, ttl time.Duration) (int, error)
+
+	Ping() error
+	GetConnectionStats() map[string]any
+	GetRedisInfo() (map[string]string, error)
+	TestRedisConnection() error
+
+	FlushBlacklistedTokens() error
+	GetBlacklistedTokensCount() (int, error)
+	GetActiveSessionsCount() (int, error)
+	GetRateLimitStatus(ip, endpoint string) (map[string]any, error)
 }

@@ -3,7 +3,6 @@ package auth
 import (
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
-	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
@@ -26,11 +25,8 @@ func (ar *AuthRoutes) GoogleAuthURL(c fiber.Ctx) error {
 		return response.Unauthorized(c, "unauthenticated")
 	}
 
-	// Initialize Google service
-	googleService := services.NewGoogleService()
-
 	// Generate OAuth URL
-	authURL, err := googleService.GenerateGoogleAuthURL(claims.Sub)
+	authURL, err := ar.googleService.GenerateGoogleAuthURL(claims.Sub)
 	if err != nil {
 		logger.AuditError("Failed to generate Google OAuth URL",
 			"user_id", claims.Sub,
@@ -49,11 +45,8 @@ func (ar *AuthRoutes) GoogleAuthCallback(c fiber.Ctx) error {
 	state := c.Query("state")
 	code := c.Query("code")
 
-	// Initialize Google service
-	googleService := services.NewGoogleService()
-
 	// Handle OAuth callback (this includes state validation and token exchange)
-	redirectURL, err := googleService.HandleGoogleCallback(state, code)
+	redirectURL, err := ar.googleService.HandleGoogleCallback(state, code)
 	if err != nil {
 		logger.AuditError("Failed to handle Google OAuth callback",
 			"state", state,
@@ -86,11 +79,8 @@ func (ar *AuthRoutes) GoogleAccessToken(c fiber.Ctx) error {
 		return response.Unauthorized(c, "unauthenticated")
 	}
 
-	// Initialize Google service
-	googleService := services.NewGoogleService()
-
 	// Get access token
-	tokenData, err := googleService.GetGoogleAccessToken(claims.Sub)
+	tokenData, err := ar.googleService.GetGoogleAccessToken(claims.Sub)
 	if err != nil {
 		logger.AuditError("Failed to get Google access token",
 			"user_id", claims.Sub,
@@ -117,12 +107,9 @@ func (ar *AuthRoutes) GoogleUnlink(c fiber.Ctx) error {
 		return response.Unauthorized(c, "unauthenticated")
 	}
 
-	// Initialize Google service
-	googleService := services.NewGoogleService()
-
 	// Delete the user's refresh token
 	claims := claimsInterface.(*types.AuthClaims)
-	err := googleService.DeleteUserRefreshToken(claims.Sub)
+	err := ar.googleService.DeleteUserRefreshToken(claims.Sub)
 	if err != nil {
 		logger.AuditError("Failed to unlink Google account",
 			"user_id", claims.Sub,
@@ -148,12 +135,9 @@ func (ar *AuthRoutes) GoogleLinkStatus(c fiber.Ctx) error {
 		return response.Unauthorized(c, "unauthenticated")
 	}
 
-	// Initialize Google service
-	googleService := services.NewGoogleService()
-
 	// Check if user has a refresh token
 	claims := claimsInterface.(*types.AuthClaims)
-	refreshToken, err := googleService.LoadUserRefreshToken(claims.Sub)
+	refreshToken, err := ar.googleService.LoadUserRefreshToken(claims.Sub)
 	if err != nil {
 		logger.AuditError("Failed to check Google link status",
 			"user_id", claims.Sub,
