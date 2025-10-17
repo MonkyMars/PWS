@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -51,7 +52,8 @@ func main() {
 
 	// Minimal config info in development mode
 	if cfg.IsDevelopment() {
-		log.Printf("Development mode - %s:%s", cfg.AppName, cfg.Port)
+		message := fmt.Sprintf("Running in development mode: %s on port %s", cfg.AppName, cfg.Port)
+		logger.Info(message)
 	}
 
 	logger.Info("Starting application",
