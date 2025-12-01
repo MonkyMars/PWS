@@ -2,6 +2,7 @@ package content
 
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
+	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
@@ -12,6 +13,7 @@ import (
 // This makes the code more testable and maintainable.
 type ContentRoutes struct {
 	contentService services.ContentServiceInterface
+	logger         *config.Logger
 }
 
 // NewContentRoutesWithDefaults creates a ContentRoutes instance with default dependencies.
@@ -20,6 +22,7 @@ type ContentRoutes struct {
 func NewContentRoutesWithDefaults() *ContentRoutes {
 	return &ContentRoutes{
 		contentService: services.NewContentService(),
+		logger:         config.SetupLogger(),
 	}
 }
 

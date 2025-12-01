@@ -6,6 +6,7 @@ import (
 
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -26,6 +27,8 @@ var (
 	ErrUnauthorized            = errors.New("unauthorized access")
 	ErrInsufficientPermissions = errors.New("insufficient permissions")
 	ErrTokenRevoked            = errors.New("token has been revoked")
+	ErrTokenReuse              = errors.New("possible token reuse detected")
+	ErrInvalidClaims           = errors.New("invalid authentication claims")
 
 	// User management errors
 	ErrUserNotFound      = errors.New("user not found")
@@ -37,21 +40,32 @@ var (
 	ErrCreateUser        = errors.New("error creating user") // Alias for backwards compatibility
 
 	// Content management errors
-	ErrFileNotFound   = errors.New("file not found")
-	ErrFileUpload     = errors.New("file upload failed")
-	ErrFileAccess     = errors.New("file access denied")
-	ErrFolderNotFound = errors.New("folder not found")
-	ErrFolderCreation = errors.New("folder creation failed")
+	ErrFileNotFound    = errors.New("file not found")
+	ErrFileUpload      = errors.New("file upload failed")
+	ErrFileAccess      = errors.New("file access denied")
+	ErrFolderNotFound  = errors.New("folder not found")
+	ErrFolderCreation  = errors.New("folder creation failed")
+	ErrSubjectNotFound = errors.New("subject not found")
+	ErrServiceNotFound = errors.New("service not found")
 
 	// Validation errors
-	ErrInvalidInput  = errors.New("invalid input data")
-	ErrMissingField  = errors.New("required field missing")
-	ErrInvalidFormat = errors.New("invalid data format")
+	ErrInvalidInput   = errors.New("invalid input data")
+	ErrMissingField   = errors.New("required field missing")
+	ErrInvalidFormat  = errors.New("invalid data format")
+	ErrInvalidRequest = errors.New("invalid request")
+	ErrValidation     = errors.New("validation error")
+
+	// Access control errors
+	ErrForbidden = errors.New("forbidden access")
+
+	// External service errors
+	ErrNoLinkedAccount = errors.New("no linked account")
 
 	// Service errors
 	ErrServiceUnavailable = errors.New("service temporarily unavailable")
 	ErrDatabaseConnection = errors.New("database connection failed")
 	ErrExternalService    = errors.New("external service error")
+	ErrWorkerUnavailable  = errors.New("worker unavailable")
 )
 
 // ErrorHandler provides centralized error handling with consistent responses
@@ -68,19 +82,31 @@ func NewErrorHandler() *ErrorHandler {
 
 // HandleServiceError provides standardized error response patterns
 // This function maps service layer errors to appropriate HTTP responses
-func HandleServiceError(c fiber.Ctx, err error) error {
+// The message parameter is logged for developers but not exposed to users
+func HandleServiceError(c fiber.Ctx, err error, message string) error {
 	handler := NewErrorHandler()
-	return handler.Handle(c, err)
+	return handler.Handle(c, err, message)
+}
+
+// HandleServiceWarning logs a warning with context but continues with success response
+// Use this for non-critical issues that should be monitored but don't block the operation
+func HandleServiceWarning(c fiber.Ctx, message string, data ...any) {
+	handler := NewErrorHandler()
+	if handler.logger != nil {
+		args := []any{"message", message, "method", c.Method(), "path", c.Path(), "ip", c.IP()}
+		args = append(args, data...)
+		handler.logger.Warn("Service warning", args...)
+	}
 }
 
 // Handle processes errors and returns appropriate HTTP responses
-func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
+func (eh *ErrorHandler) Handle(c fiber.Ctx, err error, message string) error {
 	if err == nil {
 		return nil
 	}
 
-	// Log the error for debugging
-	eh.logError(c, err)
+	// Log the error with detailed message for developers
+	eh.logErrorWithMessage(c, err, message)
 
 	// Map specific errors to HTTP responses
 	switch {
@@ -91,12 +117,20 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
 		return response.Unauthorized(c, "Invalid or expired token")
 	case errors.Is(err, ErrUnauthorized):
 		return response.Unauthorized(c, "Authentication required")
+	case errors.Is(err, ErrTokenReuse):
+		return response.Unauthorized(c, "Invalid token")
+	case errors.Is(err, ErrInvalidClaims):
+		return response.Unauthorized(c, "Unauthorized")
+	case errors.Is(err, ErrTokenRevoked):
+		return response.Unauthorized(c, "Token has been revoked")
 
 	// Forbidden access (403)
 	case errors.Is(err, ErrInsufficientPermissions):
 		return response.Forbidden(c, "You do not have permission to perform this action")
 	case errors.Is(err, ErrFileAccess):
 		return response.Forbidden(c, "File access denied")
+	case errors.Is(err, ErrForbidden):
+		return response.Forbidden(c, "Access denied")
 
 	// Not Found errors (404)
 	case errors.Is(err, ErrUserNotFound):
@@ -105,6 +139,12 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
 		return response.NotFound(c, "File not found")
 	case errors.Is(err, ErrFolderNotFound):
 		return response.NotFound(c, "Folder not found")
+	case errors.Is(err, ErrSubjectNotFound):
+		return response.NotFound(c, "Subject not found")
+	case errors.Is(err, ErrServiceNotFound):
+		return response.NotFound(c, "Service not found")
+	case errors.Is(err, ErrNoLinkedAccount):
+		return response.NotFound(c, "No linked account found")
 
 	// Conflict errors (409)
 	case errors.Is(err, ErrUserAlreadyExists):
@@ -117,9 +157,15 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
 		return response.BadRequest(c, "Invalid input data")
 	case errors.Is(err, ErrMissingField):
 		return response.BadRequest(c, "Required field is missing")
+	case errors.Is(err, ErrInvalidRequest):
+		return response.BadRequest(c, "Invalid request")
+	case errors.Is(err, ErrValidation):
+		return response.BadRequest(c, "Validation failed")
 
 	// Service Unavailable errors (503)
 	case errors.Is(err, ErrServiceUnavailable):
+		return response.ServiceUnavailable(c, "Service temporarily unavailable")
+	case errors.Is(err, ErrWorkerUnavailable):
 		return response.ServiceUnavailable(c, "Service temporarily unavailable")
 
 	// Token generation/management errors (500)
@@ -127,6 +173,8 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
 		return response.InternalServerError(c, "Failed to generate authentication token")
 	case errors.Is(err, ErrTokenRefresh):
 		return response.InternalServerError(c, "Failed to refresh token")
+	case errors.Is(err, ErrTokenDeletion):
+		return response.InternalServerError(c, "Failed to revoke token")
 
 	// User management errors (500)
 	case errors.Is(err, ErrPasswordHashing), errors.Is(err, ErrUserCreation):
@@ -150,44 +198,33 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
 	}
 }
 
-// HandleValidationError handles request validation errors specifically
-func HandleValidationError(c fiber.Ctx, err error, field string) error {
-	handler := NewErrorHandler()
-	handler.logError(c, err)
-
-	return response.BadRequestWithDetails(c, "Validation failed", map[string]any{
-		"field": field,
-		"error": err.Error(),
-	})
-}
-
-// HandleAuthError handles authentication-specific errors with context
-func HandleAuthError(c fiber.Ctx, err error, context string) error {
-	handler := NewErrorHandler()
-	handler.logger.AuditError("Authentication error", "context", context, "error", err.Error())
-
-	switch {
-	case errors.Is(err, ErrInvalidCredentials):
-		return response.Unauthorized(c, "Invalid email or password")
-	case errors.Is(err, ErrTokenGeneration), errors.Is(err, ErrTokenRefresh):
-		return response.InternalServerError(c, "Authentication service temporarily unavailable")
-	case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrExpiredToken), errors.Is(err, ErrUnauthorized):
-		return response.Unauthorized(c, "Invalid or expired token")
-	default:
-		return response.Unauthorized(c, "Authentication failed")
+// GetValidatedClaims extracts and validates authentication claims from context
+// Returns the claims or an error that can be passed to HandleServiceError
+func GetValidatedClaims(c fiber.Ctx) (*types.AuthClaims, error) {
+	claimsInterface := c.Locals("claims")
+	if claimsInterface == nil {
+		return nil, ErrInvalidClaims
 	}
+
+	claims, ok := claimsInterface.(*types.AuthClaims)
+	if !ok || claims == nil {
+		return nil, ErrInvalidClaims
+	}
+
+	return claims, nil
 }
 
-// logError logs errors with request context for debugging
-func (eh *ErrorHandler) logError(c fiber.Ctx, err error) {
+// logErrorWithMessage logs errors with detailed message and request context
+func (eh *ErrorHandler) logErrorWithMessage(c fiber.Ctx, err error, message string) {
 	if eh.logger != nil {
-		eh.logger.Error("Request error",
+		eh.logger.AuditError(
+			message,
 			"error", err.Error(),
 			"method", c.Method(),
 			"path", c.Path(),
 			"ip", c.IP(),
 		)
 	} else {
-		log.Printf("Error: %v, Method: %s, Path: %s", err, c.Method(), c.Path())
+		log.Printf("Error: %s | %v, Method: %s, Path: %s", message, err, c.Method(), c.Path())
 	}
 }

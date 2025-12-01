@@ -1,9 +1,11 @@
 package health
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/MonkyMars/PWS/api/response"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
@@ -12,7 +14,8 @@ import (
 func (hr *HealthRoutes) GetDatabaseHealth(c fiber.Ctx) error {
 	now := time.Now()
 	if err := services.Ping(); err != nil {
-		return response.ServiceUnavailable(c, "Database connection error: "+err.Error())
+		msg := fmt.Sprintf("Database health check failed: %v", err)
+		return lib.HandleServiceError(c, lib.ErrDatabaseConnection, msg)
 	}
 
 	return response.Success(c, types.DatabaseHealthResponse{

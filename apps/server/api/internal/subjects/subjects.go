@@ -1,8 +1,9 @@
 package subjects
 
 import (
+	"fmt"
+
 	"github.com/MonkyMars/PWS/api/response"
-	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
@@ -10,50 +11,42 @@ import (
 
 // GetSubjectByID retrieves a subject by its ID
 func (sr *SubjectRoutes) GetSubjectByID(c fiber.Ctx) error {
-	logger := config.SetupLogger()
 	subjectID := c.Params("subjectId")
 
 	if subjectID == "" {
-		return response.BadRequest(c, "Subject ID is required")
+		msg := "Missing required subjectId parameter in request"
+		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
 	subject, err := sr.subjectService.GetSubjectByID(subjectID)
 	if err != nil {
-		logger.Error("Failed to retrieve subject", "subject_id", subjectID, "error", err)
-		return response.InternalServerError(c, "Failed to retrieve subject")
+		msg := fmt.Sprintf("Failed to retrieve subject for subject ID %s: %v", subjectID, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	if subject == nil {
-		return response.NotFound(c, "Subject not found")
+		msg := fmt.Sprintf("Subject not found for subject ID %s", subjectID)
+		return lib.HandleServiceError(c, lib.ErrSubjectNotFound, msg)
 	}
 
 	return response.Success(c, subject)
 }
 
 func (sr *SubjectRoutes) GetAllSubjects(c fiber.Ctx) error {
-	logger := config.SetupLogger()
-
 	subjects, err := sr.subjectService.GetAllSubjects()
 	if err != nil {
-		logger.Error("Failed to retrieve subjects", "error", err)
-		return response.InternalServerError(c, "Failed to retrieve subjects")
+		msg := fmt.Sprintf("Failed to retrieve all subjects: %v", err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	return response.Success(c, subjects)
 }
 
 func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
-	logger := config.SetupLogger()
-	claimsInterface := c.Locals("claims")
-
-	if claimsInterface == nil {
-		return response.Unauthorized(c, "Unauthorized")
-	}
-
-	// Type assert claims
-	claims, ok := claimsInterface.(*types.AuthClaims)
-	if claims == nil || !ok {
-		return response.Unauthorized(c, "Unauthorized")
+	claims, err := lib.GetValidatedClaims(c)
+	if err != nil {
+		msg := "Failed to get authenticated user claims for user subjects retrieval"
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	var subjects []types.Subject
@@ -61,19 +54,20 @@ func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
 	case lib.RoleAdmin, lib.RoleTeacher:
 		s, err := sr.subjectService.GetAllSubjects()
 		if err != nil {
-			logger.Error("Failed to retrieve subjects", "error", err)
-			return response.InternalServerError(c, "Failed to retrieve subjects")
+			msg := fmt.Sprintf("Failed to retrieve all subjects for user ID %s with role %s: %v", claims.Sub.String(), claims.Role, err)
+			return lib.HandleServiceError(c, err, msg)
 		}
 		subjects = s
 	case lib.RoleStudent:
 		s, err := sr.subjectService.GetUserSubjects(claims.Sub.String())
 		if err != nil {
-			logger.Error("Failed to retrieve user subjects", "user_id", claims.Sub.String(), "error", err)
-			return response.InternalServerError(c, "Failed to retrieve user subjects")
+			msg := fmt.Sprintf("Failed to retrieve subjects for student user ID %s: %v", claims.Sub.String(), err)
+			return lib.HandleServiceError(c, err, msg)
 		}
 		subjects = s
 	default:
-		return response.Forbidden(c, "You do not have permission to view subjects")
+		msg := fmt.Sprintf("User ID %s with role %s does not have permission to view subjects", claims.Sub.String(), claims.Role)
+		return lib.HandleServiceError(c, lib.ErrForbidden, msg)
 	}
 
 	return response.Success(c, subjects)

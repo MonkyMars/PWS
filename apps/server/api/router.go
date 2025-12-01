@@ -5,8 +5,8 @@ package api
 
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
-	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/workers"
 	"github.com/gofiber/fiber/v3"
 )
@@ -87,6 +87,6 @@ func SetupRoutes(app *fiber.App, logger *config.Logger) {
 
 	// Catch-all for undefined routes
 	app.Use(func(c fiber.Ctx) error {
-		return response.NotFound(c, "The requested resource was not found.")
+		return lib.HandleServiceError(c, fiber.ErrBadRequest, "undefined route: "+c.OriginalURL())
 	})
 }
