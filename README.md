@@ -44,27 +44,6 @@ PWS/
 - **Vite** - Fast build tool and development server
 - **Bun** - Package manager and runtime
 
-## Key Features
-
-### Backend Features
-
-- **High Performance**: Built with Fiber for exceptional speed and low memory usage
-- **Structured Logging**: Comprehensive logging with slog for debugging and monitoring
-- **Configuration Management**: Singleton pattern for thread-safe environment management
-- **Response Builder Pattern**: Fluent API for consistent response formatting
-- **CORS Support**: Configurable cross-origin resource sharing
-- **Type Safety**: Strong typing throughout the application
-- **Extensible Middleware**: Easy-to-extend middleware architecture
-
-### Frontend Features
-
-- **Server-Side Rendering**: React Router v7 with SSR capabilities
-- **Dark Mode Support**: Automatic theme switching with Tailwind CSS
-- **Type-Safe Routing**: TypeScript integration for route definitions
-- **Responsive Design**: Mobile-first design with Tailwind utilities
-- **Hot Module Replacement**: Fast development with instant updates
-- **Optimized Builds**: Production-ready builds with code splitting
-
 ## Quick Start
 
 ### Prerequisites
@@ -122,8 +101,8 @@ PWS/
 
 ```bash
 cd apps/server
-go build -o pws-server main.go
-./pws-server
+go build -o server main.go
+./server
 ```
 
 **Frontend**:
@@ -189,7 +168,7 @@ bun run start
 
 ### Response Format
 
-All API endpoints return responses in the following format:
+All API endpoints return paginated responses in the following format:
 
 ```json
 {
@@ -264,53 +243,9 @@ func GetUsers(c *fiber.Ctx) error {
     }
 ```
 
-### Frontend Development
-
-1. **Use TypeScript**: Strong typing for all components and utilities
-2. **Follow React Patterns**: Functional components with hooks
-3. **Document Components**: JSDoc comments for component interfaces
-4. **Responsive Design**: Mobile-first approach with Tailwind utilities
-5. **Accessibility**: Include proper ARIA labels and semantic HTML
-
-Example component:
-
-```tsx
-/**
- * User profile component displaying user information.
- *
- * @param props - Component properties
- * @returns User profile JSX element
- */
-export function UserProfile({ user, onEdit }: UserProfileProps) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-        {user.name}
-      </h2>
-      <p className="text-gray-600 dark:text-gray-300">{user.email}</p>
-      <button
-        onClick={onEdit}
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        aria-label={`Edit profile for ${user.name}`}
-      >
-        Edit Profile
-      </button>
-    </div>
-  );
-}
-
-interface UserProfileProps {
-  user: {
-    name: string;
-    email: string;
-  };
-  onEdit: () => void;
-}
-```
-
 ### Code Quality
 
-- **Go**: Use `go fmt`, `go vet`, and `golangci-lint`
+- **Go**: Use `go fmt`, `go vet`, `golangci-lint` and `gosec`:)
 - **TypeScript**: Use Prettier and ESLint for code formatting
 - **Testing**: Maintain test coverage above 80%
 - **Documentation**: Update README files for package changes
@@ -318,16 +253,3 @@ interface UserProfileProps {
 ## License
 
 This project is licensed under the terms specified in the LICENSE file.
-
-## Support
-
-For questions, issues, or contributions:
-
-1. Check existing issues in the repository
-2. Create a new issue with detailed information
-3. Follow the contribution guidelines
-4. Join community discussions
-
----
-
-Built with modern technologies for performance, scalability, and developer experience.
