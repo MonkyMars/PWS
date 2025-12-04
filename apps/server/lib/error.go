@@ -2,7 +2,6 @@ package lib
 
 import (
 	"errors"
-	"log"
 
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
@@ -183,14 +182,10 @@ func HandleAuthError(c fiber.Ctx, err error, context string) error {
 
 // logError logs errors with request context for debugging
 func (eh *ErrorHandler) logError(c fiber.Ctx, err error) {
-	if eh.logger != nil {
-		eh.logger.AuditError("Request error",
-			"error", err.Error(),
-			"method", c.Method(),
-			"path", c.Path(),
-			"ip", c.IP(),
-		)
-	} else {
-		log.Printf("Error: %v, Method: %s, Path: %s", err, c.Method(), c.Path())
-	}
+	eh.logger.AuditError("Request error",
+		"error", err.Error(),
+		"method", c.Method(),
+		"path", c.Path(),
+		"ip", c.IP(),
+	)
 }
