@@ -10,17 +10,14 @@ import (
 
 // GetSubjectByID retrieves a subject by its ID
 func (sr *SubjectRoutes) GetSubjectByID(c fiber.Ctx) error {
-	logger := config.SetupLogger()
-	subjectID := c.Params("subjectId")
-
-	if subjectID == "" {
-		return response.BadRequest(c, "Subject ID is required")
+	subjectID, err := lib.GetParams(c, "subjectId")
+	if err != nil {
+		return lib.HandleServiceError(c, err)
 	}
 
-	subject, err := sr.subjectService.GetSubjectByID(subjectID)
+	subject, err := sr.subjectService.GetSubjectByID(subjectID["subjectId"])
 	if err != nil {
-		logger.Error("Failed to retrieve subject", "subject_id", subjectID, "error", err)
-		return response.InternalServerError(c, "Failed to retrieve subject")
+		return lib.HandleServiceError(c, err)
 	}
 
 	if subject == nil {
@@ -43,37 +40,27 @@ func (sr *SubjectRoutes) GetAllSubjects(c fiber.Ctx) error {
 }
 
 func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
-	logger := config.SetupLogger()
-	claimsInterface := c.Locals("claims")
 
-	if claimsInterface == nil {
-		return response.Unauthorized(c, "Unauthorized")
-	}
-
-	// Type assert claims
-	claims, ok := claimsInterface.(*types.AuthClaims)
-	if claims == nil || !ok {
-		return response.Unauthorized(c, "Unauthorized")
+	user := lib.GetUserFromContext(c)
+	if user == nil {
+		return response.Unauthorized(c, "You must be logged in to view your subjects")
 	}
 
 	var subjects []types.Subject
-	switch claims.Role {
-	case lib.RoleAdmin, lib.RoleTeacher:
+	if lib.HasPrivileges(c) {
 		s, err := sr.subjectService.GetAllSubjects()
 		if err != nil {
-			logger.Error("Failed to retrieve subjects", "error", err)
+			sr.logger.Error("Failed to retrieve subjects", "error", err)
 			return response.InternalServerError(c, "Failed to retrieve subjects")
 		}
 		subjects = s
-	case lib.RoleStudent:
-		s, err := sr.subjectService.GetUserSubjects(claims.Sub.String())
+	} else {
+		s, err := sr.subjectService.GetUserSubjects(user.Id.String())
 		if err != nil {
-			logger.Error("Failed to retrieve user subjects", "user_id", claims.Sub.String(), "error", err)
+			sr.logger.Error("Failed to retrieve user subjects", "user_id", user.Id.String(), "error", err)
 			return response.InternalServerError(c, "Failed to retrieve user subjects")
 		}
 		subjects = s
-	default:
-		return response.Forbidden(c, "You do not have permission to view subjects")
 	}
 
 	return response.Success(c, subjects)

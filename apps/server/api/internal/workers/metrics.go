@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/MonkyMars/PWS/api/response"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/workers"
 	"github.com/gofiber/fiber/v3"
 )
@@ -11,12 +12,12 @@ import (
 // getWorkerMetrics returns comprehensive metrics for all workers
 func (wr *WorkerRoutes) GetWorkerMetrics(c fiber.Ctx) error {
 	if wr.manager == nil {
-		return response.ServiceUnavailable(c, "Worker manager not available")
+		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
 	}
 
 	healthStatus := wr.manager.HealthStatus()
 	if healthStatus == nil {
-		return response.ServiceUnavailable(c, "Unable to retrieve worker metrics")
+		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
 	}
 
 	// Extract metrics from health status with null checks

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -55,7 +57,7 @@ func SetupLogger() *Logger {
 			// Add app name to all log entries
 			return a
 		},
-		AddSource: false,
+		AddSource: true,
 	}
 
 	handler := slog.NewTextHandler(os.Stdout, opts)
@@ -229,11 +231,21 @@ func (l *Logger) AuditError(message string, attrs ...any) {
 		}
 	}
 
+	// Capture source information
+	source := ""
+	if _, file, line, ok := runtime.Caller(1); ok {
+		if idx := strings.LastIndex(file, "/"); idx >= 0 {
+			file = file[idx+1:]
+		}
+		source = fmt.Sprintf("%s:%d", file, line)
+	}
+
 	auditLog := types.AuditLog{
 		Timestamp: time.Now(),
 		Level:     "ERROR",
 		Message:   message,
 		Attrs:     auditAttrs,
+		Source:    source,
 	}
 
 	entryHash := generateEntryHash(auditLog)
@@ -260,11 +272,21 @@ func (l *Logger) AuditWarn(message string, attrs ...any) {
 		}
 	}
 
+	// Capture source information
+	source := ""
+	if _, file, line, ok := runtime.Caller(1); ok {
+		if idx := strings.LastIndex(file, "/"); idx >= 0 {
+			file = file[idx+1:]
+		}
+		source = fmt.Sprintf("%s:%d", file, line)
+	}
+
 	auditLog := types.AuditLog{
 		Timestamp: time.Now(),
 		Level:     "WARN",
 		Message:   message,
 		Attrs:     auditAttrs,
+		Source:    source,
 	}
 
 	entryHash := generateEntryHash(auditLog)

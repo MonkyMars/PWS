@@ -75,8 +75,8 @@ func TestWorkerManagerHealthFunctionality(t *testing.T) {
 	}
 
 	// Test getting service stats
-	stats := workers.GetServiceStats("test-service")
-	if stats == nil {
-		t.Errorf("Expected to get stats for 'test-service', got nil")
+	_, err := workers.GetServiceStats("test-service")
+	if err != nil {
+		t.Errorf("Expected to get stats for 'test-service', got error: %v", err)
 	}
 }
