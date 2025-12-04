@@ -74,12 +74,11 @@ func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 	user := lib.GetUserFromContext(c)
 	if user == nil {
-		cr.logger.AuditWarn("UploadSingleFile: Unauthorized access attempt")
-		return response.Unauthorized(c, "Unauthorized")
+		return lib.HandleServiceError(c, lib.ErrUnauthorized)
 	}
 
 	if !lib.HasPrivileges(c) {
-		return response.Forbidden(c, "You do not have permission to upload files")
+		return lib.HandleServiceError(c, lib.ErrInsufficientPermissions)
 	}
 
 	// Parse request body

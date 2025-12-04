@@ -12,7 +12,7 @@ func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
 	// Get parameters from URL
 	params, err := lib.GetParams(c, "subjectId", "parentId")
 	if err != nil {
-		return response.BadRequest(c, "Missing or invalid parameters: "+err.Error())
+		return lib.HandleServiceError(c, err)
 	}
 
 	page := lib.GetQueryParamAsInt(c, "page", 1, 1000)
