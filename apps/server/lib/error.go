@@ -108,6 +108,8 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
 		return response.NotFound(c, "File not found")
 	case errors.Is(err, ErrFolderNotFound):
 		return response.NotFound(c, "Folder not found")
+	case errors.Is(err, ErrNotFound):
+		return response.NotFound(c, "Resource not found")
 
 	// Conflict errors (409)
 	case errors.Is(err, ErrUserAlreadyExists):
