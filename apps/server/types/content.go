@@ -33,6 +33,7 @@ type File struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	FolderId   uuid.UUID `json:"folder_id"`
+	Active     bool      `json:"active"`
 }
 
 type Folder struct {
@@ -41,4 +42,5 @@ type Folder struct {
 	CreatedAt time.Time `json:"created_at"`
 	ParentId  uuid.UUID `json:"parent_id"`
 	SubjectId uuid.UUID `json:"subject_id"`
+	Active    bool      `json:"active"`
 }

@@ -54,6 +54,12 @@ type User struct {
 	Email        string    `json:"email" pg:"email,unique,notnull"`
 	PasswordHash string    `json:"-" pg:"password_hash,notnull"`
 	Role         string    `json:"role" pg:"role,notnull,default:'student'"`
+	CreatedAt    time.Time `json:"created_at" pg:"created_at,notnull,default:now()"`
+}
+
+type Teacher struct {
+	User
+	SubjectID uuid.UUID `json:"subject_id"`
 }
 
 type UserOAuthToken struct {

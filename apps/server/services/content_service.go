@@ -63,7 +63,7 @@ func (cs *ContentService) GetFoldersByParentID(subjectId string, parentId string
 	query.Where[fmt.Sprintf("public.%s.subject_id", lib.TableFolders)] = subjectId
 	query.Where[fmt.Sprintf("public.%s.parent_id", lib.TableFolders)] = parentId
 	if !hasPrivileges {
-		query.Where[fmt.Sprintf("public.%s.public", lib.TableFolders)] = true
+		query.Where[fmt.Sprintf("public.%s.active", lib.TableFolders)] = true
 	}
 
 	data, err := database.ExecuteQuery[types.Folder](query)

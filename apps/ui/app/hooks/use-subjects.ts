@@ -92,7 +92,17 @@ export function useSubjectTeachers(subjectId: string) {
         throw new Error(response.message || 'Fout bij ophalen docenten');
       }
 
-      return response.data;
+      const data: Teacher[] = response.data.map((teacher: any) => {
+        return {
+          id: teacher.id,
+          username: teacher.username,
+          email: teacher.email,
+          role: teacher.role,
+          subjectId: teacher.subject_id,
+        };
+      });
+
+      return data;
     },
     enabled: !!subjectId,
   });
@@ -108,7 +118,17 @@ export function useAllTeachers() {
         throw new Error(response.message || 'Fout bij ophalen docenten');
       }
 
-      return response.data;
+      const data: Teacher[] = response.data.map((teacher: any) => {
+        return {
+          id: teacher.id,
+          username: teacher.username,
+          email: teacher.email,
+          role: teacher.role,
+          subjectId: teacher.subject_id,
+        };
+      });
+
+      return data;
     },
   });
 }

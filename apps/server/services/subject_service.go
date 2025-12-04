@@ -77,7 +77,7 @@ func (ss *SubjectService) GetUserSubjects(userID string) ([]types.Subject, error
 
 func (ss *SubjectService) GetSubjectTeachers(subjectID string) ([]types.User, error) {
 	query := Query().SetRawSQL(`
-			SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at, u.updated_at
+			SELECT u.id, u.username, u.email, u.role, u.created_at
 			FROM users u
 			JOIN subject_teachers st ON u.id = st.user_id
 			WHERE st.subject_id = ?
@@ -92,14 +92,17 @@ func (ss *SubjectService) GetSubjectTeachers(subjectID string) ([]types.User, er
 	return data.Data, nil
 }
 
-func (ss *SubjectService) GetAllTeachers() ([]types.User, error) {
+func (ss *SubjectService) GetAllTeachers() ([]types.Teacher, error) {
 	// since teachers are users with role 'teacher' we can filter by role
-	query := Query().SetOperation("select").SetTable(lib.TableUsers).SetSelect([]string{
-		"id", "email", "created_at",
-	})
+	query := Query().SetRawSQL(`
+			SELECT DISTINCT u.id, u.username, u.email, u.role, u.created_at, st.subject_id
+			FROM users u
+			JOIN subject_teachers st ON u.id = st.user_id
+			WHERE u.role = 'teacher'
+		`, "")
 	query.Where[fmt.Sprintf("public.%s.role", lib.TableUsers)] = "teacher"
 
-	data, err := database.ExecuteQuery[types.User](query)
+	data, err := database.ExecuteQuery[types.Teacher](query)
 	if err != nil {
 		ss.Logger.Error("Failed to retrieve teachers", "error", err)
 		return nil, err
@@ -113,5 +116,5 @@ type SubjectServiceInterface interface {
 	GetAllSubjects() ([]types.Subject, error)
 	GetUserSubjects(userID string) ([]types.Subject, error)
 	GetSubjectTeachers(subjectID string) ([]types.User, error)
-	GetAllTeachers() ([]types.User, error)
+	GetAllTeachers() ([]types.Teacher, error)
 }
