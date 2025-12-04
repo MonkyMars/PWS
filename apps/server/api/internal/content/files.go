@@ -10,7 +10,7 @@ import (
 )
 
 func (cr *ContentRoutes) GetSingleFile(c fiber.Ctx) error {
-	// Get fileId from URL parameters (already validated by middleware)
+	// Get fileId from URL parameters
 	params, err := lib.GetParams(c, "fileId")
 	if err != nil {
 		return lib.HandleServiceError(c, err)
