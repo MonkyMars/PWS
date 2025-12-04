@@ -4,24 +4,24 @@ import (
 	"fmt"
 
 	"github.com/MonkyMars/PWS/api/response"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/gofiber/fiber/v3"
 )
 
 func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
-	subjectId := c.Params("subjectId")
-	if subjectId == "" {
-		return response.BadRequest(c, "subjectId parameter is required")
+	// Get parameters from URL
+	params, err := lib.GetParams(c, "subjectId", "parentId")
+	if err != nil {
+		return response.BadRequest(c, "Missing or invalid parameters: "+err.Error())
 	}
 
-	parentId := c.Params("parentId")
-	if parentId == "" {
-		return response.BadRequest(c, "parentId parameter is required")
-	}
+	page := lib.GetQueryParamAsInt(c, "page", 1, 1000)
+	pageSize := lib.GetQueryParamAsInt(c, "pageSize", 20, 100)
 
 	// Retrieve folders for the subject using injected service
-	folders, err := cr.contentService.GetFoldersByParentID(subjectId, parentId)
+	folders, err := cr.contentService.GetFoldersByParentID(params["subjectId"], params["parentId"], lib.HasPrivileges(c))
 	if err != nil {
-		return response.InternalServerError(c, "Failed to retrieve folders: "+err.Error())
+		return lib.HandleServiceError(c, err)
 	}
 
 	items := []any{}
@@ -29,11 +29,13 @@ func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
 		items = append(items, folder)
 	}
 
+	totalPages := (len(folders) + pageSize - 1) / pageSize
+
 	// Set pagination headers
 	c.Set("X-Total-Count", fmt.Sprintf("%d", len(items)))
-	c.Set("X-Total-Pages", fmt.Sprintf("%s", "1"))
-	c.Set("X-Page-Size", fmt.Sprintf("%d", len(items)))
+	c.Set("X-Total-Pages", fmt.Sprintf("%d", totalPages))
+	c.Set("X-Page-Size", fmt.Sprintf("%d", pageSize))
 
 	// Return list of folders
-	return response.Paginated(c, items, len(folders), 1, len(folders))
+	return response.Paginated(c, items, page, pageSize, len(items))
 }

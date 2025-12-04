@@ -2,6 +2,7 @@ package subjects
 
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
+	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/gofiber/fiber/v3"
 )
@@ -11,6 +12,7 @@ import (
 // This makes the code more testable and maintainable.
 type SubjectRoutes struct {
 	subjectService services.SubjectServiceInterface
+	logger         *config.Logger
 }
 
 // NewAuthRoutesWithDefaults creates an AuthRoutes instance with default dependencies.
@@ -19,6 +21,7 @@ type SubjectRoutes struct {
 func NewSubjectRoutesWithDefaults() *SubjectRoutes {
 	return &SubjectRoutes{
 		subjectService: services.NewSubjectService(),
+		logger:         config.SetupLogger(),
 	}
 }
 

@@ -22,7 +22,7 @@ func SetupFiber() fiber.Config {
 
 	return fiber.Config{
 		CaseSensitive:    true,
-		StrictRouting:    true,
+		StrictRouting:    false,
 		AppName:          cfg.AppName,
 		JSONEncoder:      json.Marshal,
 		JSONDecoder:      json.Unmarshal,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -294,6 +295,16 @@ func (hw *HealthWorker) createHealthLog(serviceName string, service *RouteServic
 		timeSpan = time.Since(hw.lastFlushTime)
 	}
 
+	// Capture source information (file:line)
+	source := ""
+	if _, file, line, ok := runtime.Caller(1); ok {
+		// Extract just the filename, not the full path
+		if idx := strings.LastIndex(file, "/"); idx >= 0 {
+			file = file[idx+1:]
+		}
+		source = fmt.Sprintf("%s:%d", file, line)
+	}
+
 	return types.HealthLog{
 		Timestamp:      time.Now(),
 		Service:        serviceName,
@@ -302,6 +313,7 @@ func (hw *HealthWorker) createHealthLog(serviceName string, service *RouteServic
 		ErrorCount:     service.ErrorCount,
 		AverageLatency: averageLatency,
 		TimeSpan:       timeSpan,
+		Source:         source,
 	}
 }
 
@@ -378,6 +390,7 @@ func (hw *HealthWorker) convertHealthLogToMap(log types.HealthLog) map[string]an
 		"error_count":     log.ErrorCount,
 		"average_latency": latencyMs,
 		"time_span":       timeSpanSeconds,
+		"source":          log.Source,
 	}
 }
 
@@ -426,12 +439,12 @@ func LogHealthEvent(entry types.HealthLog) {
 }
 
 // GetServiceStats returns current statistics for a service (backward compatibility)
-func GetServiceStats(serviceName string) *RouteService {
+func GetServiceStats(serviceName string) (*RouteService, error) {
 	manager := GetGlobalManager()
 	if manager.healthWorker != nil {
-		return manager.healthWorker.GetServiceStats(serviceName)
+		return manager.healthWorker.GetServiceStats(serviceName), nil
 	}
-	return nil
+	return nil, lib.ErrServiceUnavailable
 }
 
 // GetAllServices returns a list of all registered services (backward compatibility)

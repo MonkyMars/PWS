@@ -44,14 +44,17 @@ var (
 	ErrFolderCreation = errors.New("folder creation failed")
 
 	// Validation errors
-	ErrInvalidInput  = errors.New("invalid input data")
-	ErrMissingField  = errors.New("required field missing")
-	ErrInvalidFormat = errors.New("invalid data format")
+	ErrInvalidInput     = errors.New("invalid input data")
+	ErrMissingField     = errors.New("required field missing")
+	ErrMissingParameter = errors.New("missing URL parameter")
+	ErrInvalidFormat    = errors.New("invalid data format")
+	ErrMissingFile      = errors.New("missing file in request")
 
 	// Service errors
 	ErrServiceUnavailable = errors.New("service temporarily unavailable")
 	ErrDatabaseConnection = errors.New("database connection failed")
 	ErrExternalService    = errors.New("external service error")
+	ErrNotFound           = errors.New("resource not found")
 )
 
 // ErrorHandler provides centralized error handling with consistent responses
@@ -113,9 +116,9 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error) error {
 		return response.Conflict(c, "Username is already taken")
 
 	// Bad Request errors (400)
-	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrInvalidFormat):
+	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrInvalidFormat), errors.Is(err, ErrMissingFile):
 		return response.BadRequest(c, "Invalid input data")
-	case errors.Is(err, ErrMissingField):
+	case errors.Is(err, ErrMissingField), errors.Is(err, ErrMissingParameter):
 		return response.BadRequest(c, "Required field is missing")
 
 	// Service Unavailable errors (503)
@@ -181,7 +184,7 @@ func HandleAuthError(c fiber.Ctx, err error, context string) error {
 // logError logs errors with request context for debugging
 func (eh *ErrorHandler) logError(c fiber.Ctx, err error) {
 	if eh.logger != nil {
-		eh.logger.Error("Request error",
+		eh.logger.AuditError("Request error",
 			"error", err.Error(),
 			"method", c.Method(),
 			"path", c.Path(),
