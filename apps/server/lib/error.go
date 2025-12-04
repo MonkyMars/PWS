@@ -5,6 +5,7 @@ import (
 
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -157,9 +158,11 @@ func HandleValidationError(c fiber.Ctx, err error, field string) error {
 	handler := NewErrorHandler()
 	handler.logError(c, err)
 
-	return response.BadRequestWithDetails(c, "Validation failed", map[string]any{
-		"field": field,
-		"error": err.Error(),
+	return response.SendValidationError(c, []types.ValidationError{
+		{
+			Field:   field,
+			Message: err.Error(),
+		},
 	})
 }
 
