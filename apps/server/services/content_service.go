@@ -19,9 +19,9 @@ func (cs *ContentService) GetFileByID(fileID string) (*types.File, error) {
 		return nil, fmt.Errorf("fileID parameter is required")
 	}
 
-	query := Query().SetOperation("select").SetTable("files").SetLimit(1).SetSelect(database.PrefixQuery(lib.TableFiles, []string{
+	query := Query().SetOperation("select").SetTable("files").SetLimit(1).SetSelect([]string{
 		"id", "subject_id", "name", "created_at", "uploaded_by", "mime_type", "file_id", "folder_id", "updated_at", "url",
-	}))
+	})
 	query.Where[fmt.Sprintf("public.%s.file_id", lib.TableFiles)] = fileID
 	data, err := database.ExecuteQuery[types.File](query)
 	if err != nil {
@@ -36,9 +36,9 @@ func (cs *ContentService) GetFileByID(fileID string) (*types.File, error) {
 }
 
 func (cs *ContentService) GetFilesBySubjectID(subjectId, folderId string, hasPrivileges bool) ([]types.File, error) {
-	query := Query().SetOperation("select").SetTable("files").SetSelect(database.PrefixQuery(lib.TableFiles, []string{
+	query := Query().SetOperation("select").SetTable("files").SetSelect([]string{
 		"id", "subject_id", "name", "created_at", "uploaded_by", "mime_type", "file_id", "folder_id", "updated_at", "url",
-	}))
+	})
 	query.Where[fmt.Sprintf("public.%s.subject_id", lib.TableFiles)] = subjectId
 	query.Where[fmt.Sprintf("public.%s.folder_id", lib.TableFiles)] = folderId
 	if !hasPrivileges {
@@ -57,9 +57,9 @@ func (cs *ContentService) GetFilesBySubjectID(subjectId, folderId string, hasPri
 }
 
 func (cs *ContentService) GetFoldersByParentID(subjectId string, parentId string, hasPrivileges bool) ([]types.Folder, error) {
-	query := Query().SetOperation("select").SetTable("folders").SetSelect(database.PrefixQuery(lib.TableFolders, []string{
+	query := Query().SetOperation("select").SetTable("folders").SetSelect([]string{
 		"id", "subject_id", "name", "created_at", "parent_id",
-	}))
+	})
 	query.Where[fmt.Sprintf("public.%s.subject_id", lib.TableFolders)] = subjectId
 	query.Where[fmt.Sprintf("public.%s.parent_id", lib.TableFolders)] = parentId
 	if !hasPrivileges {

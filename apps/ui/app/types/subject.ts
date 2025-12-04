@@ -6,8 +6,6 @@ export interface Subject {
   name: string;
   code: string; // e.g., "WISK", "NATK", "NEDD"
   color: string; // Hex color for visual identification
-  teacherId: string;
-  teacherName: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

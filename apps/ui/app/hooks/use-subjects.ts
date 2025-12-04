@@ -9,6 +9,8 @@ import type {
   AnnouncementFilters,
   FileFilters,
   SubjectFolder,
+  User,
+  Teacher,
 } from '~/types';
 
 /**
@@ -56,8 +58,6 @@ export function useSubject(subjectId: string) {
         color: string;
         created_at: string;
         updated_at: string;
-        teacher_id: string;
-        teacher_name: string;
         is_active: boolean;
       }>(`/subjects/${subjectId}`);
 
@@ -69,14 +69,47 @@ export function useSubject(subjectId: string) {
         ...response.data,
         createdAt: new Date(response.data.created_at).toISOString(),
         updatedAt: new Date(response.data.updated_at).toISOString(),
-        teacherId: response.data.teacher_id,
-        teacherName: response.data.teacher_name,
         isActive: response.data.is_active,
       };
 
       return data;
     },
     enabled: !!subjectId,
+  });
+}
+/**
+ *
+ * @param subjectId
+ * Returns teachers for a specific subject
+ */
+export function useSubjectTeachers(subjectId: string) {
+  return useQuery({
+    queryKey: ['subjects', subjectId, 'teachers'],
+    queryFn: async (): Promise<Teacher[]> => {
+      const response = await apiClient.get<Teacher[]>(`/subjects/${subjectId}/teachers`);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Fout bij ophalen docenten');
+      }
+
+      return response.data;
+    },
+    enabled: !!subjectId,
+  });
+}
+
+export function useAllTeachers() {
+  return useQuery({
+    queryKey: ['teachers'],
+    queryFn: async (): Promise<Teacher[]> => {
+      const response = await apiClient.get<Teacher[]>(`/subjects/teachers`);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Fout bij ophalen docenten');
+      }
+
+      return response.data;
+    },
   });
 }
 

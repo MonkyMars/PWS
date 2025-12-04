@@ -94,7 +94,7 @@ func (a *AuthService) compareArgon2Hash(password, encoded string) (bool, error) 
 	var memory, time uint32
 	var threads uint8
 
-	for _, p := range strings.Split(params, ",") {
+	for p := range strings.SplitSeq(params, ",") {
 		kv := strings.Split(p, "=")
 		if len(kv) != 2 {
 			continue
@@ -277,9 +277,7 @@ func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.Au
 
 // Login authenticates a user and returns the user object if successful
 func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error) {
-	a.Logger.Info("Attempting login for user", "email", authRequest.Email)
-	columns := []string{"id", "username", "email", "password_hash", "role"}
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "password_hash", "role"}).SetLimit(1)
 	query.Where["public.users.email"] = authRequest.Email
 
 	// Execute the query and get the user
@@ -390,8 +388,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	}
 
 	// Get user from database to ensure they still exist
-	columns := []string{"id", "username", "email", "role"}
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
 	query.Where["public.users.id"] = claims.Sub.String()
 
 	user, err := database.ExecuteQuery[types.User](query)
@@ -443,8 +440,7 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 	}
 
 	// Get user from database
-	columns := []string{"id", "username", "email", "password_hash", "role"}
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
 	query.Where["public.users.id"] = claims.Sub
 
 	user, err := database.ExecuteQuery[types.User](query)
@@ -457,8 +453,7 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 
 func (a *AuthService) GetUserByID(userID uuid.UUID) (*types.User, error) {
 	// Get user from database
-	columns := []string{"id", "username", "email", "role"}
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect(database.PrefixQuery("users", columns)).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
 	query.Where["public.users.id"] = userID
 
 	user, err := database.ExecuteQuery[types.User](query)

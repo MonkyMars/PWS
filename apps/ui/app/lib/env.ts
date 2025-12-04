@@ -52,7 +52,7 @@ export function getFeatureFlags(): FeatureFlags {
  */
 export const env = {
   /** API base URL */
-  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8082',
 
   /** Node environment */
   nodeEnv: import.meta.env.NODE_ENV || 'development',

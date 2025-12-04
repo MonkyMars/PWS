@@ -93,13 +93,16 @@ func executeSelect[T any](ctx context.Context, db *DB, query *types.QueryParams,
 		pgQuery = pgQuery.Table(query.Table)
 	}
 
-	// DEFAULT to DISTINCT to avoid duplicates
-	pgQuery = pgQuery.Distinct()
-
-	// Apply SELECT columns
+	// Apply SELECT columns with table prefix to avoid ambiguity
 	if len(query.Select) > 0 {
 		for _, col := range query.Select {
-			pgQuery = pgQuery.Column(col)
+			// Automatically prefix columns with table name if not already prefixed
+			if query.Table != "" && !strings.Contains(col, ".") {
+				// Use table-qualified column name to avoid ambiguity
+				pgQuery = pgQuery.Column(fmt.Sprintf("%s.%s", query.Table, col))
+			} else {
+				pgQuery = pgQuery.Column(col)
+			}
 		}
 	}
 
@@ -108,7 +111,6 @@ func executeSelect[T any](ctx context.Context, db *DB, query *types.QueryParams,
 
 	// Apply JOINs - use DISTINCT to prevent duplicates when JOINs are present
 	if len(query.Join) > 0 {
-		pgQuery = pgQuery.Distinct()
 		for _, join := range query.Join {
 			pgQuery = pgQuery.Join(join)
 		}
@@ -138,6 +140,9 @@ func executeSelect[T any](ctx context.Context, db *DB, query *types.QueryParams,
 	if query.Offset > 0 {
 		pgQuery = pgQuery.Offset(query.Offset)
 	}
+
+	// Use DISTINCT
+	pgQuery = pgQuery.Distinct()
 
 	// Execute query
 	err := pgQuery.Select()
@@ -356,7 +361,15 @@ func executeRaw[T any](ctx context.Context, db *DB, query *types.QueryParams, re
 func applyWhereConditions(pgQuery *pg.Query, query *types.QueryParams) *pg.Query {
 	// Apply simple WHERE conditions
 	for key, value := range query.Where {
-		pgQuery = pgQuery.Where("? = ?", pg.Ident(key), value)
+		// Handle table-prefixed columns (e.g., "public.users.id" or "users.id")
+		// to avoid ambiguous column reference errors in JOINs
+		if strings.Contains(key, ".") {
+			// Key already contains table prefix, use as raw SQL identifier
+			pgQuery = pgQuery.Where(fmt.Sprintf("%s = ?", key), value)
+		} else {
+			// No prefix, use pg.Ident for proper escaping
+			pgQuery = pgQuery.Where("? = ?", pg.Ident(key), value)
+		}
 	}
 
 	// Apply raw WHERE conditions
@@ -542,7 +555,7 @@ func BuildBulkInsertSQL(table string, entries []any, columns []string, returning
 	return sql, allValues, nil
 }
 
-// convertToMap safely converts an interface{} to map[string]any
+// convertToMap safely converts an any to map[string]any
 func convertToMap(entry any, index int) (map[string]any, error) {
 	switch v := entry.(type) {
 	case map[string]any:

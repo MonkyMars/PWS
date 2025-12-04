@@ -20,9 +20,9 @@ func NewSubjectService() *SubjectService {
 }
 
 func (ss *SubjectService) GetSubjectByID(subjectID string) (any, error) {
-	query := Query().SetOperation("select").SetTable("subjects").SetLimit(1).SetSelect(database.PrefixQuery(lib.TableSubjects, []string{
+	query := Query().SetOperation("select").SetTable("subjects").SetLimit(1).SetSelect([]string{
 		"id", "name", "code", "color", "created_at", "updated_at", "teacher_id", "teacher_name",
-	}))
+	})
 	query.Where[fmt.Sprintf("public.%s.id", lib.TableSubjects)] = subjectID
 
 	data, err := database.ExecuteQuery[types.Subject](query)
@@ -39,9 +39,9 @@ func (ss *SubjectService) GetSubjectByID(subjectID string) (any, error) {
 }
 
 func (ss *SubjectService) GetAllSubjects() ([]types.Subject, error) {
-	query := Query().SetOperation("select").SetTable(lib.TableSubjects).SetSelect(database.PrefixQuery(lib.TableSubjects, []string{
-		"id", "name", "code", "color", "created_at", "updated_at", "teacher_id", "teacher_name",
-	}))
+	query := Query().SetOperation("select").SetTable(lib.TableSubjects).SetSelect([]string{
+		"id", "name", "code", "color", "created_at", "updated_at",
+	})
 
 	data, err := database.ExecuteQuery[types.Subject](query)
 	if err != nil {
@@ -53,14 +53,14 @@ func (ss *SubjectService) GetAllSubjects() ([]types.Subject, error) {
 }
 
 func (ss *SubjectService) GetUserSubjects(userID string) ([]types.Subject, error) {
-	// Raw SQL query to join subjects and user_subjects tables - Avoids complex joins in the query builder
+	// Raw SQL query to join subjects and user_subjects tables
 	query := Query().SetRawSQL(`
-			SELECT s.id, s.name, s.code, s.color, s.created_at, s.updated_at, s.teacher_id, s.teacher_name
-			FROM subjects s
-			JOIN user_subjects us ON s.id = us.subject_id
-			WHERE us.user_id = ? AND s.is_active = true
-			ORDER BY s.name ASC
-		`, userID)
+		SELECT s.id, s.name, s.code, s.color, s.created_at, s.updated_at
+		FROM subjects s
+		JOIN user_subjects us ON s.id = us.subject_id
+		WHERE us.user_id = ? AND s.is_active = true
+		ORDER BY s.name ASC
+	`, userID)
 
 	userSubjects, err := database.ExecuteQuery[types.Subject](query)
 	if err != nil {
@@ -75,8 +75,43 @@ func (ss *SubjectService) GetUserSubjects(userID string) ([]types.Subject, error
 	return userSubjects.Data, nil
 }
 
+func (ss *SubjectService) GetSubjectTeachers(subjectID string) ([]types.User, error) {
+	query := Query().SetRawSQL(`
+			SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at, u.updated_at
+			FROM users u
+			JOIN subject_teachers st ON u.id = st.user_id
+			WHERE st.subject_id = ?
+		`, subjectID)
+
+	data, err := database.ExecuteQuery[types.User](query)
+	if err != nil {
+		ss.Logger.Error("Failed to retrieve subject teachers", "subject_id", subjectID, "error", err)
+		return nil, err
+	}
+
+	return data.Data, nil
+}
+
+func (ss *SubjectService) GetAllTeachers() ([]types.User, error) {
+	// since teachers are users with role 'teacher' we can filter by role
+	query := Query().SetOperation("select").SetTable(lib.TableUsers).SetSelect([]string{
+		"id", "email", "created_at",
+	})
+	query.Where[fmt.Sprintf("public.%s.role", lib.TableUsers)] = "teacher"
+
+	data, err := database.ExecuteQuery[types.User](query)
+	if err != nil {
+		ss.Logger.Error("Failed to retrieve teachers", "error", err)
+		return nil, err
+	}
+
+	return data.Data, nil
+}
+
 type SubjectServiceInterface interface {
 	GetSubjectByID(subjectID string) (any, error)
 	GetAllSubjects() ([]types.Subject, error)
 	GetUserSubjects(userID string) ([]types.Subject, error)
+	GetSubjectTeachers(subjectID string) ([]types.User, error)
+	GetAllTeachers() ([]types.User, error)
 }

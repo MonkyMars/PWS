@@ -10,7 +10,8 @@ import (
 // It follows clean architecture principles by depending on interfaces rather than concrete implementations.
 // This makes the code more testable and maintainable.
 type WorkerRoutes struct {
-	manager workers.WorkerManagerInterface
+	manager    workers.WorkerManagerInterface
+	middleware *middleware.Middleware
 }
 
 // NewWorkerRoutes creates a new WorkerRoutes instance with dependency injection.
@@ -18,7 +19,8 @@ type WorkerRoutes struct {
 // it can use mock implementations for better unit testing.
 func NewWorkerRoutesWithDefaults() *WorkerRoutes {
 	return &WorkerRoutes{
-		manager: workers.GetGlobalManager(),
+		manager:    workers.GetGlobalManager(),
+		middleware: middleware.NewMiddleware(),
 	}
 }
 
@@ -26,7 +28,7 @@ func NewWorkerRoutesWithDefaults() *WorkerRoutes {
 // It groups related functionality and applies appropriate middleware.
 func (wr *WorkerRoutes) RegisterRoutes(app *fiber.App) {
 	// Worker health monitoring routes
-	workerGroup := app.Group("/workers", middleware.AdminMiddleware())
+	workerGroup := app.Group("/workers", wr.middleware.AdminMiddleware())
 
 	// Overall worker health status
 	workerGroup.Get("/health", wr.GetWorkerHealth)
