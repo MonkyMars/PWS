@@ -51,7 +51,6 @@ func GetQueryParamAsInt(c fiber.Ctx, key string, defaultValue, maxValue int) int
 	return value
 }
 
-
 func GetParams(c fiber.Ctx, keys ...string) (map[string]string, error) {
 	params := make(map[string]string)
 	for _, key := range keys {

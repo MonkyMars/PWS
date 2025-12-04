@@ -15,7 +15,6 @@ func (sr *SubjectRoutes) GetSubjectByID(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, err)
 	}
 
-
 	subject, err := sr.subjectService.GetSubjectByID(subjectID["subjectId"])
 	if err != nil {
 		return lib.HandleServiceError(c, err)
