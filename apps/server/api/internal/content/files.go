@@ -58,7 +58,16 @@ func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 	c.Set("X-Page-Size", fmt.Sprintf("%d", pageSize))
 
 	// Return list of files
-	return response.Paginated(c, items, page, pageSize, len(items))
+	start := (page - 1) * pageSize
+	end := start + pageSize
+	if start > len(items) {
+		start = len(items)
+	}
+	if end > len(items) {
+		end = len(items)
+	}
+	paginatedItems := items[start:end]
+	return response.Paginated(c, paginatedItems, page, pageSize, len(items))
 }
 
 // /files/upload/single
