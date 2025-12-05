@@ -99,7 +99,7 @@ func (ss *SubjectService) GetAllTeachers() ([]types.Teacher, error) {
 			FROM users u
 			JOIN subject_teachers st ON u.id = st.user_id
 			WHERE u.role = 'teacher'
-		`, "")
+		`)
 	query.Where[fmt.Sprintf("public.%s.role", lib.TableUsers)] = "teacher"
 
 	data, err := database.ExecuteQuery[types.Teacher](query)

@@ -18,7 +18,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-var DefaultParams = &types.ArgonParams{
+var defaultParams = &types.ArgonParams{
 	Memory:  64 * 1024, // 64 MB
 	Time:    1,
 	Threads: 4,
@@ -318,7 +318,7 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 
 // Register creates a new user account and returns the user object if successful
 func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.User, error) {
-	// Check if user already exists
+	// Check if user already with the same email exists. Same username is fine since students across different schools may share usernames.
 	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"public.users.id"}).SetLimit(1)
 	query.Where["public.users.email"] = registerRequest.Email
 
@@ -327,17 +327,8 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 		return nil, lib.ErrUserAlreadyExists
 	}
 
-	// Also check username
-	query = Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"public.users.id"}).SetLimit(1)
-	query.Where["public.users.username"] = registerRequest.Username
-
-	existingUser, err = database.ExecuteQuery[types.User](query)
-	if err == nil && existingUser.Single != nil {
-		return nil, lib.ErrUsernameTaken
-	}
-
 	// Hash password
-	hashedPassword, err := a.HashPassword(registerRequest.Password, DefaultParams)
+	hashedPassword, err := a.HashPassword(registerRequest.Password, defaultParams)
 	if err != nil {
 		a.Logger.AuditError("Failed to hash password during registration", "error", err)
 		return nil, lib.ErrHashingPassword
