@@ -45,12 +45,16 @@ func subtleCompare(a, b []byte) bool {
 
 // AuthService provides authentication-related services
 type AuthService struct {
-	Logger *config.Logger
+	Logger       *config.Logger
+	config       *config.Config
+	cacheService *CacheService
 }
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		Logger: config.SetupLogger(),
+		Logger:       config.SetupLogger(),
+		config:       config.Get(),
+		cacheService: NewCacheService(),
 	}
 }
 
@@ -302,6 +306,13 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 	// Remove password hash before returning user object
 	user.Single.PasswordHash = ""
 
+	go func() {
+		err = a.cacheService.SetUserInCache(user.Single)
+		if err != nil {
+			a.Logger.Warn("Failed to cache user after login", "error", err, "user_id", user.Single.Id.String())
+		}
+	}()
+
 	return user.Single, nil
 }
 
@@ -372,8 +383,7 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	}
 
 	// Check if token is already blacklisted (detects token reuse/replay attacks)
-	cacheService := CacheService{}
-	blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
+	blacklisted, err := a.cacheService.IsTokenBlacklisted(claims.Jti)
 	if err != nil {
 		a.Logger.AuditError("Failed to check token blacklist during refresh", "error", err, "jti", claims.Jti.String())
 		return nil, lib.ErrValidatingToken
@@ -388,11 +398,8 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	}
 
 	// Get user from database to ensure they still exist
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
-	query.Where["public.users.id"] = claims.Sub.String()
-
-	user, err := database.ExecuteQuery[types.User](query)
-	if err != nil || user.Single == nil {
+	user, err := a.GetUserByID(claims.Sub)
+	if err != nil || user == nil {
 		return nil, lib.ErrUserNotFound
 	}
 
@@ -408,19 +415,19 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 	}
 
 	// Generate new access token
-	accessToken, err := a.GenerateAccessToken(user.Single)
+	accessToken, err := a.GenerateAccessToken(user)
 	if err != nil {
 		return nil, lib.ErrGeneratingToken
 	}
 
 	// Generate new refresh token (token rotation)
-	newRefreshToken, err := a.GenerateRefreshToken(user.Single)
+	newRefreshToken, err := a.GenerateRefreshToken(user)
 	if err != nil {
 		return nil, lib.ErrGeneratingToken
 	}
 
 	return &types.AuthResponse{
-		User:         user.Single,
+		User:         user,
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
 	}, nil
@@ -452,6 +459,11 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 }
 
 func (a *AuthService) GetUserByID(userID uuid.UUID) (*types.User, error) {
+	// check if user is in cache first
+	cachedUser, err := a.cacheService.GetUserFromCache(userID)
+	if err == nil && cachedUser != nil {
+		return cachedUser, nil
+	}
 	// Get user from database
 	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
 	query.Where["public.users.id"] = userID
@@ -470,10 +482,8 @@ func (a *AuthService) BlacklistToken(tokenStr string, isAccessToken bool) error 
 		return err
 	}
 
-	cacheService := CacheService{}
-
 	// Store the token's JTI in Redis until it expires
-	return cacheService.BlacklistToken(claims.Jti.String(), claims.Exp)
+	return a.cacheService.BlacklistToken(claims.Jti.String(), claims.Exp)
 }
 
 // AuthServiceInterface defines the methods that any auth service implementation must provide.

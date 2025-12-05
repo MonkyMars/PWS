@@ -30,6 +30,8 @@ type AuthConfig struct {
 	AccessTokenExpiry  time.Duration
 	RefreshTokenSecret string
 	RefreshTokenExpiry time.Duration
+	CacheUserTTL       time.Duration
+	BlacklistCacheTTL  time.Duration
 }
 
 type CacheConfig struct {
