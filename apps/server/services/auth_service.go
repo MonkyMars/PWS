@@ -394,6 +394,8 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 		return nil, lib.ErrUserNotFound
 	}
 
+	fmt.Println("User found during token refresh:", user.Id)
+
 	// SECURITY: Immediately blacklist the old refresh token to prevent reuse
 	err = a.BlacklistToken(refreshTokenStr, false)
 	if err != nil {
@@ -447,19 +449,28 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 }
 
 func (a *AuthService) GetUserByID(userID uuid.UUID) (*types.User, error) {
-	// check if user is in cache first
 	cachedUser, err := a.cacheService.GetUserFromCache(userID)
 	if err == nil && cachedUser != nil {
 		return cachedUser, nil
 	}
+
 	// Get user from database
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role", "created_at"}).SetLimit(1)
 	query.Where["public.users.id"] = userID
 
 	user, err := database.ExecuteQuery[types.User](query)
 	if err != nil || user.Single == nil {
 		return nil, fmt.Errorf("user not found")
 	}
+
+	// Cache the user for subsequent requests
+	go func() {
+		err := a.cacheService.SetUserInCache(user.Single)
+		if err != nil {
+			a.Logger.AuditWarn("Failed to cache user after database fetch", "error", err, "user_id", userID.String())
+		}
+	}()
+
 	return user.Single, nil
 }
 

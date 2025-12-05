@@ -1,7 +1,7 @@
 import { BookOpen, X, Search, CornerDownLeft, Command } from 'lucide-react';
 import { SubjectCard } from './subject-card';
 import { QuickActions } from './quick-actions';
-import { useCurrentUser, useSubjects, useDebounce, useAllTeachers } from '~/hooks';
+import { useCurrentUser, useSubjects, useDebounce } from '~/hooks';
 import { Input } from '../ui/input';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router';
 export function Dashboard() {
   const { data: user } = useCurrentUser();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
-  const { data: teachers } = useAllTeachers();
   const [searchValue, setSearchValue] = useState<string>('');
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -244,11 +243,7 @@ export function Dashboard() {
                           {index + 1}
                         </div>
                       )}
-                      <SubjectCard
-                        subject={subject}
-                        searchTerm={debouncedSearchValue}
-                        teachers={teachers}
-                      />
+                      <SubjectCard subject={subject} searchTerm={debouncedSearchValue} />
                     </div>
                   ))}
                 </div>

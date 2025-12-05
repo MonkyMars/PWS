@@ -4,11 +4,10 @@ import type { Subject, Teacher } from '~/types';
 
 interface SubjectCardProps {
   subject: Subject;
-  teachers: Teacher[] | undefined;
   searchTerm?: string;
 }
 
-export function SubjectCard({ subject, searchTerm, teachers }: SubjectCardProps) {
+export function SubjectCard({ subject, searchTerm }: SubjectCardProps) {
   const getSubjectColor = () => {
     return subject.color;
   };
@@ -47,41 +46,6 @@ export function SubjectCard({ subject, searchTerm, teachers }: SubjectCardProps)
           </div>
           <ChevronRight className="h-5 w-5 text-neutral-400 group-hover:text-primary-600 transition-colors" />
         </div>
-
-        {/* Teachers */}
-        {teachers && teachers?.length > 0 && (
-          <div className="flex justify-end mr-2">
-            <div className="flex items-center">
-              {teachers
-                .filter((teacher) => teacher.subjectId === subject.id)
-                .slice(0, 3)
-                .map((teacher, index) => {
-                  const colors = [
-                    'bg-yellow-500',
-                    'bg-purple-500',
-                    'bg-green-500',
-                    'bg-red-500',
-                    'bg-blue-500',
-                  ];
-                  const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                  return (
-                    <div
-                      key={teacher.id || index}
-                      className={`w-6 h-6 rounded-full ${randomColor} text-white flex items-center justify-center text-xs font-medium border-2 border-white`}
-                      style={{ marginLeft: index > 0 ? '-0.5rem' : '0' }}
-                    >
-                      {teacher.username.charAt(0).toUpperCase()}
-                    </div>
-                  );
-                })}
-              {teachers.filter((teacher) => teacher.subjectId === subject.id).length > 3 && (
-                <div className="ml-2 text-sm text-neutral-600 font-medium">
-                  +{teachers.filter((teacher) => teacher.subjectId === subject.id).length - 3}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </Link>
   );

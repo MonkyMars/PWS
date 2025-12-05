@@ -100,9 +100,7 @@ func (cs *CacheService) withRetry(operation func() error, maxRetries int) error 
 		base := 100        // 100ms base
 
 		backoff := base * (1 << attempt) // exponential
-		if backoff > maxBackoff {
-			backoff = maxBackoff
-		}
+		backoff = min(backoff, maxBackoff)
 
 		// add jitter ±50%
 		jitterBytes := make([]byte, 4)
@@ -249,14 +247,6 @@ func (cs *CacheService) GetUserFromCache(userID uuid.UUID) (*types.User, error) 
 		return nil, err
 	}
 
-	go func() {
-		// Refresh TTL in background
-		err = cs.Set(key, val, cs.config.Auth.CacheUserTTL)
-		if err != nil {
-			cs.logger.AuditWarn("Failed to refresh user cache TTL", "error", err, "user_id", userID.String())
-		}
-	}()
-
 	if val == "" {
 		return nil, nil // not found in cache
 	}
@@ -379,8 +369,8 @@ func (cs *CacheService) GetRedisInfo() (map[string]string, error) {
 
 		// Parse the info string into a map
 		result = make(map[string]string)
-		lines := strings.Split(info, "\r\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(info, "\r\n")
+		for line := range lines {
 			line = strings.TrimSpace(line)
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue

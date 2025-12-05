@@ -78,12 +78,3 @@ func (sr *SubjectRoutes) GetSubjectTeachers(c fiber.Ctx) error {
 
 	return response.Success(c, teachers)
 }
-
-func (sr *SubjectRoutes) GetAllTeachers(c fiber.Ctx) error {
-	teachers, err := sr.subjectService.GetAllTeachers()
-	if err != nil {
-		return lib.HandleServiceError(c, err)
-	}
-
-	return response.Success(c, teachers)
-}

@@ -34,6 +34,6 @@ func (sr *SubjectRoutes) RegisterRoutes(app *fiber.App) {
 
 	subjects.Get("/", sr.GetAllSubjects)
 	subjects.Get("/me", sr.GetUserSubjects)
-	subjects.Get("/teachers", sr.GetAllTeachers)
 	subjects.Get("/:subjectId", sr.GetSubjectByID)
+	subjects.Get("/:subjectId/teachers", sr.GetSubjectTeachers)
 }
