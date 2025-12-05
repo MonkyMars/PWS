@@ -38,6 +38,8 @@ type AuthConfig struct {
 	AccessTokenExpiry  time.Duration
 	RefreshTokenSecret string
 	RefreshTokenExpiry time.Duration
+	CacheUserTTL       time.Duration
+	BlacklistCacheTTL  time.Duration
 }
 
 // DatabaseConfig holds database configuration
@@ -173,6 +175,8 @@ func (dc *DomainConfigs) ToLegacyConfig() *Config {
 			AccessTokenExpiry:  dc.Auth.AccessTokenExpiry,
 			RefreshTokenSecret: dc.Auth.RefreshTokenSecret,
 			RefreshTokenExpiry: dc.Auth.RefreshTokenExpiry,
+			CacheUserTTL:       dc.Auth.CacheUserTTL,
+			BlacklistCacheTTL:  dc.Auth.BlacklistCacheTTL,
 		},
 		Google: types.GoogleConfig{
 			ClientID:     dc.Google.ClientID,
@@ -262,6 +266,8 @@ func loadAuthConfig() *AuthConfig {
 		AccessTokenExpiry:  getEnvDuration("ACCESS_TOKEN_EXPIRY", 15*time.Minute),
 		RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
 		RefreshTokenExpiry: getEnvDuration("REFRESH_TOKEN_EXPIRY", 7*24*time.Hour),
+		CacheUserTTL:       getEnvDuration("CACHE_USER_TTL", 30*time.Minute),
+		BlacklistCacheTTL:  getEnvDuration("BLACKLIST_CACHE_TTL", 7*24*time.Hour),
 	}
 }
 
