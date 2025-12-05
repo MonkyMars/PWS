@@ -447,15 +447,12 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 	}
 
 	// Get user from database
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
-	query.Where["public.users.id"] = claims.Sub
-
-	user, err := database.ExecuteQuery[types.User](query)
-	if err != nil || user.Single == nil {
+	user, err := a.GetUserByID(claims.Sub)
+	if err != nil || user == nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return user.Single, nil
+	return user, nil
 }
 
 func (a *AuthService) GetUserByID(userID uuid.UUID) (*types.User, error) {
@@ -486,6 +483,10 @@ func (a *AuthService) BlacklistToken(tokenStr string, isAccessToken bool) error 
 	return a.cacheService.BlacklistToken(claims.Jti.String(), claims.Exp)
 }
 
+func (a *AuthService) ClearUserCache(userID uuid.UUID) error {
+	return a.cacheService.DeleteUserFromCache(userID)
+}
+
 // AuthServiceInterface defines the methods that any auth service implementation must provide.
 type AuthServiceInterface interface {
 	// Authentication methods
@@ -504,6 +505,9 @@ type AuthServiceInterface interface {
 	// User management
 	GetUserByID(userID uuid.UUID) (*types.User, error)
 	GetUserFromToken(tokenStr string) (*types.User, error)
+
+	// Cache management
+	ClearUserCache(userID uuid.UUID) error
 
 	// Password management
 	HashPassword(password string, p *types.ArgonParams) (string, error)

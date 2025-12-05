@@ -125,32 +125,38 @@ func (ar *AuthRoutes) Me(c fiber.Ctx) error {
 
 // Logout handles user logout with graceful handling of missing/invalid tokens
 func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
+	// Extract values from context before spawning goroutine to avoid race conditions
 	accessToken := c.Cookies(lib.AccessTokenCookieName)
 	refreshToken := c.Cookies(lib.RefreshTokenCookieName)
+	user := lib.GetUserFromContext(c)
 
-	// Blacklist access token if present using injected service
-	if strings.TrimSpace(accessToken) != "" {
-		// Validate and blacklist access token
-		_, err := ar.authService.GetUserFromToken(accessToken)
-		if err != nil {
-			ar.logger.Warn("Invalid access token during logout, clearing anyway", "error", err)
-		} else {
-			// Token is valid, blacklist it
+	go func() {
+		// Process access token if present using injected service
+		if strings.TrimSpace(accessToken) != "" {
+			// Try to blacklist access token (may be invalid, but that's okay)
 			if err := ar.authService.BlacklistToken(accessToken, true); err != nil {
-				ar.logger.AuditError("Failed to blacklist access token", "error", err)
+				ar.logger.Warn("Failed to blacklist access token, may already be invalid", "error", err)
 				// Don't return error, continue with logout process
 			}
 		}
-	}
 
-	// Process refresh token if present using injected service
-	if strings.TrimSpace(refreshToken) != "" {
-		// Try to blacklist refresh token (may be invalid, but that's okay)
-		if err := ar.authService.BlacklistToken(refreshToken, false); err != nil {
-			ar.logger.Warn("Failed to blacklist refresh token, may already be invalid", "error", err)
-			// Don't return error, continue with logout process
+		// Process refresh token if present using injected service
+		if strings.TrimSpace(refreshToken) != "" {
+			// Try to blacklist refresh token (may be invalid, but that's okay)
+			if err := ar.authService.BlacklistToken(refreshToken, false); err != nil {
+				ar.logger.Warn("Failed to blacklist refresh token, may already be invalid", "error", err)
+				// Don't return error, continue with logout process
+			}
 		}
-	}
+
+		// Clear user from cache if user exists
+		if user != nil {
+			err := ar.authService.ClearUserCache(user.Id)
+			if err != nil {
+				ar.logger.Warn("Failed to clear user cache during logout", "user_id", user.Id, "error", err)
+			}
+		}
+	}()
 
 	// Always clear auth cookies regardless of token validity using injected service
 	ar.cookieService.ClearAuthCookies(c)
