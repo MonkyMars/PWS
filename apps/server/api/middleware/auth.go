@@ -2,28 +2,22 @@ package middleware
 
 import (
 	"github.com/MonkyMars/PWS/api/response"
-	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/gofiber/fiber/v3"
 )
 
-func AuthMiddleware() fiber.Handler {
+func (mw *Middleware) AuthMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		logger := config.SetupLogger()
-
 		token := c.Cookies(lib.AccessTokenCookieName)
 
 		if token == "" {
-			logger.Error("No access token found in cookies")
 			return lib.HandleAuthError(c, lib.ErrInvalidToken, "middleware authentication")
 		}
 
-		authService := services.NewAuthService()
-
-		claims, err := authService.ParseToken(token, true)
+		claims, err := mw.authService.ParseToken(token, true)
 		if err != nil {
-			logger.AuditError("Failed to parse access token", "error", err)
+			mw.logger.AuditError("Failed to parse access token", "error", err)
 			return lib.HandleAuthError(c, err, "middleware authentication")
 		}
 
@@ -33,11 +27,11 @@ func AuthMiddleware() fiber.Handler {
 		// Check if token is blacklisted with graceful Redis failure handling
 		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
 		if err != nil {
-			logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
+			mw.logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down
 		} else if blacklisted {
 			// SECURITY: This could indicate a token reuse attack
-			logger.Warn("Blacklisted token access attempt detected",
+			mw.logger.Warn("Blacklisted token access attempt detected",
 				"jti", claims.Jti.String(),
 				"user_id", claims.Sub,
 				"user_email", claims.Email,
@@ -56,36 +50,28 @@ func AuthMiddleware() fiber.Handler {
 	}
 }
 
-func AdminMiddleware() fiber.Handler {
+func (mw *Middleware) AdminMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		logger := config.SetupLogger()
-
 		token := c.Cookies(lib.AccessTokenCookieName)
 
 		if token == "" {
-			logger.Error("No access token found in cookies")
 			return lib.HandleAuthError(c, lib.ErrInvalidToken, "admin middleware authentication")
 		}
 
-		authService := services.NewAuthService()
-
-		claims, err := authService.ParseToken(token, true)
+		claims, err := mw.authService.ParseToken(token, true)
 		if err != nil {
-			logger.AuditError("Failed to parse access token", "error", err)
+			mw.logger.AuditError("Failed to parse access token", "error", err)
 			return lib.HandleAuthError(c, err, "admin middleware authentication")
 		}
 
-		// Initialize Cache service
-		cacheService := services.NewCacheService()
-
 		// Check if token is blacklisted with graceful Redis failure handling
-		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
+		blacklisted, err := mw.cacheService.IsTokenBlacklisted(claims.Jti)
 		if err != nil {
-			logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
+			mw.logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down
 		} else if blacklisted {
 			// SECURITY: This could indicate a token reuse attack
-			logger.Warn("Blacklisted token access attempt detected",
+			mw.logger.Warn("Blacklisted token access attempt detected",
 				"jti", claims.Jti.String(),
 				"user_id", claims.Sub,
 				"user_email", claims.Email,
@@ -98,7 +84,7 @@ func AdminMiddleware() fiber.Handler {
 		}
 
 		if claims.Role != lib.RoleAdmin {
-			logger.Warn("Unauthorized admin access attempt detected",
+			mw.logger.Warn("Unauthorized admin access attempt detected",
 				"user_id", claims.Sub,
 				"user_email", claims.Email,
 				"user_role", claims.Role,

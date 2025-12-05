@@ -16,6 +16,7 @@ type AuthRoutes struct {
 	cookieService services.CookieServiceInterface
 	googleService services.GoogleServiceInterface
 	logger        *config.Logger
+	middleware    *middleware.Middleware
 }
 
 // NewAuthRoutesWithDefaults creates an AuthRoutes instance with default dependencies.
@@ -27,6 +28,7 @@ func NewAuthRoutesWithDefaults() *AuthRoutes {
 		cookieService: services.NewCookieService(),
 		googleService: services.NewGoogleService(),
 		logger:        config.SetupLogger(),
+		middleware:    middleware.NewMiddleware(),
 	}
 }
 
@@ -56,7 +58,7 @@ func (ar *AuthRoutes) registerAuthRoutes(router fiber.Router) {
 	router.Post("/refresh", ar.RefreshToken)
 
 	// Authenticated endpoints (require valid access token)
-	protected := router.Group("/", middleware.AuthMiddleware())
+	protected := router.Group("/", ar.middleware.AuthMiddleware())
 	protected.Get("/me", ar.Me)
 	protected.Post("/logout", ar.Logout)
 }
@@ -66,7 +68,7 @@ func (ar *AuthRoutes) registerOAuthRoutes(router fiber.Router) {
 	// Keep public routes public
 	router.Get("/callback", ar.GoogleAuthCallback)
 	// Protected routes
-	protected := router.Group("/", middleware.AuthMiddleware())
+	protected := router.Group("/", ar.middleware.AuthMiddleware())
 	protected.Delete("/unlink", ar.GoogleUnlink)
 	protected.Get("/status", ar.GoogleLinkStatus)
 	router.Get("/url", ar.GoogleAuthURL)

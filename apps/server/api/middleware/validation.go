@@ -17,8 +17,8 @@ type ValidationRule struct {
 	Required  bool
 	MinLength int
 	MaxLength int
-	Pattern   string                        // For regex validation
-	Validator func(value interface{}) error // Custom validator function
+	Pattern   string                // For regex validation
+	Validator func(value any) error // Custom validator function
 }
 
 // ValidationConfig holds validation rules for a request type
@@ -49,7 +49,7 @@ func ValidateRequest[T any](config ValidationConfig) fiber.Handler {
 }
 
 // validateStruct validates a struct against the provided rules
-func validateStruct(data interface{}, config ValidationConfig) []types.ValidationError {
+func validateStruct(data any, config ValidationConfig) []types.ValidationError {
 	val := reflect.ValueOf(data)
 	typ := reflect.TypeOf(data)
 
@@ -74,7 +74,7 @@ func validateStruct(data interface{}, config ValidationConfig) []types.Validatio
 		}
 
 		// Get the actual value
-		var value interface{}
+		var value any
 		if fieldValue.CanInterface() {
 			value = fieldValue.Interface()
 		}
@@ -89,7 +89,7 @@ func validateStruct(data interface{}, config ValidationConfig) []types.Validatio
 }
 
 // validateField validates a single field against a rule
-func validateField(rule ValidationRule, value interface{}, fieldName string) *types.ValidationError {
+func validateField(rule ValidationRule, value any, fieldName string) *types.ValidationError {
 	strValue := fmt.Sprintf("%v", value)
 
 	// Required field validation
@@ -146,7 +146,7 @@ var AuthRequestValidation = ValidationConfig{
 		{
 			Field:    "Email",
 			Required: true,
-			Validator: func(value interface{}) error {
+			Validator: func(value any) error {
 				email := fmt.Sprintf("%v", value)
 				if !strings.Contains(email, "@") {
 					return fmt.Errorf("email must be a valid email address")
@@ -174,7 +174,7 @@ var RegisterRequestValidation = ValidationConfig{
 		{
 			Field:    "Email",
 			Required: true,
-			Validator: func(value interface{}) error {
+			Validator: func(value any) error {
 				email := fmt.Sprintf("%v", value)
 				if !strings.Contains(email, "@") {
 					return fmt.Errorf("email must be a valid email address")

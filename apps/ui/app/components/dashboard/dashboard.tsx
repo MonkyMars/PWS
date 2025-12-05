@@ -1,17 +1,7 @@
-import {
-  BookOpen,
-  Bell,
-  FileText,
-  Calendar,
-  TrendingUp,
-  X,
-  Search,
-  CornerDownLeft,
-  Command,
-} from 'lucide-react';
+import { BookOpen, X, Search, CornerDownLeft, Command } from 'lucide-react';
 import { SubjectCard } from './subject-card';
 import { QuickActions } from './quick-actions';
-import { useCurrentUser, useSubjects, useDebounce } from '~/hooks';
+import { useCurrentUser, useSubjects, useDebounce, useAllTeachers } from '~/hooks';
 import { Input } from '../ui/input';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
@@ -19,6 +9,7 @@ import { useNavigate } from 'react-router';
 export function Dashboard() {
   const { data: user } = useCurrentUser();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
+  const { data: teachers } = useAllTeachers();
   const [searchValue, setSearchValue] = useState<string>('');
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +29,6 @@ export function Dashboard() {
       .map((subject) => {
         const name = subject.name.toLowerCase();
         const code = subject.code.toLowerCase();
-        const teacher = subject.teacherName.toLowerCase();
 
         let score = 0;
 
@@ -54,13 +44,6 @@ export function Dashboard() {
           score += 50;
         } else if (code.includes(searchTerm)) {
           score += 5;
-        }
-
-        // Teacher name (lower priority)
-        if (teacher.startsWith(searchTerm)) {
-          score += 20;
-        } else if (teacher.includes(searchTerm)) {
-          score += 2;
         }
 
         return { subject, score };
@@ -261,7 +244,11 @@ export function Dashboard() {
                           {index + 1}
                         </div>
                       )}
-                      <SubjectCard subject={subject} searchTerm={debouncedSearchValue} />
+                      <SubjectCard
+                        subject={subject}
+                        searchTerm={debouncedSearchValue}
+                        teachers={teachers}
+                      />
                     </div>
                   ))}
                 </div>

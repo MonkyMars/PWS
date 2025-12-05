@@ -12,12 +12,13 @@ const (
 )
 
 const (
-	TableUsers           = "public.users"
+	TableUsers           = "users"
 	TableFiles           = "files"
 	TableFolders         = "folders"
 	TableSubjects        = "subjects"
 	TableUserOAuthTokens = "user_oauth_tokens"
 	TableUserSubjects    = "user_subjects"
+	TableSubjectTeachers = "subject_teachers"
 	TableAuditLogs       = "audit_logs"
 	TableHealthLogs      = "health_logs"
 )

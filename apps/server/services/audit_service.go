@@ -14,15 +14,16 @@ type AuditService struct {
 }
 
 func NewAuditService() *AuditService {
-	logger := config.SetupLogger()
-	return &AuditService{Logger: logger}
+	return &AuditService{
+		Logger: config.SetupLogger(),
+	}
 }
 
 func (as *AuditService) GetLogs() (*[]types.AuditLog, error) {
 	query := Query().
 		SetOperation("select").
 		SetTable(lib.TableAuditLogs).
-		SetSelect(database.PrefixQuery(lib.TableAuditLogs, []string{"id", "timestamp", "level", "message", "attrs", "entry_hash"})).
+		SetSelect([]string{"id", "timestamp", "level", "message", "attrs", "entry_hash"}).
 		AddOrder(fmt.Sprintf("%s.timestamp DESC", lib.TableAuditLogs))
 	result, err := database.ExecuteQuery[types.AuditLog](query)
 	if err != nil {

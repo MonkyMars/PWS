@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { FileViewer } from '~/components/files/file-viewer';
-import { useSubject, useSubjectFiles, useSubjectFolders } from '~/hooks';
+import { useSubject, useSubjectFiles, useSubjectFolders, useSubjectTeachers } from '~/hooks';
 import type { Subject, SubjectFile } from '~/types';
 
 interface SubjectDetailProps {
@@ -34,6 +34,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
   const [folderNames, setFolderNames] = useState<{ [key: string]: string }>({});
   const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const { data: subject } = useSubject(subjectId);
+  const { data: teachers } = useSubjectTeachers(subjectId);
   // const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
   //   subjectId,
   // });
@@ -215,9 +216,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
             <div className="w-6 h-6 rounded-full" style={{ backgroundColor: getSubjectColor() }} />
             <div>
               <h1 className="text-3xl font-bold text-neutral-900">{subject.name}</h1>
-              <p className="text-neutral-600">
-                {subject.code} • {subject.teacherName}
-              </p>
+              <p className="text-neutral-600">{subject.code}</p>
             </div>
           </div>
         </div>
@@ -376,7 +375,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
             {showKeyboardHelp && (
               <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 animate-slide-down">
                 <div className="flex items-start gap-2.5">
-                  <HelpCircle className="h-4 w-4 text-neutral-400 mt-0.5 flex-shrink-0" />
+                  <HelpCircle className="h-4 w-4 text-neutral-400 mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <h4 className="font-medium text-neutral-700 mb-2 text-sm">Sneltoetsen</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
@@ -447,7 +446,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                       onClick={handleItemClick}
                     >
                       <div className="flex items-center space-x-4 flex-1 min-w-0">
-                        <div className="flex-shrink-0">{icon}</div>
+                        <div className="shrink-0">{icon}</div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-neutral-900 truncate">{item.name}</h4>
                           <div className="flex items-center space-x-4 mt-1 text-sm text-neutral-500">
@@ -466,7 +465,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="flex items-center gap-3 shrink-0">
                         {!isFolder && (
                           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             <button
