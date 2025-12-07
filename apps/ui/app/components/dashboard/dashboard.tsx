@@ -1,10 +1,12 @@
-import { BookOpen, X, Search, CornerDownLeft, Command } from 'lucide-react';
+import { BookOpen, X, Search, CornerDownLeft, Command, Check } from 'lucide-react';
 import { SubjectCard } from './subject-card';
 import { QuickActions } from './quick-actions';
 import { useCurrentUser, useSubjects, useDebounce } from '~/hooks';
 import { Input } from '../ui/input';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import Restricted from '../restricted';
+import { Button } from '../ui/button';
 
 export function Dashboard() {
   const { data: user } = useCurrentUser();
@@ -12,6 +14,7 @@ export function Dashboard() {
   const [searchValue, setSearchValue] = useState<string>('');
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [managingSubjects, setManagingSubjects] = useState<boolean>(false);
 
   // Debounce search value for better performance
   const debouncedSearchValue = useDebounce(searchValue, 200);
@@ -88,12 +91,12 @@ export function Dashboard() {
       const keyNumber = parseInt(e.key);
       if (
         !isNaN(keyNumber) &&
-        keyNumber >= 1 &&
+        keyNumber >= 0 &&
         keyNumber <= 9 &&
         !isInInput &&
         filteredSubjects.length > 0
       ) {
-        const subjectIndex = keyNumber - 1;
+        const subjectIndex = keyNumber;
         if (filteredSubjects[subjectIndex]) {
           e.preventDefault();
           navigate(`/subjects/${filteredSubjects[subjectIndex].id}`);
@@ -153,8 +156,8 @@ export function Dashboard() {
             </div>
 
             {/* Filter and search bar */}
-            <div className="flex items-center mb-6 space-x-4">
-              <div className="relative w-full">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
                 <Input
                   ref={searchInputRef}
@@ -206,6 +209,22 @@ export function Dashboard() {
                   )}
                 </div>
               </div>
+              <Restricted>
+                <Button
+                  variant={managingSubjects ? 'outline' : 'primary'}
+                  onClick={() => setManagingSubjects(!managingSubjects)}
+                  className="flex items-center"
+                >
+                  {managingSubjects ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Klaar
+                    </>
+                  ) : (
+                    'Beheer vakken'
+                  )}
+                </Button>
+              </Restricted>
               <div id="search-shortcuts" className="sr-only" aria-live="polite">
                 {searchValue && filteredSubjects.length > 0
                   ? `Druk Enter om naar het eerste resultaat te gaan, of druk 1-${Math.min(filteredSubjects.length, 9)} om naar een specifiek vak te gaan. Escape om te wissen en unfocus.`
@@ -234,16 +253,16 @@ export function Dashboard() {
                       key={subject.id}
                       className={
                         index === 0 && debouncedSearchValue.trim()
-                          ? 'ring-2 ring-primary-200 rounded-lg relative'
-                          : 'relative'
+                          ? 'ring-2 ring-primary-200 rounded-lg'
+                          : ''
                       }
                     >
-                      {index < 9 && (
-                        <div className="absolute bottom-2 right-2 z-10 flex items-center justify-center w-5 h-5 bg-neutral-400/90 text-white text-xs rounded font-medium shadow-sm">
-                          {index + 1}
-                        </div>
-                      )}
-                      <SubjectCard subject={subject} searchTerm={debouncedSearchValue} />
+                      <SubjectCard
+                        subject={subject}
+                        searchTerm={debouncedSearchValue}
+                        keyboardShortcut={index < 10 ? index : undefined}
+                        managingSubject={managingSubjects}
+                      />
                     </div>
                   ))}
                 </div>
