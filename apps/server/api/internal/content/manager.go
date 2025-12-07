@@ -13,6 +13,7 @@ import (
 // This makes the code more testable and maintainable.
 type ContentRoutes struct {
 	contentService services.ContentServiceInterface
+	googleService  services.GoogleServiceInterface
 	middleware     *middleware.Middleware
 	logger         *config.Logger
 }
@@ -23,6 +24,7 @@ type ContentRoutes struct {
 func NewContentRoutesWithDefaults() *ContentRoutes {
 	return &ContentRoutes{
 		contentService: services.NewContentService(),
+		googleService:  services.NewGoogleService(),
 		middleware:     middleware.NewMiddleware(),
 		logger:         config.SetupLogger(),
 	}
@@ -82,10 +84,4 @@ func (cr *ContentRoutes) registerFolderRoutes(router fiber.Router) {
 		middleware.RequiredIDParam("parentId"),
 		cr.GetFoldersBySubjectParent,
 	)
-
-	// Future folder management endpoints can be added here following RESTful conventions:
-	// router.Post("/", cr.CreateFolder)              // Create new folder
-	// router.Put("/:folderId", cr.UpdateFolder)      // Update folder metadata
-	// router.Delete("/:folderId", cr.DeleteFolder)   // Delete folder
-	// router.Get("/", cr.ListFolders)                // List folders with query params
 }
