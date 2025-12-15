@@ -144,19 +144,17 @@ func (a *AuthService) compareArgon2Hash(password, encoded string) (bool, error) 
 
 // GetRefreshTokenExpiration returns the expiration time for refresh tokens using configuration settings
 func (a *AuthService) GetRefreshTokenExpiration() time.Time {
-	cfg := config.Get()
-	return time.Now().Add(cfg.Auth.RefreshTokenExpiry)
+	return time.Now().Add(a.config.Auth.RefreshTokenExpiry)
 }
 
 // GetAccessTokenExpiration returns the expiration time for access tokens using configuration settings
 func (a *AuthService) GetAccessTokenExpiration() time.Time {
-	cfg := config.Get()
-	return time.Now().Add(cfg.Auth.AccessTokenExpiry)
+	return time.Now().Add(a.config.Auth.AccessTokenExpiry)
 }
 
 // GenerateAccessToken generates a JWT access token for the given user
 func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
-	secret := config.Get().Auth.AccessTokenSecret
+	secret := a.config.Auth.AccessTokenSecret
 
 	now := time.Now()
 	exp := a.GetAccessTokenExpiration()
@@ -183,7 +181,7 @@ func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
 
 // GenerateRefreshToken generates a JWT refresh token for the given user
 func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
-	secret := config.Get().Auth.RefreshTokenSecret
+	secret := a.config.Auth.RefreshTokenSecret
 
 	now := time.Now()
 	exp := a.GetRefreshTokenExpiration()
@@ -210,7 +208,7 @@ func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
 
 // ParseToken parses and validates a JWT token string and returns the claims
 func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.AuthClaims, error) {
-	secret := config.Get().Auth.AccessTokenSecret
+	secret := a.config.Auth.AccessTokenSecret
 	if !isAccessToken {
 		secret = config.Get().Auth.RefreshTokenSecret
 	}
