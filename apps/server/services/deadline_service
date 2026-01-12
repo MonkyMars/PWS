@@ -1,0 +1,11 @@
+package services	
+
+type DeadlineService struct {
+	Logger *config.Logger
+}
+
+func NewDeadlineService() *DeadlineService {
+	return &DeadlineService{
+		Logger: config.SetupLogger(),
+	}
+}
