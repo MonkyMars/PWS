@@ -1,0 +1,59 @@
+package services
+
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+
+	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/types"
+)
+
+type DeadlineService struct {
+	Logger *config.Logger
+}
+
+func NewDeadlineService() *DeadlineService {
+	return &DeadlineService{
+		Logger: config.SetupLogger(),
+	}
+}
+
+func (ds *DeadlineService) CreateDeadline(req *types.CreateDeadlineRequest) error {
+	if req.SubjectID == uuid.Nil {
+		return fmt.Errorf("subject_id is required")
+	}
+	if req.OwnerID == uuid.Nil {
+		return fmt.Errorf("owner_id is required")
+	}
+	if req.Title == "" {
+		return fmt.Errorf("title is required")
+	}
+	if req.Description == "" {
+		return fmt.Errorf("description is required")
+	}
+	if req.DueDate == "" {
+		return fmt.Errorf("due_date is required")
+	}
+	if req.CreatedAt == "" {
+		return fmt.Errorf("created_at is required")
+	}
+
+	query := Query().SetOperation("insert").SetTable("deadlines")
+	query.Data = map[string]any{
+		"subject_id":  req.SubjectID,
+		"owner_id":    req.OwnerID,
+		"title":       req.Title,
+		"description": req.Description,
+		"due_date":    req.DueDate,
+		"created_at":  req.CreatedAt,
+	}
+
+	_, err := database.ExecuteQuery[any](query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
