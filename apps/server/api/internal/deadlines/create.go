@@ -7,22 +7,14 @@ import (
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
+	"github.com/MonkyMars/PWS/types"
 )
 
-type CreateDealineRequest struct {
-	SubjectID   uuid.UUID `json:"subject_id"`
-	OwnerID     uuid.UUID `json:"owner_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	DueDate     string    `json:"due_date"`
-	CreatedAt   string    `json:"created_at"`
-}
 
 func CreateDeadline(c fiber.Ctx) error {
 	logger := config.SetupLogger()
 
-	body, err := middleware.GetValidatedRequest[CreateDealineRequest](c)
+	body, err := middleware.GetValidatedRequest[types.CreateDeadlineRequest](c)
 	if err != nil {
 		logger.Error("Failed to get validated request", "error", err)
 		return lib.HandleValidationError(c, err, "request")
@@ -32,5 +24,10 @@ func CreateDeadline(c fiber.Ctx) error {
 		return response.NotFound(c, "Data not found")
 	}
 
+	deadlineService := services.NewDeadlineService()
+	err = deadlineService.CreateDeadline(body)
+	if err != nil {
+		return response.InternalServerError(c, "Failed to create deadline: "+err.Error())
+	}
 	return response.Accepted(c, "Deadline creation accepted")
 }

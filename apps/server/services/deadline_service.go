@@ -2,13 +2,12 @@ package services
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 
-	"github.com/MonkyMars/PWS/api/internal/deadlines"
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/types"
 )
 
 type DeadlineService struct {
@@ -21,7 +20,7 @@ func NewDeadlineService() *DeadlineService {
 	}
 }
 
-func (ds *DeadlineService) CreateDeadline(req deadlines.CreateDealineRequest) error {
+func (ds *DeadlineService) CreateDeadline(req *types.CreateDeadlineRequest) error {
 	if req.SubjectID == uuid.Nil {
 		return fmt.Errorf("subject_id is required")
 	}
