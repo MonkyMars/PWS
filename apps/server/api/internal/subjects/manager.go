@@ -12,6 +12,7 @@ import (
 // This makes the code more testable and maintainable.
 type SubjectRoutes struct {
 	subjectService services.SubjectServiceInterface
+	middleware     *middleware.Middleware
 	logger         *config.Logger
 }
 
@@ -21,6 +22,7 @@ type SubjectRoutes struct {
 func NewSubjectRoutesWithDefaults() *SubjectRoutes {
 	return &SubjectRoutes{
 		subjectService: services.NewSubjectService(),
+		middleware:     middleware.NewMiddleware(),
 		logger:         config.SetupLogger(),
 	}
 }
@@ -28,9 +30,10 @@ func NewSubjectRoutesWithDefaults() *SubjectRoutes {
 // This method organizes routes logically and follows RESTful conventions.
 // It groups related functionality and applies appropriate middleware.
 func (sr *SubjectRoutes) RegisterRoutes(app *fiber.App) {
-	subjects := app.Group("/subjects")
+	subjects := app.Group("/subjects", sr.middleware.AuthMiddleware())
 
 	subjects.Get("/", sr.GetAllSubjects)
-	subjects.Get("/me", middleware.AuthMiddleware(), sr.GetUserSubjects)
+	subjects.Get("/me", sr.GetUserSubjects)
+	subjects.Get("/teachers", sr.GetAllTeachers)
 	subjects.Get("/:subjectId", sr.GetSubjectByID)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func AuthMiddleware() fiber.Handler {
+func (mw *Middleware) AuthMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		token := c.Cookies(lib.AccessTokenCookieName)
 
@@ -17,9 +17,7 @@ func AuthMiddleware() fiber.Handler {
 			return lib.HandleServiceError(c, lib.ErrInvalidToken, msg)
 		}
 
-		authService := services.NewAuthService()
-
-		claims, err := authService.ParseToken(token, true)
+		claims, err := mw.authService.ParseToken(token, true)
 		if err != nil {
 			msg := fmt.Sprintf("Failed to parse access token in authentication middleware: %v", err)
 			return lib.HandleServiceError(c, err, msg)
@@ -48,7 +46,7 @@ func AuthMiddleware() fiber.Handler {
 	}
 }
 
-func AdminMiddleware() fiber.Handler {
+func (mw *Middleware) AdminMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		token := c.Cookies(lib.AccessTokenCookieName)
 
@@ -57,19 +55,14 @@ func AdminMiddleware() fiber.Handler {
 			return lib.HandleServiceError(c, lib.ErrInvalidToken, msg)
 		}
 
-		authService := services.NewAuthService()
-
-		claims, err := authService.ParseToken(token, true)
+		claims, err := mw.authService.ParseToken(token, true)
 		if err != nil {
 			msg := fmt.Sprintf("Failed to parse access token in admin middleware: %v", err)
 			return lib.HandleServiceError(c, err, msg)
 		}
 
-		// Initialize Cache service
-		cacheService := services.NewCacheService()
-
 		// Check if token is blacklisted with graceful Redis failure handling
-		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
+		blacklisted, err := mw.cacheService.IsTokenBlacklisted(claims.Jti)
 		if err != nil {
 			lib.HandleServiceWarning(c, "Redis blacklist check failed in admin middleware", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down

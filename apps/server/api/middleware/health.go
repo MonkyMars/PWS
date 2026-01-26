@@ -9,7 +9,7 @@ import (
 )
 
 // CreateHealthMiddleware returns a middleware that tracks route metrics
-func CreateHealthMiddleware() fiber.Handler {
+func (mw *Middleware) CreateHealthMiddleware() fiber.Handler {
 	manager := workers.GetGlobalManager()
 	if manager == nil {
 		// Return no-op middleware if health logging is disabled

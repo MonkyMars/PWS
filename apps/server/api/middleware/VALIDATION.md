@@ -42,7 +42,7 @@ type ValidationRule struct {
     MinLength int                          // Minimum string length
     MaxLength int                          // Maximum string length
     Pattern   string                       // Regex pattern (future)
-    Validator func(value interface{}) error // Custom validator function
+    Validator func(value any) error // Custom validator function
 }
 ```
 
@@ -56,7 +56,7 @@ var AuthRequestValidation = ValidationConfig{
         {
             Field:    "Email",
             Required: true,
-            Validator: func(value interface{}) error {
+            Validator: func(value any) error {
                 email := fmt.Sprintf("%v", value)
                 if !strings.Contains(email, "@") {
                     return fmt.Errorf("email must be a valid email address")
@@ -193,7 +193,7 @@ var CustomValidation = middleware.ValidationConfig{
         {
             Field:    "Age",
             Required: true,
-            Validator: func(value interface{}) error {
+            Validator: func(value any) error {
                 age, ok := value.(int)
                 if !ok {
                     return fmt.Errorf("age must be a number")
@@ -211,7 +211,7 @@ var CustomValidation = middleware.ValidationConfig{
 ### Advanced Custom Validator
 
 ```go
-func phoneNumberValidator(value interface{}) error {
+func phoneNumberValidator(value any) error {
     phone := fmt.Sprintf("%v", value)
     phoneRegex := regexp.MustCompile(`^\+?[\d\s\-\(\)]{10,}$`)
 

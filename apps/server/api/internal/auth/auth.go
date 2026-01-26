@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/MonkyMars/PWS/api/middleware"
@@ -110,7 +109,7 @@ func (ar *AuthRoutes) Me(c fiber.Ctx) error {
 	}
 
 	// Fetch user info using injected service
-	user, err := ar.authService.GetUserByID(claims.Sub)
+	user, err := ar.authService.GetUserByID(claims.Id)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to retrieve user info for user ID %s: %v", claims.Sub, err)
 		return lib.HandleServiceError(c, err, msg)

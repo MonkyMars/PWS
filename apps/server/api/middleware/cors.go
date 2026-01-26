@@ -12,7 +12,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 )
 
-func SetupCORS() fiber.Handler {
+func (mw *Middleware) SetupCORS() fiber.Handler {
 	cfg := config.Get()
 	return cors.New(cors.Config{
 		AllowOrigins:     cfg.Cors.AllowOrigins,

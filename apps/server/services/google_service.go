@@ -198,7 +198,7 @@ func (gs *GoogleService) SaveUserRefreshToken(userID uuid.UUID, refreshToken str
 }
 
 func (gs *GoogleService) LoadUserRefreshToken(userID uuid.UUID) (string, error) {
-	query := Query().SetOperation("select").SetTable(lib.TableUserOAuthTokens).SetSelect(database.PrefixQuery(lib.TableUserOAuthTokens, []string{"refresh_token", "id"})).SetLimit(1)
+	query := Query().SetOperation("select").SetTable(lib.TableUserOAuthTokens).SetSelect([]string{"refresh_token", "id"}).SetLimit(1)
 	query.Where["user_oauth_tokens.user_id"] = userID
 	query.Where["user_oauth_tokens.provider"] = "google"
 

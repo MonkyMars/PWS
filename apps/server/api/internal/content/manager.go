@@ -13,6 +13,7 @@ import (
 // This makes the code more testable and maintainable.
 type ContentRoutes struct {
 	contentService services.ContentServiceInterface
+	middleware     *middleware.Middleware
 	logger         *config.Logger
 }
 
@@ -22,6 +23,7 @@ type ContentRoutes struct {
 func NewContentRoutesWithDefaults() *ContentRoutes {
 	return &ContentRoutes{
 		contentService: services.NewContentService(),
+		middleware:     middleware.NewMiddleware(),
 		logger:         config.SetupLogger(),
 	}
 }
@@ -42,7 +44,7 @@ func (cr *ContentRoutes) RegisterRoutes(app *fiber.App) {
 // registerFileRoutes sets up all file-related endpoints with proper middleware and handlers
 func (cr *ContentRoutes) registerFileRoutes(router fiber.Router) {
 	// Apply authentication middleware to all file routes
-	router.Use(middleware.AuthMiddleware())
+	router.Use(cr.middleware.AuthMiddleware())
 
 	// File upload endpoints - organized under /upload for clear separation
 	upload := router.Group("/upload")

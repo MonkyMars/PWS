@@ -14,6 +14,13 @@ export interface User {
 }
 
 /**
+ * Teacher interface extending User with additional properties
+ */
+export interface Teacher extends User {
+  subjectId: string;
+}
+
+/**
  * Authentication credentials for login
  */
 export interface LoginCredentials {

@@ -25,14 +25,16 @@ func App() error {
 	// Create Fiber app with centralized config
 	app := fiber.New(config.SetupFiber())
 
+	mw := middleware.NewMiddleware()
+
 	// Add CORS middleware
-	app.Use(middleware.SetupCORS())
+	app.Use(mw.SetupCORS())
 
 	// Add logging middleware
 	app.Use(logger.HTTPMiddleware())
 
 	// Add health monitoring middleware
-	app.Use(middleware.CreateHealthMiddleware())
+	app.Use(mw.CreateHealthMiddleware())
 
 	// Log server startup
 	logger.ServerStart()

@@ -1,25 +1,16 @@
 import { Link } from 'react-router';
-import { Bell, FileText, Clock, ChevronRight } from 'lucide-react';
-import type { Subject } from '~/types';
+import { ChevronRight } from 'lucide-react';
+import type { Subject, Teacher } from '~/types';
 
 interface SubjectCardProps {
   subject: Subject;
+  teachers: Teacher[] | undefined;
   searchTerm?: string;
 }
 
-export function SubjectCard({ subject, searchTerm }: SubjectCardProps) {
+export function SubjectCard({ subject, searchTerm, teachers }: SubjectCardProps) {
   const getSubjectColor = () => {
     return subject.color;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('nl-NL', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   const highlightText = (text: string, highlight?: string) => {
@@ -57,13 +48,40 @@ export function SubjectCard({ subject, searchTerm }: SubjectCardProps) {
           <ChevronRight className="h-5 w-5 text-neutral-400 group-hover:text-primary-600 transition-colors" />
         </div>
 
-        {/* Teacher */}
-        <div className="mb-4">
-          <p className="text-sm text-neutral-600">
-            Docent:{' '}
-            <span className="font-medium">{highlightText(subject.teacherName, searchTerm)}</span>
-          </p>
-        </div>
+        {/* Teachers */}
+        {teachers && teachers?.length > 0 && (
+          <div className="flex justify-end mr-2">
+            <div className="flex items-center">
+              {teachers
+                .filter((teacher) => teacher.subjectId === subject.id)
+                .slice(0, 3)
+                .map((teacher, index) => {
+                  const colors = [
+                    'bg-yellow-500',
+                    'bg-purple-500',
+                    'bg-green-500',
+                    'bg-red-500',
+                    'bg-blue-500',
+                  ];
+                  const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                  return (
+                    <div
+                      key={teacher.id || index}
+                      className={`w-6 h-6 rounded-full ${randomColor} text-white flex items-center justify-center text-xs font-medium border-2 border-white`}
+                      style={{ marginLeft: index > 0 ? '-0.5rem' : '0' }}
+                    >
+                      {teacher.username.charAt(0).toUpperCase()}
+                    </div>
+                  );
+                })}
+              {teachers.filter((teacher) => teacher.subjectId === subject.id).length > 3 && (
+                <div className="ml-2 text-sm text-neutral-600 font-medium">
+                  +{teachers.filter((teacher) => teacher.subjectId === subject.id).length - 3}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </Link>
   );

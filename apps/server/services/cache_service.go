@@ -3,12 +3,14 @@ package services
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/types"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -20,10 +22,16 @@ var (
 )
 
 // CacheService provides Redis caching functionality with connection pooling and retry logic
-type CacheService struct{}
+type CacheService struct{
+	logger *config.Logger
+	config *config.Config
+}
 
 func NewCacheService() *CacheService {
-	return &CacheService{}
+	return &CacheService{
+		logger: config.SetupLogger(),
+		config: config.Get(),
+	}
 }
 
 // GetRedisClient returns a singleton Redis client with proper connection pooling
@@ -213,9 +221,9 @@ func (cs *CacheService) Exists(key string) (bool, error) {
 
 // BlacklistToken adds a token's jti to the blacklist with expiration and retry logic
 func (cs *CacheService) BlacklistToken(jti string, exp time.Time) error {
-	ttl := time.Until(exp)
-	if ttl <= 0 {
-		return nil // token already expired, no need to store
+	ttl := cs.config.Auth.BlacklistCacheTTL
+	if exp.After(time.Now()) {
+		ttl = time.Until(exp)
 	}
 
 	key := fmt.Sprintf("blacklist:%s", jti)
@@ -254,6 +262,46 @@ func (cs *CacheService) GetUserSession(userID, sessionID string) (bool, error) {
 func (cs *CacheService) DeleteUserSession(userID, sessionID string) error {
 	key := fmt.Sprintf("session:%s:%s", userID, sessionID)
 	return cs.Delete(key)
+}
+
+// Get UserFromCache retrieves a user object from cache using userID
+func (cs *CacheService) GetUserFromCache(userID uuid.UUID) (*types.User, error) {
+	key := fmt.Sprintf("user:%s", userID.String())
+	val, err := cs.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		// Refresh TTL in background
+		err = cs.Set(key, val, cs.config.Auth.CacheUserTTL)
+		if err != nil {
+			cs.logger.AuditWarn("Failed to refresh user cache TTL", "error", err, "user_id", userID.String())
+		}
+	}()
+
+	if val == "" {
+		return nil, nil // not found in cache
+	}
+
+	user := &types.User{}
+	err = json.Unmarshal([]byte(val), user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// SetUserInCache stores a user object in cache with TTL
+func (cs *CacheService) SetUserInCache(user *types.User) error {
+	key := fmt.Sprintf("user:%s", user.Id.String())
+	data, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+
+	return cs.Set(key, data, cs.config.Auth.CacheUserTTL)
 }
 
 // SetRateLimit sets a rate limit counter for an IP/endpoint combination

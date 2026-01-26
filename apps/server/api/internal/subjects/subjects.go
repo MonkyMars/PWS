@@ -71,3 +71,26 @@ func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
 
 	return response.Success(c, subjects)
 }
+
+func (sr *SubjectRoutes) GetSubjectTeachers(c fiber.Ctx) error {
+	subjectId, err := lib.GetParams(c, "subjectId")
+	if err != nil {
+		return lib.HandleServiceError(c, err)
+	}
+
+	teachers, err := sr.subjectService.GetSubjectTeachers(subjectId["subjectId"])
+	if err != nil {
+		return lib.HandleServiceError(c, err)
+	}
+
+	return response.Success(c, teachers)
+}
+
+func (sr *SubjectRoutes) GetAllTeachers(c fiber.Ctx) error {
+	teachers, err := sr.subjectService.GetAllTeachers()
+	if err != nil {
+		return lib.HandleServiceError(c, err)
+	}
+
+	return response.Success(c, teachers)
+}
