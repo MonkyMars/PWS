@@ -18,7 +18,7 @@ func (sr *SubjectRoutes) GetSubjectByID(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
-	subject, err := sr.subjectService.GetSubjectByID(subjectID)
+	subject, err := sr.subjectService.GetSubjectByID(subjectID["subjectId"])
 	if err != nil {
 		msg := fmt.Sprintf("Failed to retrieve subject for subject ID %s: %v", subjectID, err)
 		return lib.HandleServiceError(c, err, msg)
@@ -50,16 +50,15 @@ func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
 	}
 
 	var subjects []types.Subject
-	switch claims.Role {
-	case lib.RoleAdmin, lib.RoleTeacher:
+	if lib.HasPrivileges(c) {
 		s, err := sr.subjectService.GetAllSubjects()
 		if err != nil {
 			msg := fmt.Sprintf("Failed to retrieve all subjects for user ID %s with role %s: %v", claims.Sub.String(), claims.Role, err)
 			return lib.HandleServiceError(c, err, msg)
 		}
 		subjects = s
-	case lib.RoleStudent:
-		s, err := sr.subjectService.GetUserSubjects(claims.Sub.String())
+	} else {
+		s, err := sr.subjectService.GetUserSubjects(user.Id.String())
 		if err != nil {
 			msg := fmt.Sprintf("Failed to retrieve subjects for student user ID %s: %v", claims.Sub.String(), err)
 			return lib.HandleServiceError(c, err, msg)

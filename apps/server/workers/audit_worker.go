@@ -291,6 +291,7 @@ func (aw *AuditWorker) tryFlushBatchWithCount(entries []types.AuditLog) (int64, 
 			"message":    entry.Message,
 			"attrs":      entry.Attrs,
 			"entry_hash": entry.EntryHash,
+			"source":     entry.Source,
 		}
 
 		auditEntries = append(auditEntries, auditEntry)

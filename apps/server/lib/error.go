@@ -2,7 +2,6 @@ package lib
 
 import (
 	"errors"
-	"log"
 
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
@@ -66,6 +65,7 @@ var (
 	ErrDatabaseConnection = errors.New("database connection failed")
 	ErrExternalService    = errors.New("external service error")
 	ErrWorkerUnavailable  = errors.New("worker unavailable")
+	ErrNotFound           = errors.New("resource not found")
 )
 
 // ErrorHandler provides centralized error handling with consistent responses
@@ -145,6 +145,8 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error, message string) error {
 		return response.NotFound(c, "Service not found")
 	case errors.Is(err, ErrNoLinkedAccount):
 		return response.NotFound(c, "No linked account found")
+	case errors.Is(err, ErrNotFound):
+		return response.NotFound(c, "Resource not found")
 
 	// Conflict errors (409)
 	case errors.Is(err, ErrUserAlreadyExists):
@@ -153,9 +155,9 @@ func (eh *ErrorHandler) Handle(c fiber.Ctx, err error, message string) error {
 		return response.Conflict(c, "Username is already taken")
 
 	// Bad Request errors (400)
-	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrInvalidFormat):
+	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrInvalidFormat), errors.Is(err, ErrMissingFile):
 		return response.BadRequest(c, "Invalid input data")
-	case errors.Is(err, ErrMissingField):
+	case errors.Is(err, ErrMissingField), errors.Is(err, ErrMissingParameter):
 		return response.BadRequest(c, "Required field is missing")
 	case errors.Is(err, ErrInvalidRequest):
 		return response.BadRequest(c, "Invalid request")

@@ -33,6 +33,7 @@ type AuditLog struct {
 	Message   string         `json:"message"`
 	Attrs     map[string]any `json:"attrs,omitempty"`
 	EntryHash string         `json:"entry_hash,omitempty"`
+	Source    string         `json:"source,omitempty"`
 }
 
 type HealthLog struct {
@@ -43,4 +44,5 @@ type HealthLog struct {
 	ErrorCount     int64         `json:"error_count"`
 	AverageLatency time.Duration `json:"average_latency"`
 	TimeSpan       time.Duration `json:"time_span"`
+	Source         string        `json:"source,omitempty"`
 }
