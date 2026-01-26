@@ -38,6 +38,8 @@ var (
 	ErrHashingPassword   = errors.New("error hashing password") // Alias for backwards compatibility
 	ErrUserCreation      = errors.New("error creating user")
 	ErrCreateUser        = errors.New("error creating user") // Alias for backwards compatibility
+	ErrPasswordMismatch  = errors.New("password and confirmation do not match")
+	ErrWeakPassword      = errors.New("password does not meet strength requirements")
 
 	// Content management errors
 	ErrFileNotFound    = errors.New("file not found")

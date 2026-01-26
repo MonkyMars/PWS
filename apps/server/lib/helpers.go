@@ -2,6 +2,7 @@ package lib
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
@@ -62,4 +63,27 @@ func GetParams(c fiber.Ctx, keys ...string) (map[string]string, error) {
 		}
 	}
 	return params, nil
+}
+
+func ValidatePasswordStrength(password string) error {
+	var hasMinLen, hasUpper, hasLower, hasNumber, hasSpecial bool
+	if len(password) >= 8 {
+		hasMinLen = true
+	}
+	for _, char := range password {
+		switch {
+		case 'A' <= char && char <= 'Z':
+			hasUpper = true
+		case 'a' <= char && char <= 'z':
+			hasLower = true
+		case '0' <= char && char <= '9':
+			hasNumber = true
+		case strings.ContainsRune("!@#$%^&*()-_=+[]{}|;:',.<>?/", char):
+			hasSpecial = true
+		}
+	}
+	if hasMinLen && hasUpper && hasLower && hasNumber && hasSpecial {
+		return nil
+	}
+	return ErrWeakPassword
 }
