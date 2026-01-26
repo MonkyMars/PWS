@@ -54,6 +54,18 @@ func (ar *AuthRoutes) Register(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, lib.ErrInvalidRequest, msg)
 	}
 
+	// Validate password confirmation
+	if registerRequest.Password != registerRequest.ConfirmPassword {
+		msg := "Password and confirm password do not match"
+		return lib.HandleServiceError(c, lib.ErrPasswordMismatch, msg)
+	}
+
+	// Validate password strength
+	if err := lib.ValidatePasswordStrength(registerRequest.Password); err != nil {
+		msg := "Password does not meet strength requirements"
+		return lib.HandleServiceError(c, err, msg)
+	}
+
 	// Attempt registration using injected service
 	user, err := ar.authService.Register(registerRequest)
 	if err != nil {
