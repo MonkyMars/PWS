@@ -15,28 +15,28 @@ func (ar *AuthRoutes) Login(c fiber.Ctx) error {
 	// Get validated request from context (validation middleware has already processed it)
 	authRequest, err := middleware.GetValidatedRequest[types.AuthRequest](c)
 	if err != nil {
-		ar.logger.Error("Failed to get validated request", "error", err)
-		return lib.HandleValidationError(c, err, "request")
+		msg := fmt.Sprintf("Failed to get validated request: %v", err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Attempt login using injected service
 	user, err := ar.authService.Login(authRequest)
 	if err != nil {
-		ar.logger.AuditError("Login failed", "email", authRequest.Email, "error", err.Error())
-		return lib.HandleAuthError(c, err, "login")
+		msg := fmt.Sprintf("Login failed for email %s: %v", authRequest.Email, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Generate tokens using injected service
 	accessToken, err := ar.authService.GenerateAccessToken(user)
 	if err != nil {
-		ar.logger.AuditError("Failed to generate access token", "user_id", user.Id, "error", err)
-		return lib.HandleServiceError(c, lib.ErrTokenGeneration)
+		msg := fmt.Sprintf("Failed to generate access token for user ID %s: %v", user.Id, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	refreshToken, err := ar.authService.GenerateRefreshToken(user)
 	if err != nil {
-		ar.logger.AuditError("Failed to generate refresh token", "user_id", user.Id, "error", err)
-		return lib.HandleServiceError(c, lib.ErrTokenGeneration)
+		msg := fmt.Sprintf("Failed to generate refresh token for user ID %s: %v", user.Id, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	ar.cookieService.SetAuthCookies(c, accessToken, refreshToken)
@@ -49,28 +49,28 @@ func (ar *AuthRoutes) Register(c fiber.Ctx) error {
 	// Get validated request from context (validation middleware has already processed it)
 	registerRequest, err := middleware.GetValidatedRequest[types.RegisterRequest](c)
 	if err != nil {
-		ar.logger.Error("Failed to get validated request", "error", err)
-		return lib.HandleValidationError(c, err, "request")
+		msg := fmt.Sprintf("Failed to get validated register request: %v", err)
+		return lib.HandleServiceError(c, lib.ErrInvalidRequest, msg)
 	}
 
 	// Attempt registration using injected service
 	user, err := ar.authService.Register(registerRequest)
 	if err != nil {
-		ar.logger.AuditError("Registration failed", "email", registerRequest.Email, "username", registerRequest.Username, "error", err.Error())
-		return lib.HandleServiceError(c, err)
+		msg := fmt.Sprintf("Registration failed for email %s, username %s: %v", registerRequest.Email, registerRequest.Username, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Generate tokens for the new user using injected service
 	accessToken, err := ar.authService.GenerateAccessToken(user)
 	if err != nil {
-		ar.logger.AuditError("Failed to generate access token", "user_id", user.Id, "error", err)
-		return response.InternalServerError(c, "Failed to generate access token")
+		msg := fmt.Sprintf("Failed to generate access token for user ID %s: %v", user.Id, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	refreshToken, err := ar.authService.GenerateRefreshToken(user)
 	if err != nil {
-		ar.logger.AuditError("Failed to generate refresh token", "user_id", user.Id, "error", err)
-		return response.InternalServerError(c, "Failed to generate refresh token")
+		msg := fmt.Sprintf("Failed to generate refresh token for user ID %s: %v", user.Id, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	ar.cookieService.SetAuthCookies(c, accessToken, refreshToken)
@@ -85,17 +85,13 @@ func (ar *AuthRoutes) RefreshToken(c fiber.Ctx) error {
 	// Refresh tokens with rotation using injected service
 	authResponse, err := ar.authService.RefreshToken(token)
 	if err != nil {
-		ar.logger.Error("Token refresh failed", "error", err)
-
 		// Check if this might be a token reuse attack
 		if strings.Contains(err.Error(), "revoked") || strings.Contains(err.Error(), "blacklisted") {
-			ar.logger.Warn("Possible token reuse attack detected during refresh",
-				"client_ip", c.IP(),
-				"user_agent", c.Get("User-Agent"),
-				"error", err.Error())
+			msg := fmt.Sprintf("Possible token reuse attack detected - client_ip: %s, user_agent: %s, error: %v", c.IP(), c.Get("User-Agent"), err)
+			return lib.HandleServiceError(c, lib.ErrTokenReuse, msg)
 		}
-
-		return response.Unauthorized(c, "Invalid or expired refresh token")
+		msg := fmt.Sprintf("Token refresh failed: %v", err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Set new rotated tokens in secure cookies using injected service
@@ -106,18 +102,22 @@ func (ar *AuthRoutes) RefreshToken(c fiber.Ctx) error {
 
 // Me returns the current authenticated user's information
 func (ar *AuthRoutes) Me(c fiber.Ctx) error {
-	claims := lib.GetUserFromContext(c)
+	claims, err := lib.GetValidatedClaims(c)
+	if err != nil {
+		msg := "Failed to get authenticated user claims from context"
+		return lib.HandleServiceError(c, err, msg)
+	}
 
 	// Fetch user info using injected service
 	user, err := ar.authService.GetUserByID(claims.Id)
 	if err != nil {
-		ar.logger.AuditError("Failed to retrieve user info", "user_id", claims.Id, "error", err)
-		return response.InternalServerError(c, "Failed to retrieve user info")
+		msg := fmt.Sprintf("Failed to retrieve user info for user ID %s: %v", claims.Sub, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	if user == nil {
-		ar.logger.Error("User not found", "user_id", claims.Id)
-		return response.NotFound(c, "User not found")
+		msg := fmt.Sprintf("User not found for user ID %s", claims.Sub)
+		return lib.HandleServiceError(c, lib.ErrUserNotFound, msg)
 	}
 
 	return response.Success(c, user)
@@ -130,23 +130,26 @@ func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
 	refreshToken := c.Cookies(lib.RefreshTokenCookieName)
 	user := lib.GetUserFromContext(c)
 
-	go func() {
-		// Process access token if present using injected service
-		if strings.TrimSpace(accessToken) != "" {
-			// Try to blacklist access token (may be invalid, but that's okay)
+	// Blacklist access token if present using injected service
+	if strings.TrimSpace(accessToken) != "" {
+		// Validate and blacklist access token
+		_, err := ar.authService.GetUserFromToken(accessToken)
+		if err != nil {
+			lib.HandleServiceWarning(c, "Invalid access token during logout, clearing anyway", "error", err)
+		} else {
+			// Token is valid, blacklist it
 			if err := ar.authService.BlacklistToken(accessToken, true); err != nil {
-				ar.logger.Warn("Failed to blacklist access token, may already be invalid", "error", err)
+				lib.HandleServiceWarning(c, "Failed to blacklist access token during logout", "error", err)
 				// Don't return error, continue with logout process
 			}
 		}
 
-		// Process refresh token if present using injected service
-		if strings.TrimSpace(refreshToken) != "" {
-			// Try to blacklist refresh token (may be invalid, but that's okay)
-			if err := ar.authService.BlacklistToken(refreshToken, false); err != nil {
-				ar.logger.Warn("Failed to blacklist refresh token, may already be invalid", "error", err)
-				// Don't return error, continue with logout process
-			}
+	// Process refresh token if present using injected service
+	if strings.TrimSpace(refreshToken) != "" {
+		// Try to blacklist refresh token (may be invalid, but that's okay)
+		if err := ar.authService.BlacklistToken(refreshToken, false); err != nil {
+			lib.HandleServiceWarning(c, "Failed to blacklist refresh token, may already be invalid", "error", err)
+			// Don't return error, continue with logout process
 		}
 
 		// Clear user from cache if user exists

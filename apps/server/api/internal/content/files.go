@@ -19,10 +19,12 @@ func (cr *ContentRoutes) GetSingleFile(c fiber.Ctx) error {
 	// Retrieve file metadata using injected service
 	file, err := cr.contentService.GetFileByID(params["fileId"])
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := fmt.Sprintf("Failed to retrieve file metadata for file ID %s: %v", fileID, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 	if file == nil {
-		return lib.HandleServiceError(c, lib.ErrFileNotFound)
+		msg := fmt.Sprintf("File not found for file ID %s", fileID)
+		return lib.HandleServiceError(c, lib.ErrFileNotFound, msg)
 	}
 
 	// Return file metadata
@@ -39,7 +41,8 @@ func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 	// Retrieve files for the subject using injected service
 	files, err := cr.contentService.GetFilesBySubjectID(params["subjectId"], params["folderId"], lib.HasPrivileges(c))
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := fmt.Sprintf("Failed to retrieve files for subject ID %s, folder ID %s: %v", subjectId, folderId, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	items := []any{}
@@ -72,25 +75,27 @@ func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 
 // /files/upload/single
 func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
-	user := lib.GetUserFromContext(c)
-	if user == nil {
-		return lib.HandleServiceError(c, lib.ErrUnauthorized)
+	claims, err := lib.GetValidatedClaims(c)
+	if err != nil {
+		msg := "Failed to get authenticated user claims for file upload"
+		return lib.HandleServiceError(c, err, msg)
 	}
 
-	if !lib.HasPrivileges(c) {
-		return lib.HandleServiceError(c, lib.ErrInsufficientPermissions)
+	if claims.Role != lib.RoleAdmin && claims.Role != lib.RoleTeacher {
+		msg := fmt.Sprintf("User ID %s with role %s attempted to upload file without permission", claims.Sub, claims.Role)
+		return lib.HandleServiceError(c, lib.ErrForbidden, msg)
 	}
 
 	// Parse request body
 	var req types.UploadSingleFileRequest
 	if err := c.Bind().Body(&req); err != nil {
-		cr.logger.AuditWarn("UploadSingleFile: Failed to parse request body - %v", err)
-		return response.BadRequest(c, "Invalid request body: "+err.Error())
+		msg := fmt.Sprintf("Failed to parse single file upload request body for user ID %s: %v", claims.Sub, err)
+		return lib.HandleServiceError(c, lib.ErrInvalidRequest, msg)
 	}
 
 	if req.File.FileID == "" || req.File.Name == "" || req.File.MimeType == "" {
-		cr.logger.AuditWarn("UploadSingleFile: Missing required file fields")
-		return response.BadRequest(c, "Missing required file fields")
+		msg := fmt.Sprintf("Missing required file fields in upload request for user ID %s", claims.Sub)
+		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
 	// Upload meta data using injected service
@@ -105,7 +110,8 @@ func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 
 	file, err := cr.contentService.CreateFile(fileData)
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := fmt.Sprintf("Failed to upload file %s (ID: %s) for user ID %s: %v", req.File.Name, req.File.FileID, claims.Sub, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Make the file public on Google Drive
@@ -118,32 +124,35 @@ func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 }
 
 func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
-	if !lib.HasPrivileges(c) {
-		return lib.HandleServiceError(c, lib.ErrInsufficientPermissions)
+	claims, err := lib.GetValidatedClaims(c)
+	if err != nil {
+		msg := "Failed to get authenticated user claims for multiple file upload"
+		return lib.HandleServiceError(c, err, msg)
 	}
 
-	user := lib.GetUserFromContext(c)
-	if user == nil {
-		return lib.HandleServiceError(c, lib.ErrUnauthorized)
+	if claims.Role != lib.RoleAdmin && claims.Role != lib.RoleTeacher {
+		msg := fmt.Sprintf("User ID %s with role %s attempted to upload multiple files without permission", claims.Sub, claims.Role)
+		return lib.HandleServiceError(c, lib.ErrForbidden, msg)
 	}
 
 	// Parse request body
 	var req types.UploadMultipleFilesRequest
 	if err := c.Bind().Body(&req); err != nil {
-		cr.logger.AuditError("UploadMultipleFiles: Failed to parse request body - %v", err)
-		return response.BadRequest(c, "Invalid request body: "+err.Error())
+		msg := fmt.Sprintf("Failed to parse multiple files upload request body for user ID %s: %v", claims.Sub, err)
+		return lib.HandleServiceError(c, lib.ErrInvalidRequest, msg)
 	}
 
 	if len(req.Files) == 0 {
-		return lib.HandleServiceError(c, lib.ErrInvalidInput)
+		msg := fmt.Sprintf("No files provided in multiple upload request for user ID %s", claims.Sub)
+		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
 	// Validate and prepare file data
 	filesData := make([]map[string]any, 0, len(req.Files))
 	for _, file := range req.Files {
 		if file.FileID == "" || file.Name == "" || file.MimeType == "" {
-			cr.logger.AuditError("UploadMultipleFiles: Missing required file fields for file: %s", file.Name)
-			return response.BadRequest(c, "Missing required file fields")
+			msg := fmt.Sprintf("Missing required file fields for file %s in multiple upload for user ID %s", file.Name, claims.Sub)
+			return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 		}
 
 		fileData := map[string]any{
@@ -160,7 +169,8 @@ func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 	// Upload metadata using injected service
 	files, err := cr.contentService.CreateMultipleFiles(filesData)
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := fmt.Sprintf("Failed to upload %d files for user ID %s, subject ID %s: %v", len(req.Files), claims.Sub, req.SubjectID, err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Make all files public on Google Drive

@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"github.com/MonkyMars/PWS/api/response"
+	"fmt"
+
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/gofiber/fiber/v3"
@@ -12,13 +13,14 @@ func (mw *Middleware) AuthMiddleware() fiber.Handler {
 		token := c.Cookies(lib.AccessTokenCookieName)
 
 		if token == "" {
-			return lib.HandleAuthError(c, lib.ErrInvalidToken, "middleware authentication")
+			msg := "No access token found in cookies during authentication middleware"
+			return lib.HandleServiceError(c, lib.ErrInvalidToken, msg)
 		}
 
 		claims, err := mw.authService.ParseToken(token, true)
 		if err != nil {
-			mw.logger.AuditError("Failed to parse access token", "error", err)
-			return lib.HandleAuthError(c, err, "middleware authentication")
+			msg := fmt.Sprintf("Failed to parse access token in authentication middleware: %v", err)
+			return lib.HandleServiceError(c, err, msg)
 		}
 
 		// Initialize Cache service
@@ -27,20 +29,14 @@ func (mw *Middleware) AuthMiddleware() fiber.Handler {
 		// Check if token is blacklisted with graceful Redis failure handling
 		blacklisted, err := cacheService.IsTokenBlacklisted(claims.Jti)
 		if err != nil {
-			mw.logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
+			lib.HandleServiceWarning(c, "Redis blacklist check failed in auth middleware", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down
 		} else if blacklisted {
 			// SECURITY: This could indicate a token reuse attack
-			mw.logger.Warn("Blacklisted token access attempt detected",
-				"jti", claims.Jti.String(),
-				"user_id", claims.Sub,
-				"user_email", claims.Email,
-				"client_ip", c.IP(),
-				"user_agent", c.Get("User-Agent"))
-
+			msg := fmt.Sprintf("Blacklisted token access attempt - jti: %s, user_id: %s, user_email: %s, client_ip: %s, user_agent: %s",
+				claims.Jti.String(), claims.Sub, claims.Email, c.IP(), c.Get("User-Agent"))
 			// TODO: Invalidate all tokens for this user as a precaution
-
-			return lib.HandleAuthError(c, lib.ErrTokenRevoked, "middleware authentication")
+			return lib.HandleServiceError(c, lib.ErrTokenRevoked, msg)
 		}
 
 		// Store user claims in context locals for downstream handlers
@@ -55,42 +51,33 @@ func (mw *Middleware) AdminMiddleware() fiber.Handler {
 		token := c.Cookies(lib.AccessTokenCookieName)
 
 		if token == "" {
-			return lib.HandleAuthError(c, lib.ErrInvalidToken, "admin middleware authentication")
+			msg := "No access token found in cookies during admin middleware authentication"
+			return lib.HandleServiceError(c, lib.ErrInvalidToken, msg)
 		}
 
 		claims, err := mw.authService.ParseToken(token, true)
 		if err != nil {
-			mw.logger.AuditError("Failed to parse access token", "error", err)
-			return lib.HandleAuthError(c, err, "admin middleware authentication")
+			msg := fmt.Sprintf("Failed to parse access token in admin middleware: %v", err)
+			return lib.HandleServiceError(c, err, msg)
 		}
 
 		// Check if token is blacklisted with graceful Redis failure handling
 		blacklisted, err := mw.cacheService.IsTokenBlacklisted(claims.Jti)
 		if err != nil {
-			mw.logger.AuditError("Redis blacklist check failed, denying request for security", "error", err, "jti", claims.Jti.String())
+			lib.HandleServiceWarning(c, "Redis blacklist check failed in admin middleware", "error", err, "jti", claims.Jti.String())
 			// Do not return faulty Redis errors to the client, let the request through if Redis is down
 		} else if blacklisted {
 			// SECURITY: This could indicate a token reuse attack
-			mw.logger.Warn("Blacklisted token access attempt detected",
-				"jti", claims.Jti.String(),
-				"user_id", claims.Sub,
-				"user_email", claims.Email,
-				"client_ip", c.IP(),
-				"user_agent", c.Get("User-Agent"))
-
+			msg := fmt.Sprintf("Blacklisted token access attempt in admin middleware - jti: %s, user_id: %s, user_email: %s, client_ip: %s, user_agent: %s",
+				claims.Jti.String(), claims.Sub, claims.Email, c.IP(), c.Get("User-Agent"))
 			// TODO: Invalidate all tokens for this user as a precaution
-
-			return response.Unauthorized(c, "Token has been revoked")
+			return lib.HandleServiceError(c, lib.ErrTokenRevoked, msg)
 		}
 
 		if claims.Role != lib.RoleAdmin {
-			mw.logger.Warn("Unauthorized admin access attempt detected",
-				"user_id", claims.Sub,
-				"user_email", claims.Email,
-				"user_role", claims.Role,
-				"client_ip", c.IP(),
-				"user_agent", c.Get("User-Agent"))
-			return response.Forbidden(c, "Admin access required - Current role: "+claims.Role)
+			msg := fmt.Sprintf("Unauthorized admin access attempt - user_id: %s, user_email: %s, user_role: %s, client_ip: %s, user_agent: %s",
+				claims.Sub, claims.Email, claims.Role, c.IP(), c.Get("User-Agent"))
+			return lib.HandleServiceError(c, lib.ErrInsufficientPermissions, msg)
 		}
 
 		// Store user claims in context locals for downstream handlers

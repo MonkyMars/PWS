@@ -1,6 +1,8 @@
 package workers
 
 import (
+	"fmt"
+
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/workers"
@@ -10,12 +12,14 @@ import (
 func (wr *WorkerRoutes) GetWorkerHealth(c fiber.Ctx) error {
 	manager := workers.GetGlobalManager()
 	if manager == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Worker manager not available for health check"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	healthStatus := manager.HealthStatus()
 	if healthStatus == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Unable to retrieve worker health status from manager"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	// Determine overall status
@@ -26,7 +30,8 @@ func (wr *WorkerRoutes) GetWorkerHealth(c fiber.Ctx) error {
 		}
 	}
 	if !isHealthy {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Workers health check failed - one or more workers are unhealthy"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	return response.SuccessWithMessage(c, "Worker health status retrieved", healthStatus)
@@ -36,7 +41,8 @@ func (wr *WorkerRoutes) GetWorkerHealth(c fiber.Ctx) error {
 func (wr *WorkerRoutes) GetAuditWorkerHealth(c fiber.Ctx) error {
 	healthStatus := workers.AuditHealthStatus()
 	if healthStatus == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Unable to retrieve audit worker health status"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	isHealthy := false
@@ -47,7 +53,8 @@ func (wr *WorkerRoutes) GetAuditWorkerHealth(c fiber.Ctx) error {
 	}
 
 	if !isHealthy {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Audit worker health check failed - worker is not healthy"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	return response.SuccessWithMessage(c, "Audit worker health status retrieved", healthStatus)
@@ -57,7 +64,8 @@ func (wr *WorkerRoutes) GetAuditWorkerHealth(c fiber.Ctx) error {
 func (wr *WorkerRoutes) GetHealthWorkerHealth(c fiber.Ctx) error {
 	healthStatus := workers.ServiceHealthStatus()
 	if healthStatus == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Unable to retrieve health monitoring worker status"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	isHealthy := false
@@ -68,7 +76,8 @@ func (wr *WorkerRoutes) GetHealthWorkerHealth(c fiber.Ctx) error {
 	}
 
 	if !isHealthy {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Health monitoring worker health check failed - worker is not healthy"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	return response.SuccessWithMessage(c, "Health worker status retrieved", healthStatus)
@@ -78,12 +87,14 @@ func (wr *WorkerRoutes) GetHealthWorkerHealth(c fiber.Ctx) error {
 func (wr *WorkerRoutes) GetCleanupWorkerHealth(c fiber.Ctx) error {
 	manager := workers.GetGlobalManager()
 	if manager == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Worker manager not available for cleanup worker health check"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	healthStatus := manager.HealthStatus()
 	if healthStatus == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Unable to retrieve worker health status for cleanup worker"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	// Extract cleanup worker status
@@ -111,7 +122,8 @@ func (wr *WorkerRoutes) GetCleanupWorkerHealth(c fiber.Ctx) error {
 	}
 
 	if !isHealthy {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Cleanup worker health check failed - worker is not healthy"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	return response.SuccessWithMessage(c, "Cleanup worker health status retrieved", cleanupStatus)
@@ -137,12 +149,14 @@ func (wr *WorkerRoutes) GetMonitoredServices(c fiber.Ctx) error {
 func (wr *WorkerRoutes) GetServiceStatistics(c fiber.Ctx) error {
 	serviceName := c.Params("service")
 	if serviceName == "" {
-		return lib.HandleServiceError(c, lib.ErrMissingParameter)
+		msg := "Missing required service name parameter in request"
+		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
-	stats, err := workers.GetServiceStats(serviceName)
-	if err != nil {
-		return lib.HandleServiceError(c, err)
+	stats := workers.GetServiceStats(serviceName)
+	if stats == nil {
+		msg := fmt.Sprintf("Service statistics not found for service: %s", serviceName)
+		return lib.HandleServiceError(c, lib.ErrServiceNotFound, msg)
 	}
 
 	// Convert stats to a map for JSON response
@@ -172,7 +186,8 @@ func (wr *WorkerRoutes) GetServiceStatistics(c fiber.Ctx) error {
 func (wr *WorkerRoutes) TriggerCleanup(c fiber.Ctx) error {
 	err := workers.TriggerCleanupNow()
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := fmt.Sprintf("Failed to trigger manual cleanup operation: %v", err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	return response.Accepted(c, "Cleanup triggered successfully")
