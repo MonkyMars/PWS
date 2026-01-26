@@ -9,22 +9,16 @@ import (
 )
 
 func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
-	subjectId := c.Params("subjectId")
-	if subjectId == "" {
-		msg := "Missing required subjectId parameter in request"
-		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
-	}
-
-	parentId := c.Params("parentId")
-	if parentId == "" {
-		msg := "Missing required parentId parameter in request"
+	params, err := lib.GetParams(c, "subjectId", "parentId")
+	if err != nil {
+		msg := "Missing required parameters in request"
 		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
 	// Retrieve folders for the subject using injected service
 	folders, err := cr.contentService.GetFoldersByParentID(params["subjectId"], params["parentId"], lib.HasPrivileges(c))
 	if err != nil {
-		msg := fmt.Sprintf("Failed to retrieve folders for subject ID %s, parent ID %s: %v", subjectId, parentId, err)
+		msg := fmt.Sprintf("Failed to retrieve folders for subject ID %s, parent ID %s: %v", params["subjectId"], params["parentId"], err)
 		return lib.HandleServiceError(c, err, msg)
 	}
 
@@ -32,6 +26,9 @@ func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
 	for _, folder := range folders {
 		items = append(items, folder)
 	}
+
+	pageSize := lib.GetQueryParamAsInt(c, "pageSize", 20, 100)
+	page := lib.GetQueryParamAsInt(c, "page", 1, 1000)
 
 	totalPages := (len(folders) + pageSize - 1) / pageSize
 

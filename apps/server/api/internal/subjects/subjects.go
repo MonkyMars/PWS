@@ -18,7 +18,7 @@ func (sr *SubjectRoutes) GetSubjectByID(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
-	subject, err := sr.subjectService.GetSubjectByID(subjectID["subjectId"])
+	subject, err := sr.subjectService.GetSubjectByID(subjectID)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to retrieve subject for subject ID %s: %v", subjectID, err)
 		return lib.HandleServiceError(c, err, msg)
@@ -58,15 +58,12 @@ func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
 		}
 		subjects = s
 	} else {
-		s, err := sr.subjectService.GetUserSubjects(user.Id.String())
+		s, err := sr.subjectService.GetUserSubjects(claims.Sub.String())
 		if err != nil {
 			msg := fmt.Sprintf("Failed to retrieve subjects for student user ID %s: %v", claims.Sub.String(), err)
 			return lib.HandleServiceError(c, err, msg)
 		}
 		subjects = s
-	default:
-		msg := fmt.Sprintf("User ID %s with role %s does not have permission to view subjects", claims.Sub.String(), claims.Role)
-		return lib.HandleServiceError(c, lib.ErrForbidden, msg)
 	}
 
 	return response.Success(c, subjects)
@@ -75,12 +72,14 @@ func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
 func (sr *SubjectRoutes) GetSubjectTeachers(c fiber.Ctx) error {
 	subjectId, err := lib.GetParams(c, "subjectId")
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := "Failed to get subjectId parameter from request"
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	teachers, err := sr.subjectService.GetSubjectTeachers(subjectId["subjectId"])
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := fmt.Sprintf("Failed to retrieve teachers for subject ID %s: %v", subjectId["subjectId"], err)
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	return response.Success(c, teachers)
