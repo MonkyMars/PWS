@@ -34,7 +34,8 @@ func ValidateRequest[T any](config ValidationConfig) fiber.Handler {
 
 		// Bind request body
 		if err := c.Bind().Body(&req); err != nil {
-			return lib.HandleValidationError(c, err, "request_body")
+			msg := fmt.Sprintf("Failed to bind request body in validation middleware: %v", err)
+			return lib.HandleServiceError(c, lib.ErrInvalidRequest, msg)
 		}
 
 		// Validate the request
