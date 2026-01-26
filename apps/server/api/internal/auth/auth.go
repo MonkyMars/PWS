@@ -125,8 +125,10 @@ func (ar *AuthRoutes) Me(c fiber.Ctx) error {
 
 // Logout handles user logout with graceful handling of missing/invalid tokens
 func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
+	// Extract values from context before spawning goroutine to avoid race conditions
 	accessToken := c.Cookies(lib.AccessTokenCookieName)
 	refreshToken := c.Cookies(lib.RefreshTokenCookieName)
+	user := lib.GetUserFromContext(c)
 
 	// Blacklist access token if present using injected service
 	if strings.TrimSpace(accessToken) != "" {
@@ -141,7 +143,6 @@ func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
 				// Don't return error, continue with logout process
 			}
 		}
-	}
 
 	// Process refresh token if present using injected service
 	if strings.TrimSpace(refreshToken) != "" {
@@ -150,7 +151,15 @@ func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
 			lib.HandleServiceWarning(c, "Failed to blacklist refresh token, may already be invalid", "error", err)
 			// Don't return error, continue with logout process
 		}
-	}
+
+		// Clear user from cache if user exists
+		if user != nil {
+			err := ar.authService.ClearUserCache(user.Id)
+			if err != nil {
+				ar.logger.Warn("Failed to clear user cache during logout", "user_id", user.Id, "error", err)
+			}
+		}
+	}()
 
 	// Always clear auth cookies regardless of token validity using injected service
 	ar.cookieService.ClearAuthCookies(c)

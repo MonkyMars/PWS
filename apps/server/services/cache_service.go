@@ -22,7 +22,7 @@ var (
 )
 
 // CacheService provides Redis caching functionality with connection pooling and retry logic
-type CacheService struct{
+type CacheService struct {
 	logger *config.Logger
 	config *config.Config
 }
@@ -100,9 +100,7 @@ func (cs *CacheService) withRetry(operation func() error, maxRetries int) error 
 		base := 100        // 100ms base
 
 		backoff := base * (1 << attempt) // exponential
-		if backoff > maxBackoff {
-			backoff = maxBackoff
-		}
+		backoff = min(backoff, maxBackoff)
 
 		// add jitter ±50%
 		jitterBytes := make([]byte, 4)
@@ -241,29 +239,6 @@ func (cs *CacheService) IsTokenBlacklisted(jti uuid.UUID) (bool, error) {
 	return val == "true", nil
 }
 
-// SetUserSession stores user session data with TTL
-func (cs *CacheService) SetUserSession(userID, sessionID string, ttl time.Duration) error {
-	key := fmt.Sprintf("session:%s:%s", userID, sessionID)
-	return cs.Set(key, "active", ttl)
-}
-
-// GetUserSession retrieves user session data
-func (cs *CacheService) GetUserSession(userID, sessionID string) (bool, error) {
-	key := fmt.Sprintf("session:%s:%s", userID, sessionID)
-	val, err := cs.Get(key)
-	if err != nil {
-		return false, err
-	}
-
-	return val == "active", nil
-}
-
-// DeleteUserSession removes a user session
-func (cs *CacheService) DeleteUserSession(userID, sessionID string) error {
-	key := fmt.Sprintf("session:%s:%s", userID, sessionID)
-	return cs.Delete(key)
-}
-
 // Get UserFromCache retrieves a user object from cache using userID
 func (cs *CacheService) GetUserFromCache(userID uuid.UUID) (*types.User, error) {
 	key := fmt.Sprintf("user:%s", userID.String())
@@ -271,14 +246,6 @@ func (cs *CacheService) GetUserFromCache(userID uuid.UUID) (*types.User, error) 
 	if err != nil {
 		return nil, err
 	}
-
-	go func() {
-		// Refresh TTL in background
-		err = cs.Set(key, val, cs.config.Auth.CacheUserTTL)
-		if err != nil {
-			cs.logger.AuditWarn("Failed to refresh user cache TTL", "error", err, "user_id", userID.String())
-		}
-	}()
 
 	if val == "" {
 		return nil, nil // not found in cache
@@ -302,6 +269,12 @@ func (cs *CacheService) SetUserInCache(user *types.User) error {
 	}
 
 	return cs.Set(key, data, cs.config.Auth.CacheUserTTL)
+}
+
+// DeleteUserFromCache removes a user object from cache
+func (cs *CacheService) DeleteUserFromCache(userID uuid.UUID) error {
+	key := fmt.Sprintf("user:%s", userID.String())
+	return cs.Delete(key)
 }
 
 // SetRateLimit sets a rate limit counter for an IP/endpoint combination
@@ -396,8 +369,8 @@ func (cs *CacheService) GetRedisInfo() (map[string]string, error) {
 
 		// Parse the info string into a map
 		result = make(map[string]string)
-		lines := strings.Split(info, "\r\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(info, "\r\n")
+		for line := range lines {
 			line = strings.TrimSpace(line)
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
@@ -484,23 +457,6 @@ func (cs *CacheService) GetBlacklistedTokensCount() (int, error) {
 	return count, err
 }
 
-// GetActiveSessionsCount returns the number of active user sessions
-func (cs *CacheService) GetActiveSessionsCount() (int, error) {
-	client := GetRedisClient()
-	var count int
-
-	err := cs.withRetry(func() error {
-		keys, err := client.Keys(redisCtx, "session:*").Result()
-		if err != nil {
-			return err
-		}
-		count = len(keys)
-		return nil
-	}, 3)
-
-	return count, err
-}
-
 // GetRateLimitStatus returns current rate limit information for debugging
 func (cs *CacheService) GetRateLimitStatus(ip, endpoint string) (map[string]any, error) {
 	key := fmt.Sprintf("ratelimit:%s:%s", ip, endpoint)
@@ -557,10 +513,6 @@ type CacheServiceInterface interface {
 	BlacklistToken(jti uuid.UUID, exp time.Time) error
 	IsTokenBlacklisted(jti uuid.UUID) (bool, error)
 
-	SetUserSession(userID, sessionID string, ttl time.Duration) error
-	GetUserSession(userID, sessionID string) (bool, error)
-	DeleteUserSession(userID, sessionID string) error
-
 	SetRateLimit(ip, endpoint string, count int, ttl time.Duration) error
 	GetRateLimit(ip, endpoint string) (int, error)
 	IncrementRateLimit(ip, endpoint string, ttl time.Duration) (int, error)
@@ -572,6 +524,5 @@ type CacheServiceInterface interface {
 
 	FlushBlacklistedTokens() error
 	GetBlacklistedTokensCount() (int, error)
-	GetActiveSessionsCount() (int, error)
 	GetRateLimitStatus(ip, endpoint string) (map[string]any, error)
 }

@@ -18,7 +18,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-var DefaultParams = &types.ArgonParams{
+var defaultParams = &types.ArgonParams{
 	Memory:  64 * 1024, // 64 MB
 	Time:    1,
 	Threads: 4,
@@ -144,19 +144,17 @@ func (a *AuthService) compareArgon2Hash(password, encoded string) (bool, error) 
 
 // GetRefreshTokenExpiration returns the expiration time for refresh tokens using configuration settings
 func (a *AuthService) GetRefreshTokenExpiration() time.Time {
-	cfg := config.Get()
-	return time.Now().Add(cfg.Auth.RefreshTokenExpiry)
+	return time.Now().Add(a.config.Auth.RefreshTokenExpiry)
 }
 
 // GetAccessTokenExpiration returns the expiration time for access tokens using configuration settings
 func (a *AuthService) GetAccessTokenExpiration() time.Time {
-	cfg := config.Get()
-	return time.Now().Add(cfg.Auth.AccessTokenExpiry)
+	return time.Now().Add(a.config.Auth.AccessTokenExpiry)
 }
 
 // GenerateAccessToken generates a JWT access token for the given user
 func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
-	secret := config.Get().Auth.AccessTokenSecret
+	secret := a.config.Auth.AccessTokenSecret
 
 	now := time.Now()
 	exp := a.GetAccessTokenExpiration()
@@ -183,7 +181,7 @@ func (a *AuthService) GenerateAccessToken(user *types.User) (string, error) {
 
 // GenerateRefreshToken generates a JWT refresh token for the given user
 func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
-	secret := config.Get().Auth.RefreshTokenSecret
+	secret := a.config.Auth.RefreshTokenSecret
 
 	now := time.Now()
 	exp := a.GetRefreshTokenExpiration()
@@ -210,7 +208,7 @@ func (a *AuthService) GenerateRefreshToken(user *types.User) (string, error) {
 
 // ParseToken parses and validates a JWT token string and returns the claims
 func (a *AuthService) ParseToken(tokenStr string, isAccessToken bool) (*types.AuthClaims, error) {
-	secret := config.Get().Auth.AccessTokenSecret
+	secret := a.config.Auth.AccessTokenSecret
 	if !isAccessToken {
 		secret = config.Get().Auth.RefreshTokenSecret
 	}
@@ -318,7 +316,7 @@ func (a *AuthService) Login(authRequest *types.AuthRequest) (*types.User, error)
 
 // Register creates a new user account and returns the user object if successful
 func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.User, error) {
-	// Check if user already exists
+	// Check if user already with the same email exists. Same username is fine since students across different schools may share usernames.
 	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"public.users.id"}).SetLimit(1)
 	query.Where["public.users.email"] = registerRequest.Email
 
@@ -327,17 +325,8 @@ func (a *AuthService) Register(registerRequest *types.RegisterRequest) (*types.U
 		return nil, lib.ErrUserAlreadyExists
 	}
 
-	// Also check username
-	query = Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"public.users.id"}).SetLimit(1)
-	query.Where["public.users.username"] = registerRequest.Username
-
-	existingUser, err = database.ExecuteQuery[types.User](query)
-	if err == nil && existingUser.Single != nil {
-		return nil, lib.ErrUsernameTaken
-	}
-
 	// Hash password
-	hashedPassword, err := a.HashPassword(registerRequest.Password, DefaultParams)
+	hashedPassword, err := a.HashPassword(registerRequest.Password, defaultParams)
 	if err != nil {
 		a.Logger.AuditError("Failed to hash password during registration", "error", err)
 		return nil, lib.ErrHashingPassword
@@ -403,6 +392,8 @@ func (a *AuthService) RefreshToken(refreshTokenStr string) (*types.AuthResponse,
 		return nil, lib.ErrUserNotFound
 	}
 
+	fmt.Println("User found during token refresh:", user.Id)
+
 	// SECURITY: Immediately blacklist the old refresh token to prevent reuse
 	err = a.BlacklistToken(refreshTokenStr, false)
 	if err != nil {
@@ -447,31 +438,37 @@ func (a *AuthService) GetUserFromToken(tokenStr string) (*types.User, error) {
 	}
 
 	// Get user from database
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
-	query.Where["public.users.id"] = claims.Sub
-
-	user, err := database.ExecuteQuery[types.User](query)
-	if err != nil || user.Single == nil {
+	user, err := a.GetUserByID(claims.Sub)
+	if err != nil || user == nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return user.Single, nil
+	return user, nil
 }
 
 func (a *AuthService) GetUserByID(userID uuid.UUID) (*types.User, error) {
-	// check if user is in cache first
 	cachedUser, err := a.cacheService.GetUserFromCache(userID)
 	if err == nil && cachedUser != nil {
 		return cachedUser, nil
 	}
+
 	// Get user from database
-	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role"}).SetLimit(1)
+	query := Query().SetOperation("SELECT").SetTable(lib.TableUsers).SetSelect([]string{"id", "username", "email", "role", "created_at"}).SetLimit(1)
 	query.Where["public.users.id"] = userID
 
 	user, err := database.ExecuteQuery[types.User](query)
 	if err != nil || user.Single == nil {
 		return nil, fmt.Errorf("user not found")
 	}
+
+	// Cache the user for subsequent requests
+	go func() {
+		err := a.cacheService.SetUserInCache(user.Single)
+		if err != nil {
+			a.Logger.AuditWarn("Failed to cache user after database fetch", "error", err, "user_id", userID.String())
+		}
+	}()
+
 	return user.Single, nil
 }
 
@@ -484,6 +481,10 @@ func (a *AuthService) BlacklistToken(tokenStr string, isAccessToken bool) error 
 
 	// Store the token's JTI in Redis until it expires
 	return a.cacheService.BlacklistToken(claims.Jti.String(), claims.Exp)
+}
+
+func (a *AuthService) ClearUserCache(userID uuid.UUID) error {
+	return a.cacheService.DeleteUserFromCache(userID)
 }
 
 // AuthServiceInterface defines the methods that any auth service implementation must provide.
@@ -504,6 +505,9 @@ type AuthServiceInterface interface {
 	// User management
 	GetUserByID(userID uuid.UUID) (*types.User, error)
 	GetUserFromToken(tokenStr string) (*types.User, error)
+
+	// Cache management
+	ClearUserCache(userID uuid.UUID) error
 
 	// Password management
 	HashPassword(password string, p *types.ArgonParams) (string, error)

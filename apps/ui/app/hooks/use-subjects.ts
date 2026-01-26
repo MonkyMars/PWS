@@ -108,31 +108,6 @@ export function useSubjectTeachers(subjectId: string) {
   });
 }
 
-export function useAllTeachers() {
-  return useQuery({
-    queryKey: ['teachers'],
-    queryFn: async (): Promise<Teacher[]> => {
-      const response = await apiClient.get<Teacher[]>(`/subjects/teachers`);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.message || 'Fout bij ophalen docenten');
-      }
-
-      const data: Teacher[] = response.data.map((teacher: any) => {
-        return {
-          id: teacher.id,
-          username: teacher.username,
-          email: teacher.email,
-          role: teacher.role,
-          subjectId: teacher.subject_id,
-        };
-      });
-
-      return data;
-    },
-  });
-}
-
 /**
  * Hook to get announcements for a subject
  */

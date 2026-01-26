@@ -42,7 +42,7 @@ func (cs *ContentService) GetFilesBySubjectID(subjectId, folderId string, hasPri
 	query.Where[fmt.Sprintf("public.%s.subject_id", lib.TableFiles)] = subjectId
 	query.Where[fmt.Sprintf("public.%s.folder_id", lib.TableFiles)] = folderId
 	if !hasPrivileges {
-		query.Where[fmt.Sprintf("public.%s.public", lib.TableFiles)] = true
+		query.Where[fmt.Sprintf("public.%s.active", lib.TableFiles)] = true
 	}
 	data, err := database.ExecuteQuery[types.File](query)
 	if err != nil {

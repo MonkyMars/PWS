@@ -114,6 +114,12 @@ func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, err, msg)
 	}
 
+	// Make the file public on Google Drive
+	if err := cr.googleService.MakeFilePublic(user.Id, req.File.FileID); err != nil {
+		cr.logger.AuditError("UploadSingleFile: Failed to make file public - %v", err)
+		// Don't fail the upload if making it public fails, just log the warning
+	}
+
 	return response.Created(c, file)
 }
 
@@ -165,6 +171,14 @@ func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 	if err != nil {
 		msg := fmt.Sprintf("Failed to upload %d files for user ID %s, subject ID %s: %v", len(req.Files), claims.Sub, req.SubjectID, err)
 		return lib.HandleServiceError(c, err, msg)
+	}
+
+	// Make all files public on Google Drive
+	for _, file := range req.Files {
+		if err := cr.googleService.MakeFilePublic(user.Id, file.FileID); err != nil {
+			cr.logger.AuditError("UploadMultipleFiles: Failed to make file %s public - %v", file.Name, err)
+			// Don't fail the upload if making it public fails, just log the warning
+		}
 	}
 
 	return response.Created(c, files)
