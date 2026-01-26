@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/MonkyMars/PWS/api/middleware"
@@ -109,7 +110,7 @@ func (ar *AuthRoutes) Me(c fiber.Ctx) error {
 	}
 
 	// Fetch user info using injected service
-	user, err := ar.authService.GetUserByID(claims.Id)
+	user, err := ar.authService.GetUserByID(claims.Sub)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to retrieve user info for user ID %s: %v", claims.Sub, err)
 		return lib.HandleServiceError(c, err, msg)
@@ -143,7 +144,7 @@ func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
 				// Don't return error, continue with logout process
 			}
 		}
-
+	}
 	// Process refresh token if present using injected service
 	if strings.TrimSpace(refreshToken) != "" {
 		// Try to blacklist refresh token (may be invalid, but that's okay)
@@ -159,7 +160,7 @@ func (ar *AuthRoutes) Logout(c fiber.Ctx) error {
 				ar.logger.Warn("Failed to clear user cache during logout", "user_id", user.Id, "error", err)
 			}
 		}
-	}()
+	}
 
 	// Always clear auth cookies regardless of token validity using injected service
 	ar.cookieService.ClearAuthCookies(c)

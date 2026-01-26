@@ -2,6 +2,7 @@ package lib
 
 import (
 	"errors"
+	"log"
 
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/config"
@@ -48,11 +49,13 @@ var (
 	ErrServiceNotFound = errors.New("service not found")
 
 	// Validation errors
-	ErrInvalidInput   = errors.New("invalid input data")
-	ErrMissingField   = errors.New("required field missing")
-	ErrInvalidFormat  = errors.New("invalid data format")
-	ErrInvalidRequest = errors.New("invalid request")
-	ErrValidation     = errors.New("validation error")
+	ErrInvalidInput     = errors.New("invalid input data")
+	ErrMissingField     = errors.New("required field missing")
+	ErrInvalidFormat    = errors.New("invalid data format")
+	ErrInvalidRequest   = errors.New("invalid request")
+	ErrValidation       = errors.New("validation error")
+	ErrMissingFile      = errors.New("Missing file(s)")
+	ErrMissingParameter = errors.New("Missing file(s)")
 
 	// Access control errors
 	ErrForbidden = errors.New("forbidden access")

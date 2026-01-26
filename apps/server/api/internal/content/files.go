@@ -13,17 +13,18 @@ func (cr *ContentRoutes) GetSingleFile(c fiber.Ctx) error {
 	// Get fileId from URL parameters
 	params, err := lib.GetParams(c, "fileId")
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := "Failed to get URL parameters for single file retrieval"
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Retrieve file metadata using injected service
 	file, err := cr.contentService.GetFileByID(params["fileId"])
 	if err != nil {
-		msg := fmt.Sprintf("Failed to retrieve file metadata for file ID %s: %v", fileID, err)
+		msg := fmt.Sprintf("Failed to retrieve file metadata for file ID %s: %v", params["fileId"], err)
 		return lib.HandleServiceError(c, err, msg)
 	}
 	if file == nil {
-		msg := fmt.Sprintf("File not found for file ID %s", fileID)
+		msg := fmt.Sprintf("File not found for file ID %s", params["fileId"])
 		return lib.HandleServiceError(c, lib.ErrFileNotFound, msg)
 	}
 
@@ -35,13 +36,14 @@ func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 	// Get parameters from URL
 	params, err := lib.GetParams(c, "subjectId", "folderId")
 	if err != nil {
-		return lib.HandleServiceError(c, err)
+		msg := "Failed to get URL parameters for files by subject retrieval"
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	// Retrieve files for the subject using injected service
 	files, err := cr.contentService.GetFilesBySubjectID(params["subjectId"], params["folderId"], lib.HasPrivileges(c))
 	if err != nil {
-		msg := fmt.Sprintf("Failed to retrieve files for subject ID %s, folder ID %s: %v", subjectId, folderId, err)
+		msg := fmt.Sprintf("Failed to retrieve files for subject ID %s, folder ID %s: %v", params["subjectId"], params["folderId"], err)
 		return lib.HandleServiceError(c, err, msg)
 	}
 
@@ -104,7 +106,7 @@ func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 		"name":        req.File.Name,
 		"mime_type":   req.File.MimeType,
 		"subject_id":  req.SubjectID,
-		"uploaded_by": user.Id,
+		"uploaded_by": claims.Sub.String(),
 		"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", req.File.FileID),
 	}
 
@@ -115,7 +117,7 @@ func (cr *ContentRoutes) UploadSingleFile(c fiber.Ctx) error {
 	}
 
 	// Make the file public on Google Drive
-	if err := cr.googleService.MakeFilePublic(user.Id, req.File.FileID); err != nil {
+	if err := cr.googleService.MakeFilePublic(claims.Sub, req.File.FileID); err != nil {
 		cr.logger.AuditError("UploadSingleFile: Failed to make file public - %v", err)
 		// Don't fail the upload if making it public fails, just log the warning
 	}
@@ -160,7 +162,7 @@ func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 			"name":        file.Name,
 			"mime_type":   file.MimeType,
 			"subject_id":  req.SubjectID,
-			"uploaded_by": user.Id,
+			"uploaded_by": claims.Sub.String(),
 			"url":         fmt.Sprintf("https://drive.google.com/file/d/%s/preview", file.FileID),
 		}
 		filesData = append(filesData, fileData)
@@ -175,7 +177,7 @@ func (cr *ContentRoutes) UploadMultipleFiles(c fiber.Ctx) error {
 
 	// Make all files public on Google Drive
 	for _, file := range req.Files {
-		if err := cr.googleService.MakeFilePublic(user.Id, file.FileID); err != nil {
+		if err := cr.googleService.MakeFilePublic(claims.Sub, file.FileID); err != nil {
 			cr.logger.AuditError("UploadMultipleFiles: Failed to make file %s public - %v", file.Name, err)
 			// Don't fail the upload if making it public fails, just log the warning
 		}

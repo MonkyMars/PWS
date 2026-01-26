@@ -3,21 +3,17 @@ package deadlines
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/MonkyMars/PWS/api/response"
-	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
-	"github.com/gofiber/fiber/v3"
 	"github.com/MonkyMars/PWS/types"
+	"github.com/gofiber/fiber/v3"
 )
 
-
-func CreateDeadline(c fiber.Ctx) error {
-	logger := config.SetupLogger()
-
+func (dr *DeadlineRoutes) CreateDeadline(c fiber.Ctx) error {
 	body, err := middleware.GetValidatedRequest[types.CreateDeadlineRequest](c)
 	if err != nil {
-		logger.Error("Failed to get validated request", "error", err)
-		return lib.HandleValidationError(c, err, "request")
+		msg := "Failed to parse and validate deadline creation request body"
+		return lib.HandleServiceError(c, err, msg)
 	}
 
 	if body == nil {

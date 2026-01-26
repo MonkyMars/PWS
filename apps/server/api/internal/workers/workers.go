@@ -153,8 +153,8 @@ func (wr *WorkerRoutes) GetServiceStatistics(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, lib.ErrMissingField, msg)
 	}
 
-	stats := workers.GetServiceStats(serviceName)
-	if stats == nil {
+	stats, err := workers.GetServiceStats(serviceName)
+	if stats == nil || err != nil {
 		msg := fmt.Sprintf("Service statistics not found for service: %s", serviceName)
 		return lib.HandleServiceError(c, lib.ErrServiceNotFound, msg)
 	}
