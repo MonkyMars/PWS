@@ -87,6 +87,6 @@ func SetupRoutes(app *fiber.App, logger *config.Logger) {
 
 	// Catch-all for undefined routes
 	app.Use(func(c fiber.Ctx) error {
-		return lib.HandleServiceError(c, lib.ErrNotFound)
+		return lib.HandleServiceError(c, fiber.ErrBadRequest, "undefined route: "+c.OriginalURL())
 	})
 }

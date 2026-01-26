@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/MonkyMars/PWS/api/response"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v3"
 )
@@ -48,10 +49,11 @@ func setupErrorHandler(cfg *Config) fiber.ErrorHandler {
 
 		// In development, return detailed error information
 		if cfg.IsDevelopment() {
-			return c.Status(code).JSON(fiber.Map{
-				"error":   true,
-				"message": err.Error(),
-				"code":    code,
+			return response.InternalServerErrorWithDetails(c, err.Error(), map[string]any{
+				"method": c.Method(),
+				"url":    c.OriginalURL(),
+				"code":   code,
+				"error":  err.Error(),
 			})
 		}
 
@@ -70,10 +72,6 @@ func setupErrorHandler(cfg *Config) fiber.ErrorHandler {
 			message = "Internal server error"
 		}
 
-		return c.Status(code).JSON(fiber.Map{
-			"error":   true,
-			"message": message,
-			"code":    code,
-		})
+		return response.InternalServerError(c, message)
 	}
 }

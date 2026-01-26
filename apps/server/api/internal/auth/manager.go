@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
+	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
@@ -14,6 +15,7 @@ type AuthRoutes struct {
 	authService   services.AuthServiceInterface
 	cookieService services.CookieServiceInterface
 	googleService services.GoogleServiceInterface
+	logger        *config.Logger
 }
 
 // NewAuthRoutesWithDefaults creates an AuthRoutes instance with default dependencies.
@@ -24,6 +26,7 @@ func NewAuthRoutesWithDefaults() *AuthRoutes {
 		authService:   services.NewAuthService(),
 		cookieService: services.NewCookieService(),
 		googleService: services.NewGoogleService(),
+		logger:        config.SetupLogger(),
 	}
 }
 

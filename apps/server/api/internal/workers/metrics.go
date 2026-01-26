@@ -12,12 +12,14 @@ import (
 // getWorkerMetrics returns comprehensive metrics for all workers
 func (wr *WorkerRoutes) GetWorkerMetrics(c fiber.Ctx) error {
 	if wr.manager == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Worker manager not available for metrics retrieval"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	healthStatus := wr.manager.HealthStatus()
 	if healthStatus == nil {
-		return lib.HandleServiceError(c, lib.ErrServiceUnavailable)
+		msg := "Unable to retrieve worker metrics from manager"
+		return lib.HandleServiceError(c, lib.ErrWorkerUnavailable, msg)
 	}
 
 	// Extract metrics from health status with null checks
