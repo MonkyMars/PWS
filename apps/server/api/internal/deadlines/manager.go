@@ -11,9 +11,10 @@ import (
 // It follows clean architecture principles by depending on interfaces rather than concrete implementations.
 // This makes the code more testable and maintainable.
 type DeadlineRoutes struct {
-	subjectService services.SubjectServiceInterface
-	middleware     *middleware.Middleware
-	logger         *config.Logger
+	subjectService  services.SubjectServiceInterface
+	deadlineService services.DeadlineServiceInterface
+	middleware      *middleware.Middleware
+	logger          *config.Logger
 }
 
 // NewAuthRoutesWithDefaults creates an AuthRoutes instance with default dependencies.
@@ -33,4 +34,8 @@ func (dr *DeadlineRoutes) RegisterRoutes(app *fiber.App) {
 	deadlines := app.Group("/deadlines", dr.middleware.AuthMiddleware())
 
 	deadlines.Post("/", dr.CreateDeadline)
+	deadlines.Get("/me", dr.FetchDeadlinesForUser)
+	deadlines.Put("/:id", dr.UpdateDeadlineById)
+	deadlines.Delete("/:id", dr.DeleteDeadlineById)
+	deadlines.Delete("/user/:user_id", dr.DeleteDeadlinesByUser)
 }
