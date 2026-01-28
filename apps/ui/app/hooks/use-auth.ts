@@ -60,7 +60,10 @@ export function useRegister() {
         throw new Error('Registratie functionaliteit is uitgeschakeld');
       }
 
-      const response = await apiClient.post<User>('/auth/register', userData);
+      const response = await apiClient.post<User>('/auth/register', {
+				...userData,
+				confirm_password: userData.confirmPassword, // include to validate on server as well
+			});
 
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Registratie mislukt');
