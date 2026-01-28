@@ -14,7 +14,9 @@ func (dr *DeadlineRoutes) FetchDeadlinesForUser(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, err, "failed to get user claims")
 	}
 
-	if claims.Role == "user" {
+	dr.logger.Info("Fetching deadlines for user", "userID", claims.Sub, "role", claims.Role)
+
+	if claims.Role == "student" {
 		deadlines, err := dr.deadlineService.FetchDeadlinesByUser(claims.Sub)
 		if err != nil {
 			return lib.HandleServiceError(c, err, "failed to fetch deadlines for user")

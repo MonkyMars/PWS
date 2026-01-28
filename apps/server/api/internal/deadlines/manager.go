@@ -22,9 +22,10 @@ type DeadlineRoutes struct {
 // the default implementations of all services.
 func NewDeadlineRoutesWithDefaults() *DeadlineRoutes {
 	return &DeadlineRoutes{
-		subjectService: services.NewSubjectService(),
-		middleware:     middleware.NewMiddleware(),
-		logger:         config.SetupLogger(),
+		subjectService:  services.NewSubjectService(),
+		deadlineService: services.NewDeadlineService(),
+		middleware:      middleware.NewMiddleware(),
+		logger:          config.SetupLogger(),
 	}
 }
 

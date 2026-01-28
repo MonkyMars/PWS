@@ -7,6 +7,7 @@ import (
 
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/types"
 )
 
@@ -59,14 +60,18 @@ func (ds *DeadlineService) CreateDeadline(req *types.CreateDeadlineRequest) erro
 }
 
 func (ds *DeadlineService) FetchDeadlinesByUser(userId uuid.UUID) ([]types.Deadline, error) {
-	query := Query().SetOperation("select").SetTable("deadlines")
-	query.Where = map[string]any{
-		"owner_id": userId,
-	}
+	query := Query().SetOperation("select").SetTable("deadlines").SetLimit(50).SetSelect([]string{
+		"id", "subject_id", "owner_id", "title", "description", "due_date", "created_at", "updated_at",
+	})
+	query.Where[fmt.Sprintf("public.%s.owner_id", lib.TableDeadlines)] = userId
 
 	deadlines, err := database.ExecuteQuery[types.Deadline](query)
 	if err != nil {
 		return nil, err
+	}
+
+	if deadlines.Count == 0 || deadlines.Data == nil {
+		return []types.Deadline{}, nil
 	}
 
 	data := deadlines.Data
@@ -75,11 +80,17 @@ func (ds *DeadlineService) FetchDeadlinesByUser(userId uuid.UUID) ([]types.Deadl
 }
 
 func (ds *DeadlineService) FetchAllDeadlines() ([]types.Deadline, error) {
-	query := Query().SetOperation("select").SetTable("deadlines")
+	query := Query().SetOperation("select").SetTable("deadlines").SetLimit(100).SetSelect([]string{
+		"id", "subject_id", "owner_id", "title", "description", "due_date", "created_at", "updated_at",
+	})
 
 	deadlines, err := database.ExecuteQuery[types.Deadline](query)
 	if err != nil {
 		return nil, err
+	}
+
+	if deadlines.Count == 0 || deadlines.Data == nil {
+		return []types.Deadline{}, nil
 	}
 
 	data := deadlines.Data
@@ -131,8 +142,6 @@ func (ds *DeadlineService) UpdateDeadlineById(deadlineId string, updateData type
 	if updateData.DueDate != "" {
 		data["due_date"] = updateData.DueDate
 	}
-
-	query.Data = data
 
 	_, err := database.ExecuteQuery[any](query)
 	if err != nil {
