@@ -24,6 +24,9 @@ export const registerSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
       'Wachtwoord moet minimaal één kleine letter, één hoofdletter en één cijfer bevatten'
     ),
+	confirmPassword: z.string().min(1, 'Bevestig wachtwoord is verplicht'),
+}).refine((data) => data.password === data.confirmPassword, {
+	message: 'Wachtwoorden komen niet overeen',
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;
