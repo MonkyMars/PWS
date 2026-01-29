@@ -28,10 +28,29 @@ type Submission struct {
 	ID         uuid.UUID `json:"id"`
 	DeadlineID uuid.UUID `json:"deadline_id"`
 	StudentID  uuid.UUID `json:"student_id"`
-	FileIDs    []string  `json:"file_ids"` // Google Drive file IDs
+	FileIDs    []string  `json:"file_ids" pg:"file_ids,type:text[]"` // Google Drive file IDs
 	Message    string    `json:"message"`
 	CreatedAt  string    `json:"created_at"`
 	UpdatedAt  string    `json:"updated_at"`
+}
+
+// Used for creating/updating a submission
+type CreateSubmissionRequest struct {
+	FileIDs []string `json:"file_ids" pg:"file_ids,type:text[]"` // Google Drive file IDs
+	Message string   `json:"message"`
+}
+
+// Used for returning a submission to the client
+type SubmissionResponse struct {
+	ID         uuid.UUID `json:"id"`
+	DeadlineID uuid.UUID `json:"deadline_id"`
+	StudentID  uuid.UUID `json:"student_id"`
+	FileIDs    []string  `json:"file_ids" pg:"file_ids,type:text[]"`
+	Message    string    `json:"message"`
+	CreatedAt  string    `json:"created_at"`
+	UpdatedAt  string    `json:"updated_at"`
+	IsLate     bool      `json:"is_late"`
+	IsUpdated  bool      `json:"is_updated"`
 }
 
 type DeadlineWithSubject struct {

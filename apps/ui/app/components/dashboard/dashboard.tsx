@@ -291,13 +291,23 @@ export function Dashboard() {
                       </span>
                     </p>
                   </div>
-                  <Link
-                    to={`/subjects/${deadline.subject.id}/deadlines/${deadline.id}`}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 transform text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 hover:bg-primary-50 transition-colors duration-300"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <ArrowRight className="h-5 w-5" />
-                  </Link>
+                  {user?.role === 'student' ? (
+                    <Link
+                      to={`/deadlines/${deadline.id}/submission`}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 transform text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 hover:bg-primary-50 transition-colors duration-300"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <ArrowRight className="h-5 w-5" />
+                    </Link>
+                  ) : (
+                    <Link
+                      to={`/deadlines/${deadline.id}/submissions`}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 transform text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 hover:bg-primary-50 transition-colors duration-300"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <ArrowRight className="h-5 w-5" />
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>

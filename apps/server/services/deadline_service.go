@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -224,4 +225,299 @@ type DeadlineServiceInterface interface {
 	DeleteDeadlinesFromUser(userId uuid.UUID) error
 	FetchAllDeadlines(filterOptions map[string]string) ([]types.DeadlineWithSubject, error)
 	UpdateDeadlineById(deadlineId string, updateData types.Deadline) error
+	// Submission-related
+	CreateOrUpdateSubmission(deadlineID, studentID uuid.UUID, req types.CreateSubmissionRequest, now string) (*types.SubmissionResponse, error)
+	GetSubmissionByStudent(deadlineID, studentID uuid.UUID) (*types.SubmissionResponse, error)
+	GetAllSubmissionsForDeadline(deadlineID uuid.UUID) ([]*types.SubmissionResponse, error)
+}
+
+// CreateOrUpdateSubmission creates or updates a student's submission for a deadline
+func (ds *DeadlineService) CreateOrUpdateSubmission(deadlineID, studentID uuid.UUID, req types.CreateSubmissionRequest, now string) (*types.SubmissionResponse, error) {
+	// Fetch the deadline to get due_date
+	deadline, err := ds.getDeadlineByID(deadlineID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch deadline: %w", err)
+	}
+	if deadline == nil {
+		return nil, fmt.Errorf("deadline not found")
+	}
+
+	// Check if a submission already exists
+	query := Query().
+		SetOperation("select").
+		SetTable("submissions").
+		SetLimit(1)
+	query.Where = map[string]any{
+		"deadline_id": deadlineID,
+		"student_id":  studentID,
+	}
+
+	result, err := database.ExecuteQuery[types.Submission](query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query submission: %w", err)
+	}
+
+	var submission types.Submission
+	isUpdate := false
+	if len(result.Data) > 0 {
+		// Update existing submission
+		isUpdate = true
+		submission = result.Data[0]
+		updateQuery := Query().
+			SetOperation("update").
+			SetTable("submissions").
+			SetData(map[string]any{
+				"file_ids":   req.FileIDs,
+				"message":    req.Message,
+				"updated_at": now,
+			})
+		updateQuery.Where = map[string]any{
+			"public.submissions.id": submission.ID,
+		}
+		_, err := database.ExecuteQuery[types.Submission](updateQuery)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update submission: %w", err)
+		}
+		// Update local struct for response
+		submission.FileIDs = req.FileIDs
+		submission.Message = req.Message
+		submission.UpdatedAt = now
+	} else {
+		// Insert new submission
+		newID := uuid.New()
+		insertQuery := Query().
+			SetOperation("insert").
+			SetTable("submissions").
+			SetData(map[string]any{
+				"id":          newID,
+				"deadline_id": deadlineID,
+				"student_id":  studentID,
+				"file_ids":    req.FileIDs,
+				"message":     req.Message,
+				"created_at":  now,
+				"updated_at":  now,
+			})
+		_, err := database.ExecuteQuery[types.Submission](insertQuery)
+		if err != nil {
+			return nil, fmt.Errorf("failed to insert submission: %w", err)
+		}
+		submission = types.Submission{
+			ID:         newID,
+			DeadlineID: deadlineID,
+			StudentID:  studentID,
+			FileIDs:    req.FileIDs,
+			Message:    req.Message,
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}
+	}
+
+	// Calculate late/updated flags
+	isLate := false
+	isUpdated := false
+	dueDate, err := parseTime(deadline.DueDate)
+	if err == nil {
+		createdAt, _ := parseTime(submission.CreatedAt)
+		updatedAt, _ := parseTime(submission.UpdatedAt)
+		if createdAt.After(dueDate) {
+			isLate = true
+		}
+		if updatedAt.After(dueDate) && updatedAt != createdAt {
+			isUpdated = true
+		}
+	}
+
+	resp := &types.SubmissionResponse{
+		ID:         submission.ID,
+		DeadlineID: submission.DeadlineID,
+		StudentID:  submission.StudentID,
+		FileIDs:    submission.FileIDs,
+		Message:    submission.Message,
+		CreatedAt:  submission.CreatedAt,
+		UpdatedAt:  submission.UpdatedAt,
+		IsLate:     isLate,
+		IsUpdated:  isUpdated,
+	}
+
+	// --- Notification logic for teachers/admins ---
+	// Find all teachers/admins for the subject of this deadline
+	// For now, just log the notification; replace with your actual notification system as needed
+
+	// Fetch subject teachers
+	subjectTeachers, err := ds.getTeachersForSubject(deadline.SubjectID)
+	if err == nil {
+		for _, teacher := range subjectTeachers {
+			ds.Logger.Info("Notify teacher of new/updated submission",
+				"teacher_id", teacher.Id,
+				"student_id", studentID,
+				"deadline_id", deadlineID,
+				"is_update", isUpdate,
+			)
+			// TODO: Integrate with actual notification system (email, in-app, etc.)
+		}
+	}
+	// Optionally, notify admins as well (not implemented here, but can be added similarly)
+
+	return resp, nil
+}
+
+// GetAllSubmissionsForDeadline fetches all student submissions for a specific deadline
+func (ds *DeadlineService) GetAllSubmissionsForDeadline(deadlineID uuid.UUID) ([]*types.SubmissionResponse, error) {
+	// Fetch the deadline to get due_date
+	deadline, err := ds.getDeadlineByID(deadlineID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch deadline: %w", err)
+	}
+	if deadline == nil {
+		return []*types.SubmissionResponse{}, nil
+	}
+
+	query := Query().
+		SetOperation("select").
+		SetTable("submissions")
+	query.Where = map[string]any{
+		"submissions.deadline_id": deadlineID,
+	}
+	result, err := database.ExecuteQuery[types.Submission](query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch submissions: %w", err)
+	}
+
+	dueDate, _ := parseTime(deadline.DueDate)
+	var responses []*types.SubmissionResponse
+	for _, s := range result.Data {
+		isLate := false
+		isUpdated := false
+		createdAt, _ := parseTime(s.CreatedAt)
+		updatedAt, _ := parseTime(s.UpdatedAt)
+		if createdAt.After(dueDate) {
+			isLate = true
+		}
+		if updatedAt.After(dueDate) && updatedAt != createdAt {
+			isUpdated = true
+		}
+		responses = append(responses, &types.SubmissionResponse{
+			ID:         s.ID,
+			DeadlineID: s.DeadlineID,
+			StudentID:  s.StudentID,
+			FileIDs:    s.FileIDs,
+			Message:    s.Message,
+			CreatedAt:  s.CreatedAt,
+			UpdatedAt:  s.UpdatedAt,
+			IsLate:     isLate,
+			IsUpdated:  isUpdated,
+		})
+	}
+	return responses, nil
+}
+
+// GetSubmissionByStudent fetches a student's submission for a specific deadline
+func (ds *DeadlineService) GetSubmissionByStudent(deadlineID, studentID uuid.UUID) (*types.SubmissionResponse, error) {
+	// Fetch the deadline to get due_date
+	deadline, err := ds.getDeadlineByID(deadlineID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch deadline: %w", err)
+	}
+	if deadline == nil {
+		return nil, nil
+	}
+
+	query := Query().
+		SetOperation("select").
+		SetTable("submissions").
+		SetLimit(1)
+
+	query.Where = map[string]any{
+		"submissions.deadline_id": deadlineID,
+		"student_id":              studentID,
+	}
+	result, err := database.ExecuteQuery[types.Submission](query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch submission: %w", err)
+	}
+	if len(result.Data) == 0 {
+		return nil, nil
+	}
+	s := result.Data[0]
+
+	dueDate, _ := parseTime(deadline.DueDate)
+	isLate := false
+	isUpdated := false
+	createdAt, _ := parseTime(s.CreatedAt)
+	updatedAt, _ := parseTime(s.UpdatedAt)
+	if createdAt.After(dueDate) {
+		isLate = true
+	}
+	if updatedAt.After(dueDate) && updatedAt != createdAt {
+		isUpdated = true
+	}
+
+	resp := &types.SubmissionResponse{
+		ID:         s.ID,
+		DeadlineID: s.DeadlineID,
+		StudentID:  s.StudentID,
+		FileIDs:    s.FileIDs,
+		Message:    s.Message,
+		CreatedAt:  s.CreatedAt,
+		UpdatedAt:  s.UpdatedAt,
+		IsLate:     isLate,
+		IsUpdated:  isUpdated,
+	}
+	return resp, nil
+}
+
+func (ds *DeadlineService) getDeadlineByID(deadlineID uuid.UUID) (*types.Deadline, error) {
+	query := Query().
+		SetOperation("select").
+		SetTable("deadlines").
+		SetLimit(1)
+	query.Where = map[string]any{
+		"public.deadlines.id": deadlineID,
+	}
+	result, err := database.ExecuteQuery[types.Deadline](query)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Data) == 0 {
+		return nil, nil
+	}
+	return &result.Data[0], nil
+}
+
+func (ds *DeadlineService) getTeachersForSubject(subjectID uuid.UUID) ([]types.User, error) {
+	query := Query().
+		SetOperation("select").
+		SetTable("users")
+	query.Where = map[string]any{
+		"role": "teacher",
+	}
+	// Assuming there's a subject_teachers table mapping subjects to their teachers
+	subjectTeacherQuery := Query().
+		SetOperation("select").
+		SetTable("subject_teachers")
+	subjectTeacherQuery.Where = map[string]any{
+		"subject_id": subjectID,
+	}
+	subjectTeachersResult, err := database.ExecuteQuery[types.Teacher](subjectTeacherQuery)
+	if err != nil {
+		return nil, err
+	}
+	var teacherIDs []uuid.UUID
+	for _, st := range subjectTeachersResult.Data {
+		teacherIDs = append(teacherIDs, st.Id)
+	}
+	if len(teacherIDs) == 0 {
+		return []types.User{}, nil
+	}
+	query.Where["id"] = teacherIDs
+
+	result, err := database.ExecuteQuery[types.User](query)
+	if err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func parseTime(timeStr string) (time.Time, error) {
+	return time.Parse(time.RFC3339, timeStr)
 }

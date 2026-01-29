@@ -40,4 +40,9 @@ func (dr *DeadlineRoutes) RegisterRoutes(app *fiber.App) {
 	deadlines.Put("/:id", dr.UpdateDeadlineById)
 	deadlines.Delete("/:id", dr.DeleteDeadlineById)
 	deadlines.Delete("/user/:user_id", dr.DeleteDeadlinesByUser)
+
+	// Submission endpoints
+	deadlines.Post("/:id/submission", dr.CreateOrUpdateSubmission)
+	deadlines.Get("/:id/submission", dr.GetOwnSubmission)
+	deadlines.Get("/:id/submissions", dr.middleware.RoleMiddleware(lib.RoleAdmin, lib.RoleTeacher), dr.GetAllSubmissions)
 }

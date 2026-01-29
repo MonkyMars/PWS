@@ -24,6 +24,8 @@ import { useSubject, useSubjectFiles, useSubjectFolders, useSubjectTeachers } fr
 import type { SubjectFile } from '~/types';
 import { useDeadlines } from '~/hooks/use-deadlines';
 
+import { useAuth } from '~/hooks';
+
 interface SubjectDetailProps {
   subjectId: string;
 }
@@ -34,6 +36,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>(subjectId);
   const [folderHistory, setFolderHistory] = useState<string[]>([subjectId]);
   const [folderNames, setFolderNames] = useState<{ [key: string]: string }>({});
+  const { user } = useAuth();
   const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const { data: subject } = useSubject(subjectId);
   const { data: teachers } = useSubjectTeachers(subjectId);
@@ -577,14 +580,26 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                         <p className="font-medium text-neutral-900 truncate">{deadline.title}</p>
                         <p className="text-xs text-neutral-500">{formatDate(deadline.dueDate)}</p>
                       </div>
-                      <Link
-                        to={`/subjects/${subjectId}/deadlines/${deadline.id}`}
-                        className="ml-3 flex items-center gap-1 px-2 py-1 rounded text-primary-600 hover:text-white hover:bg-primary-600 text-xs font-medium transition-colors"
-                        title="Naar inleverpagina"
-                      >
-                        <span>Inleveren</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
+                      {/* Role-based hand-in link */}
+                      {user?.role === 'student' ? (
+                        <Link
+                          to={`/deadlines/${deadline.id}/submission`}
+                          className="ml-3 flex items-center gap-1 px-2 py-1 rounded text-primary-600 hover:text-white hover:bg-primary-600 text-xs font-medium transition-colors"
+                          title="Naar inleverpagina"
+                        >
+                          <span>Inleveren</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/deadlines/${deadline.id}/submissions`}
+                          className="ml-3 flex items-center gap-1 px-2 py-1 rounded text-primary-600 hover:text-white hover:bg-primary-600 text-xs font-medium transition-colors"
+                          title="Bekijk ingeleverde opdrachten"
+                        >
+                          <span>Bekijk ingeleverd</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      )}
                     </div>
                   ))
                 ) : (

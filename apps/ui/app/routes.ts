@@ -22,4 +22,9 @@ export default [
   route('dashboard', 'routes/dashboard.tsx'),
   route('subjects/:subjectId', 'routes/subjects.$subjectId.tsx'),
   route('test-upload', 'routes/test-upload.tsx'),
+  route('deadlines/submissions', 'routes/deadlines.submissions.tsx'),
+  route('deadlines/mine', 'routes/deadlines.mine.tsx'),
+  route('deadlines/:id/submissions', 'routes/deadlines.$id.submissions.tsx'),
+  // Catch-all 404 route (must be last)
+  route('*', 'routes/not-found.tsx'),
 ] satisfies RouteConfig;
