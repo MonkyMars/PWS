@@ -126,6 +126,8 @@ func (ds *DeadlineService) FetchAllDeadlines(filterOptions map[string]string) ([
 		args       []any
 	)
 
+	fmt.Println("Filter Options:", filterOptions)
+
 	if subjectID, ok := filterOptions["subject_id"]; ok && subjectID != "" {
 		conditions = append(conditions, "s.id = ?")
 		args = append(args, subjectID)

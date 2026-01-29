@@ -14,7 +14,7 @@ func (dr *DeadlineRoutes) FetchDeadlinesForUser(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, err, "failed to get user claims")
 	}
 
-	filterOptions, err := lib.GetParams(c, map[string]bool{
+	filterOptions, err := lib.GetQueryParams(c, map[string]bool{
 		"due_date_from": false,
 		"due_date_to":   false,
 		"subject_id":    false,
