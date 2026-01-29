@@ -3,6 +3,7 @@ package deadlines
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/gofiber/fiber/v3"
 )
@@ -34,7 +35,7 @@ func NewDeadlineRoutesWithDefaults() *DeadlineRoutes {
 func (dr *DeadlineRoutes) RegisterRoutes(app *fiber.App) {
 	deadlines := app.Group("/deadlines", dr.middleware.AuthMiddleware())
 
-	deadlines.Post("/", dr.CreateDeadline)
+	deadlines.Post("/", dr.middleware.RoleMiddleware(lib.RoleAdmin, lib.RoleTeacher), dr.CreateDeadline)
 	deadlines.Get("/me", dr.FetchDeadlinesForUser)
 	deadlines.Put("/:id", dr.UpdateDeadlineById)
 	deadlines.Delete("/:id", dr.DeleteDeadlineById)

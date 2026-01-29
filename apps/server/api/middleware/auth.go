@@ -86,3 +86,27 @@ func (mw *Middleware) AdminMiddleware() fiber.Handler {
 		return c.Next()
 	}
 }
+
+func (mw *Middleware) RoleMiddleware(allowedRoles ...string) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		claims, err := lib.GetValidatedClaims(c)
+		if err != nil {
+			return lib.HandleServiceError(c, err, "Failed to get validated claims in RoleMiddleware")
+		}
+
+		isAllowed := false
+		for _, role := range allowedRoles {
+			if claims.Role == role {
+				isAllowed = true
+				break
+			}
+		}
+
+		if !isAllowed {
+			msg := fmt.Sprintf("Insufficient permissions. User with role '%s' tried to access a route that requires one of '%v'", claims.Role, allowedRoles)
+			return lib.HandleServiceError(c, lib.ErrInsufficientPermissions, msg)
+		}
+
+		return c.Next()
+	}
+}

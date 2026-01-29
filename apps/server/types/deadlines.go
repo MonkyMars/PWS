@@ -24,6 +24,16 @@ type Deadline struct {
 	UpdatedAt   string    `json:"updated_at"`
 }
 
+type Submission struct {
+	ID         uuid.UUID `json:"id"`
+	DeadlineID uuid.UUID `json:"deadline_id"`
+	StudentID  uuid.UUID `json:"student_id"`
+	FileIDs    []string  `json:"file_ids"` // Google Drive file IDs
+	Message    string    `json:"message"`
+	CreatedAt  string    `json:"created_at"`
+	UpdatedAt  string    `json:"updated_at"`
+}
+
 type DeadlineWithSubject struct {
 	ID          uuid.UUID `json:"id"`
 	OwnerID     uuid.UUID `json:"owner_id"`
