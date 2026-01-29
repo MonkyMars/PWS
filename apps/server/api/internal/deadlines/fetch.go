@@ -14,10 +14,19 @@ func (dr *DeadlineRoutes) FetchDeadlinesForUser(c fiber.Ctx) error {
 		return lib.HandleServiceError(c, err, "failed to get user claims")
 	}
 
+	filterOptions, err := lib.GetParams(c, map[string]bool{
+		"due_date_from": false,
+		"due_date_to":   false,
+		"subject_id":    false,
+	})
+	if err != nil {
+		return lib.HandleServiceError(c, err, "failed to get filter options")
+	}
+
 	dr.logger.Info("Fetching deadlines for user", "userID", claims.Sub, "role", claims.Role)
 
 	if claims.Role == "student" {
-		deadlines, err := dr.deadlineService.FetchDeadlinesByUser(claims.Sub)
+		deadlines, err := dr.deadlineService.FetchDeadlinesByUser(claims.Sub, filterOptions)
 		if err != nil {
 			return lib.HandleServiceError(c, err, "failed to fetch deadlines for user")
 		}
@@ -25,7 +34,7 @@ func (dr *DeadlineRoutes) FetchDeadlinesForUser(c fiber.Ctx) error {
 		return response.Success(c, deadlines)
 	}
 
-	deadlines, err := dr.deadlineService.FetchAllDeadlines()
+	deadlines, err := dr.deadlineService.FetchAllDeadlines(filterOptions)
 	if err != nil {
 		return lib.HandleServiceError(c, err, "failed to fetch deadlines")
 	}

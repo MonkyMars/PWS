@@ -23,3 +23,14 @@ type Deadline struct {
 	CreatedAt   string    `json:"created_at"`
 	UpdatedAt   string    `json:"updated_at"`
 }
+
+type DeadlineWithSubject struct {
+	ID          uuid.UUID `json:"id"`
+	OwnerID     uuid.UUID `json:"owner_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	DueDate     string    `json:"due_date"`
+	CreatedAt   string    `json:"created_at"`
+	UpdatedAt   string    `json:"updated_at"`
+	Subject     Subject   `json:"subject"`
+}

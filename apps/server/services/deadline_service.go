@@ -7,7 +7,6 @@ import (
 
 	"github.com/MonkyMars/PWS/config"
 	"github.com/MonkyMars/PWS/database"
-	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/types"
 )
 
@@ -59,43 +58,106 @@ func (ds *DeadlineService) CreateDeadline(req *types.CreateDeadlineRequest) erro
 	return nil
 }
 
-func (ds *DeadlineService) FetchDeadlinesByUser(userId uuid.UUID) ([]types.Deadline, error) {
-	query := Query().SetOperation("select").SetTable("deadlines").SetLimit(50).SetSelect([]string{
-		"id", "subject_id", "owner_id", "title", "description", "due_date", "created_at", "updated_at",
-	})
-	query.Where[fmt.Sprintf("public.%s.owner_id", lib.TableDeadlines)] = userId
+func (ds *DeadlineService) FetchDeadlinesByUser(userId uuid.UUID, filterOptions map[string]string) ([]types.DeadlineWithSubject, error) {
+	var (
+		query = `
+			SELECT
+				d.id, d.owner_id, d.title, d.description, d.due_date, d.created_at, d.updated_at,
+				s.id AS subject__id, s.name AS subject__name, s.code AS subject__code, s.color AS subject__color,
+				s.created_at AS subject__created_at, s.updated_at AS subject__updated_at,
+				s.teacher_id AS subject__teacher_id, s.teacher_name AS subject__teacher_name, s.is_active AS subject__is_active
+			FROM deadlines d
+			LEFT JOIN subjects s ON d.subject_id = s.id
+		`
+		conditions []string
+		args       []any
+	)
 
-	deadlines, err := database.ExecuteQuery[types.Deadline](query)
+	// Always filter by owner_id
+	conditions = append(conditions, "d.owner_id = ?")
+	args = append(args, userId)
+
+	if subjectID, ok := filterOptions["subject_id"]; ok && subjectID != "" {
+		conditions = append(conditions, "s.id = ?")
+		args = append(args, subjectID)
+	}
+	if dueDateFrom, ok := filterOptions["due_date_from"]; ok && dueDateFrom != "" {
+		conditions = append(conditions, "d.due_date >= ?")
+		args = append(args, dueDateFrom)
+	}
+	if dueDateTo, ok := filterOptions["due_date_to"]; ok && dueDateTo != "" {
+		conditions = append(conditions, "d.due_date <= ?")
+		args = append(args, dueDateTo)
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + conditions[0]
+		for i := 1; i < len(conditions); i++ {
+			query += " AND " + conditions[i]
+		}
+	}
+
+	query += " LIMIT 50;"
+
+	deadlines, err := database.Raw[types.DeadlineWithSubject](query, args...)
 	if err != nil {
 		return nil, err
 	}
 
 	if deadlines.Count == 0 || deadlines.Data == nil {
-		return []types.Deadline{}, nil
+		return []types.DeadlineWithSubject{}, nil
 	}
 
-	data := deadlines.Data
-
-	return data, nil
+	return deadlines.Data, nil
 }
 
-func (ds *DeadlineService) FetchAllDeadlines() ([]types.Deadline, error) {
-	query := Query().SetOperation("select").SetTable("deadlines").SetLimit(100).SetSelect([]string{
-		"id", "subject_id", "owner_id", "title", "description", "due_date", "created_at", "updated_at",
-	})
+func (ds *DeadlineService) FetchAllDeadlines(filterOptions map[string]string) ([]types.DeadlineWithSubject, error) {
+	var (
+		query = `
+			SELECT
+				d.id, d.owner_id, d.title, d.description, d.due_date, d.created_at, d.updated_at,
+				s.id AS subject__id, s.name AS subject__name, s.code AS subject__code, s.color AS subject__color,
+				s.created_at AS subject__created_at, s.updated_at AS subject__updated_at,
+				s.teacher_id AS subject__teacher_id, s.teacher_name AS subject__teacher_name, s.is_active AS subject__is_active
+			FROM deadlines d
+			LEFT JOIN subjects s ON d.subject_id = s.id
+		`
+		conditions []string
+		args       []any
+	)
 
-	deadlines, err := database.ExecuteQuery[types.Deadline](query)
+	if subjectID, ok := filterOptions["subject_id"]; ok && subjectID != "" {
+		conditions = append(conditions, "s.id = ?")
+		args = append(args, subjectID)
+	}
+	if dueDateFrom, ok := filterOptions["due_date_from"]; ok && dueDateFrom != "" {
+		conditions = append(conditions, "d.due_date >= ?")
+		args = append(args, dueDateFrom)
+	}
+	if dueDateTo, ok := filterOptions["due_date_to"]; ok && dueDateTo != "" {
+		conditions = append(conditions, "d.due_date <= ?")
+		args = append(args, dueDateTo)
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + conditions[0]
+		for i := 1; i < len(conditions); i++ {
+			query += " AND " + conditions[i]
+		}
+	}
+
+	query += " LIMIT 100;"
+
+	deadlines, err := database.Raw[types.DeadlineWithSubject](query, args...)
 	if err != nil {
 		return nil, err
 	}
 
 	if deadlines.Count == 0 || deadlines.Data == nil {
-		return []types.Deadline{}, nil
+		return []types.DeadlineWithSubject{}, nil
 	}
 
-	data := deadlines.Data
-
-	return data, nil
+	return deadlines.Data, nil
 }
 
 func (ds *DeadlineService) DeleteDeadlineById(deadlineId string) error {
@@ -143,7 +205,7 @@ func (ds *DeadlineService) UpdateDeadlineById(deadlineId string, updateData type
 		data["due_date"] = updateData.DueDate
 	}
 
-	_, err := database.ExecuteQuery[any](query)
+	_, err := database.ExecuteQuery[any](query.SetData(data))
 	if err != nil {
 		return err
 	}
@@ -155,9 +217,9 @@ func (ds *DeadlineService) UpdateDeadlineById(deadlineId string, updateData type
 // This interface is used for dependency injection and to facilitate testing.
 type DeadlineServiceInterface interface {
 	CreateDeadline(req *types.CreateDeadlineRequest) error
-	FetchDeadlinesByUser(userId uuid.UUID) ([]types.Deadline, error)
+	FetchDeadlinesByUser(userId uuid.UUID, filterOptions map[string]string) ([]types.DeadlineWithSubject, error)
 	DeleteDeadlineById(deadlineId string) error
 	DeleteDeadlinesFromUser(userId uuid.UUID) error
-	FetchAllDeadlines() ([]types.Deadline, error)
+	FetchAllDeadlines(filterOptions map[string]string) ([]types.DeadlineWithSubject, error)
 	UpdateDeadlineById(deadlineId string, updateData types.Deadline) error
 }

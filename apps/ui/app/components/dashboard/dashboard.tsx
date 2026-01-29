@@ -6,6 +6,7 @@ import {
   Command,
   Check,
   CalendarClockIcon,
+  ArrowRight,
 } from 'lucide-react';
 import { SubjectCard } from './subject-card';
 import { QuickActions } from './quick-actions';
@@ -16,25 +17,28 @@ import { useNavigate } from 'react-router';
 import Restricted from '../restricted';
 import { Button } from '../ui/button';
 import { useDeadlines } from '~/hooks/use-deadlines';
+import { Link } from 'react-router';
 
 export function Dashboard() {
   const { data: user } = useCurrentUser();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
   const { data: deadlines, isLoading: deadlinesLoading } = useDeadlines();
-  const [searchValue, setSearchValue] = useState<string>('');
+  const [subjectSearchValue, setSubjectSearchValue] = useState<string>('');
+  const [deadlineSearchValue, setDeadlineSearchValue] = useState<string>('');
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [managingSubjects, setManagingSubjects] = useState<boolean>(false);
 
   // Debounce search value for better performance
-  const debouncedSearchValue = useDebounce(searchValue, 200);
+  const debouncedSubjectSearchValue = useDebounce(subjectSearchValue, 200);
+  const debouncedDeadlineSearchValue = useDebounce(deadlineSearchValue, 200);
 
   // Filter and sort subjects based on debounced search with prioritized scoring
   const filteredSubjects = (() => {
     if (!subjects) return [];
-    if (!debouncedSearchValue.trim()) return subjects;
+    if (!debouncedSubjectSearchValue.trim()) return subjects;
 
-    const searchTerm = debouncedSearchValue.toLowerCase();
+    const searchTerm = debouncedSubjectSearchValue.toLowerCase();
 
     // Score subjects based on match quality
     const scoredSubjects = subjects
@@ -67,6 +71,51 @@ export function Dashboard() {
     return scoredSubjects;
   })();
 
+  const filteredDeadlines = (() => {
+    if (!deadlines) return [];
+    if (!debouncedDeadlineSearchValue.trim()) return deadlines;
+
+    const searchTerm = debouncedDeadlineSearchValue.toLowerCase();
+
+    // Score subjects based on match quality
+    const scoredDeadlines = deadlines
+      .map((deadline) => {
+        const name = deadline.title.toLowerCase();
+        const code = deadline.subject.code.toLowerCase();
+        const subject = deadline.subject.name.toLowerCase();
+
+        let score = 0;
+
+        // Name field (highest priority)
+        if (name.startsWith(searchTerm)) {
+          score += 100;
+        } else if (name.includes(searchTerm)) {
+          score += 10;
+        }
+
+        // Subject field (medium priority)
+        if (subject.startsWith(searchTerm)) {
+          score += 50;
+        } else if (subject.includes(searchTerm)) {
+          score += 5;
+        }
+
+        // Code field (low priority)
+        if (code.startsWith(searchTerm)) {
+          score += 25;
+        } else if (code.includes(searchTerm)) {
+          score += 3;
+        }
+
+        return { deadline, score };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ deadline }) => deadline);
+
+    return scoredDeadlines;
+  })();
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Goedemorgen';
@@ -76,7 +125,7 @@ export function Dashboard() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
-      setSearchValue('');
+      setSubjectSearchValue('');
       searchInputRef.current?.blur();
     } else if (e.key === 'Enter' && filteredSubjects.length > 0) {
       // Navigate to the first subject in the filtered results
@@ -161,17 +210,94 @@ export function Dashboard() {
         {!deadlinesLoading && deadlines && deadlines.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-neutral-900 mb-4">Aankomende Deadlines</h2>
+            {/* Search field */}
+            <div className="relative flex-1 mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <Input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Zoek vakken op naam, code of docent..."
+                className="w-full border border-neutral-300 rounded-lg pl-10 pr-20 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                disabled={deadlinesLoading}
+                value={deadlineSearchValue}
+                onChange={(e) => setDeadlineSearchValue(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                aria-label="Zoek deadlines"
+                aria-describedby="search-shortcuts"
+              />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+                {deadlineSearchValue && filteredDeadlines.length > 0 && (
+                  <div
+                    className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
+                    title="Druk Enter om naar eerste resultaat te gaan"
+                  >
+                    <CornerDownLeft className="h-3 w-3" />
+                  </div>
+                )}
+                {!deadlineSearchValue && (
+                  <div
+                    className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
+                    title="Druk S om te zoeken"
+                  >
+                    <Command className="h-3 w-3 mr-0.5" />
+                    <span>S</span>
+                  </div>
+                )}
+                {deadlineSearchValue && filteredDeadlines.length > 1 && (
+                  <div
+                    className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
+                    title={`Druk 1-${Math.min(filteredDeadlines.length, 9)} om naar specifiek vak te gaan`}
+                  >
+                    <span>1-{Math.min(filteredDeadlines.length, 9)}</span>
+                  </div>
+                )}
+                {deadlineSearchValue && (
+                  <button
+                    onClick={() => setDeadlineSearchValue('')}
+                    className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors rounded"
+                    title="Zoekterm wissen en unfocus (Esc)"
+                    aria-label="Zoekterm wissen"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="flex space-x-4 overflow-x-auto pb-2">
-              {deadlines.slice(0, 5).map((deadline) => (
+              {filteredDeadlines.slice(0, 5).map((deadline) => (
                 <div
                   key={deadline.id}
-                  className="min-w-[200px] bg-white rounded-lg border border-neutral-200 p-4 shrink-0"
+                  className="min-w-62.5 bg-white rounded-lg border border-neutral-200 p-4 shrink-0 relative flex flex-col justify-between"
                 >
-                  <h3 className="text-lg font-medium text-neutral-900 mb-1">{deadline.title}</h3>
-                  <p className="text-sm text-neutral-600 mb-2">
-                    Voor: {new Date(deadline.dueDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-neutral-700">Vak: {deadline.subjectId}</p>
+                  <div>
+                    <h3 className="text-lg font-medium text-neutral-900 mb-1">{deadline.title}</h3>
+                    <p className="text-sm text-neutral-600 mb-2 flex items-center gap-1">
+                      <span
+                        className="inline-block w-3 h-3 rounded-full mr-1"
+                        style={{ backgroundColor: deadline.subject.color }}
+                      ></span>
+                      {deadline.subject.name} ({deadline.subject.code})
+                    </p>
+                    <p className="text-sm text-neutral-500">
+                      Inleveren op:{' '}
+                      <span className="font-medium text-neutral-900">
+                        {new Date(deadline.dueDate).toLocaleDateString('nl-NL', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </p>
+                  </div>
+                  <Link
+                    to={`/subjects/${deadline.subject.id}/deadlines/${deadline.id}`}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 transform text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 hover:bg-primary-50 transition-colors duration-300"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </Link>
                 </div>
               ))}
             </div>
@@ -185,7 +311,7 @@ export function Dashboard() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-neutral-900">Mijn Vakken</h2>
               <div className="text-sm text-neutral-500" aria-live="polite">
-                {debouncedSearchValue.trim() ? (
+                {debouncedSubjectSearchValue.trim() ? (
                   <>
                     {filteredSubjects.length} van {subjects?.length}{' '}
                     {subjects?.length === 1 ? 'vak' : 'vakken'}
@@ -208,14 +334,14 @@ export function Dashboard() {
                   placeholder="Zoek vakken op naam, code of docent..."
                   className="w-full border border-neutral-300 rounded-lg pl-10 pr-20 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   disabled={subjectsLoading}
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  value={subjectSearchValue}
+                  onChange={(e) => setSubjectSearchValue(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
                   aria-label="Zoek vakken"
                   aria-describedby="search-shortcuts"
                 />
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-                  {searchValue && filteredSubjects.length > 0 && (
+                  {subjectSearchValue && filteredSubjects.length > 0 && (
                     <div
                       className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
                       title="Druk Enter om naar eerste resultaat te gaan"
@@ -223,7 +349,7 @@ export function Dashboard() {
                       <CornerDownLeft className="h-3 w-3" />
                     </div>
                   )}
-                  {!searchValue && (
+                  {!subjectSearchValue && (
                     <div
                       className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
                       title="Druk S om te zoeken"
@@ -232,7 +358,7 @@ export function Dashboard() {
                       <span>S</span>
                     </div>
                   )}
-                  {searchValue && filteredSubjects.length > 1 && (
+                  {subjectSearchValue && filteredSubjects.length > 1 && (
                     <div
                       className="flex items-center px-1.5 py-0.5 bg-neutral-100 rounded text-xs text-neutral-500"
                       title={`Druk 1-${Math.min(filteredSubjects.length, 9)} om naar specifiek vak te gaan`}
@@ -240,9 +366,9 @@ export function Dashboard() {
                       <span>1-{Math.min(filteredSubjects.length, 9)}</span>
                     </div>
                   )}
-                  {searchValue && (
+                  {subjectSearchValue && (
                     <button
-                      onClick={() => setSearchValue('')}
+                      onClick={() => setSubjectSearchValue('')}
                       className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors rounded"
                       title="Zoekterm wissen en unfocus (Esc)"
                       aria-label="Zoekterm wissen"
@@ -269,7 +395,7 @@ export function Dashboard() {
                 </Button>
               </Restricted>
               <div id="search-shortcuts" className="sr-only" aria-live="polite">
-                {searchValue && filteredSubjects.length > 0
+                {subjectSearchValue && filteredSubjects.length > 0
                   ? `Druk Enter om naar het eerste resultaat te gaan, of druk 1-${Math.min(filteredSubjects.length, 9)} om naar een specifiek vak te gaan. Escape om te wissen en unfocus.`
                   : 'Druk S om te zoeken'}
               </div>
@@ -295,14 +421,14 @@ export function Dashboard() {
                     <div
                       key={subject.id}
                       className={
-                        index === 0 && debouncedSearchValue.trim()
+                        index === 0 && debouncedSubjectSearchValue.trim()
                           ? 'ring-2 ring-primary-200 rounded-lg'
                           : ''
                       }
                     >
                       <SubjectCard
                         subject={subject}
-                        searchTerm={debouncedSearchValue}
+                        searchTerm={debouncedSubjectSearchValue}
                         keyboardShortcut={index < 10 ? index : undefined}
                         managingSubject={managingSubjects}
                       />
@@ -316,10 +442,11 @@ export function Dashboard() {
                     Geen vakken gevonden
                   </h3>
                   <p className="text-neutral-600 mb-4">
-                    Er zijn geen vakken gevonden die overeenkomen met "{debouncedSearchValue}".
+                    Er zijn geen vakken gevonden die overeenkomen met "{debouncedSubjectSearchValue}
+                    ".
                   </p>
                   <button
-                    onClick={() => setSearchValue('')}
+                    onClick={() => setSubjectSearchValue('')}
                     className="text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1"
                     aria-label="Zoekterm wissen"
                   >
