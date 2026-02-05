@@ -52,16 +52,37 @@ func GetQueryParamAsInt(c fiber.Ctx, key string, defaultValue, maxValue int) int
 	return value
 }
 
-func GetParams(c fiber.Ctx, keys ...string) (map[string]string, error) {
+func GetParams(c fiber.Ctx, keys map[string]bool) (map[string]string, error) {
 	params := make(map[string]string)
-	for _, key := range keys {
+
+	for key, required := range keys {
 		val := c.Params(key)
 		if val == "" {
-			return nil, ErrMissingParameter
-		} else {
-			params[key] = val
+			if required {
+				return nil, ErrMissingParameter
+			}
+			continue
 		}
+		params[key] = val
 	}
+
+	return params, nil
+}
+
+func GetQueryParams(c fiber.Ctx, keys map[string]bool) (map[string]string, error) {
+	params := make(map[string]string)
+
+	for key, required := range keys {
+		val := c.Query(key)
+		if val == "" {
+			if required {
+				return nil, ErrMissingParameter
+			}
+			continue
+		}
+		params[key] = val
+	}
+
 	return params, nil
 }
 

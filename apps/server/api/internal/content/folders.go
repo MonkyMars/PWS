@@ -9,7 +9,10 @@ import (
 )
 
 func (cr *ContentRoutes) GetFoldersBySubjectParent(c fiber.Ctx) error {
-	params, err := lib.GetParams(c, "subjectId", "parentId")
+	params, err := lib.GetParams(c, map[string]bool{
+		"parentId":  true,
+		"subjectId": true,
+	})
 	if err != nil {
 		msg := "Missing required parameters in request"
 		return lib.HandleServiceError(c, lib.ErrMissingField, msg)

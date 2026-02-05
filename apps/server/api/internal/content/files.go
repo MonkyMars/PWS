@@ -11,7 +11,9 @@ import (
 
 func (cr *ContentRoutes) GetSingleFile(c fiber.Ctx) error {
 	// Get fileId from URL parameters
-	params, err := lib.GetParams(c, "fileId")
+	params, err := lib.GetParams(c, map[string]bool{
+		"fileId": true,
+	})
 	if err != nil {
 		msg := "Failed to get URL parameters for single file retrieval"
 		return lib.HandleServiceError(c, err, msg)
@@ -34,7 +36,10 @@ func (cr *ContentRoutes) GetSingleFile(c fiber.Ctx) error {
 
 func (cr *ContentRoutes) GetFilesBySubject(c fiber.Ctx) error {
 	// Get parameters from URL
-	params, err := lib.GetParams(c, "subjectId", "folderId")
+	params, err := lib.GetParams(c, map[string]bool{
+		"subjectId": true,
+		"folderId":  true,
+	})
 	if err != nil {
 		msg := "Failed to get URL parameters for files by subject retrieval"
 		return lib.HandleServiceError(c, err, msg)

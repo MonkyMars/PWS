@@ -70,7 +70,9 @@ func (sr *SubjectRoutes) GetUserSubjects(c fiber.Ctx) error {
 }
 
 func (sr *SubjectRoutes) GetSubjectTeachers(c fiber.Ctx) error {
-	subjectId, err := lib.GetParams(c, "subjectId")
+	subjectId, err := lib.GetParams(c, map[string]bool{
+		"subjectId": true,
+	})
 	if err != nil {
 		msg := "Failed to get subjectId parameter from request"
 		return lib.HandleServiceError(c, err, msg)

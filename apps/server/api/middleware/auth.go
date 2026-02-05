@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
@@ -82,6 +83,24 @@ func (mw *Middleware) AdminMiddleware() fiber.Handler {
 
 		// Store user claims in context locals for downstream handlers
 		c.Locals("claims", claims)
+
+		return c.Next()
+	}
+}
+
+func (mw *Middleware) RoleMiddleware(allowedRoles ...string) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		claims, err := lib.GetValidatedClaims(c)
+		if err != nil {
+			return lib.HandleServiceError(c, err, "Failed to get validated claims in RoleMiddleware")
+		}
+
+		isAllowed := slices.Contains(allowedRoles, claims.Role)
+
+		if !isAllowed {
+			msg := fmt.Sprintf("Insufficient permissions. User with role '%s' tried to access a route that requires one of '%v'", claims.Role, allowedRoles)
+			return lib.HandleServiceError(c, lib.ErrInsufficientPermissions, msg)
+		}
 
 		return c.Next()
 	}

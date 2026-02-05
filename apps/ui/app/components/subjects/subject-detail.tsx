@@ -16,11 +16,15 @@ import {
   ChevronDown,
   ChevronUp,
   Printer,
+  ArrowRight,
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { FileViewer } from '~/components/files/file-viewer';
 import { useSubject, useSubjectFiles, useSubjectFolders, useSubjectTeachers } from '~/hooks';
 import type { SubjectFile } from '~/types';
+import { useDeadlines } from '~/hooks/use-deadlines';
+
+import { useAuth } from '~/hooks';
 
 interface SubjectDetailProps {
   subjectId: string;
@@ -32,9 +36,11 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>(subjectId);
   const [folderHistory, setFolderHistory] = useState<string[]>([subjectId]);
   const [folderNames, setFolderNames] = useState<{ [key: string]: string }>({});
+  const { user } = useAuth();
   const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const { data: subject } = useSubject(subjectId);
   const { data: teachers } = useSubjectTeachers(subjectId);
+  const { data: deadlines } = useDeadlines({ subjectId });
   // const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({
   //   subjectId,
   // });
@@ -188,7 +194,7 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
   // const announcements = announcementsData?.items || [];
   return (
     <div className="min-h-screen bg-neutral-50">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-480 mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <Link
@@ -558,6 +564,49 @@ export function SubjectDetail({ subjectId }: SubjectDetailProps) {
                   <span className="text-neutral-600">Mappen</span>
                   <span className="font-medium text-neutral-900">{folders.length}</span>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-neutral-200 p-6 sticky mt-8">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-4">Deadlines</h3>
+              <div className="space-y-2">
+                {deadlines && deadlines.length > 0 ? (
+                  deadlines.slice(0, 5).map((deadline) => (
+                    <div
+                      key={deadline.id}
+                      className="flex items-center justify-between bg-neutral-50 rounded-lg px-3 py-2 border border-neutral-100 hover:border-primary-200 transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium text-neutral-900 truncate">{deadline.title}</p>
+                        <p className="text-xs text-neutral-500">{formatDate(deadline.dueDate)}</p>
+                      </div>
+                      {/* Role-based hand-in link */}
+                      {user?.role === 'student' ? (
+                        <Link
+                          to={`/deadlines/${deadline.id}/submission`}
+                          className="ml-3 flex items-center gap-1 px-2 py-1 rounded text-primary-600 hover:text-white hover:bg-primary-600 text-xs font-medium transition-colors"
+                          title="Naar inleverpagina"
+                        >
+                          <span>Inleveren</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/deadlines/${deadline.id}/submissions`}
+                          className="ml-3 flex items-center gap-1 px-2 py-1 rounded text-primary-600 hover:text-white hover:bg-primary-600 text-xs font-medium transition-colors"
+                          title="Bekijk ingeleverde opdrachten"
+                        >
+                          <span>Bekijk ingeleverd</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-neutral-500 text-center py-4">
+                    Geen aankomende deadlines.
+                  </div>
+                )}
               </div>
             </div>
           </div>

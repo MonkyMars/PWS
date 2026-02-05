@@ -4,7 +4,6 @@ import (
 	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/MonkyMars/PWS/api/response"
 	"github.com/MonkyMars/PWS/lib"
-	"github.com/MonkyMars/PWS/services"
 	"github.com/MonkyMars/PWS/types"
 	"github.com/gofiber/fiber/v3"
 )
@@ -20,8 +19,7 @@ func (dr *DeadlineRoutes) CreateDeadline(c fiber.Ctx) error {
 		return response.NotFound(c, "Data not found")
 	}
 
-	deadlineService := services.NewDeadlineService()
-	err = deadlineService.CreateDeadline(body)
+	err = dr.deadlineService.CreateDeadline(body)
 	if err != nil {
 		return response.InternalServerError(c, "Failed to create deadline: "+err.Error())
 	}

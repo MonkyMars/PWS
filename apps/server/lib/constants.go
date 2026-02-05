@@ -21,4 +21,5 @@ const (
 	TableSubjectTeachers = "subject_teachers"
 	TableAuditLogs       = "audit_logs"
 	TableHealthLogs      = "health_logs"
+	TableDeadlines       = "deadlines"
 )

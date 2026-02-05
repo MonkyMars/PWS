@@ -3,6 +3,7 @@ package deadlines
 import (
 	"github.com/MonkyMars/PWS/api/middleware"
 	"github.com/MonkyMars/PWS/config"
+	"github.com/MonkyMars/PWS/lib"
 	"github.com/MonkyMars/PWS/services"
 	"github.com/gofiber/fiber/v3"
 )
@@ -11,9 +12,10 @@ import (
 // It follows clean architecture principles by depending on interfaces rather than concrete implementations.
 // This makes the code more testable and maintainable.
 type DeadlineRoutes struct {
-	subjectService services.SubjectServiceInterface
-	middleware     *middleware.Middleware
-	logger         *config.Logger
+	subjectService  services.SubjectServiceInterface
+	deadlineService services.DeadlineServiceInterface
+	middleware      *middleware.Middleware
+	logger          *config.Logger
 }
 
 // NewAuthRoutesWithDefaults creates an AuthRoutes instance with default dependencies.
@@ -21,9 +23,10 @@ type DeadlineRoutes struct {
 // the default implementations of all services.
 func NewDeadlineRoutesWithDefaults() *DeadlineRoutes {
 	return &DeadlineRoutes{
-		subjectService: services.NewSubjectService(),
-		middleware:     middleware.NewMiddleware(),
-		logger:         config.SetupLogger(),
+		subjectService:  services.NewSubjectService(),
+		deadlineService: services.NewDeadlineService(),
+		middleware:      middleware.NewMiddleware(),
+		logger:          config.SetupLogger(),
 	}
 }
 
@@ -32,5 +35,14 @@ func NewDeadlineRoutesWithDefaults() *DeadlineRoutes {
 func (dr *DeadlineRoutes) RegisterRoutes(app *fiber.App) {
 	deadlines := app.Group("/deadlines", dr.middleware.AuthMiddleware())
 
-	deadlines.Post("/", dr.CreateDeadline)
+	deadlines.Post("/", dr.middleware.RoleMiddleware(lib.RoleAdmin, lib.RoleTeacher), dr.CreateDeadline)
+	deadlines.Get("/me", dr.FetchDeadlinesForUser)
+	deadlines.Put("/:id", dr.UpdateDeadlineById)
+	deadlines.Delete("/:id", dr.DeleteDeadlineById)
+	deadlines.Delete("/user/:user_id", dr.DeleteDeadlinesByUser)
+
+	// Submission endpoints
+	deadlines.Post("/:id/submission", dr.CreateOrUpdateSubmission)
+	deadlines.Get("/:id/submission", dr.GetOwnSubmission)
+	deadlines.Get("/:id/submissions", dr.middleware.RoleMiddleware(lib.RoleAdmin, lib.RoleTeacher), dr.GetAllSubmissions)
 }
